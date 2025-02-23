@@ -928,7 +928,7 @@ public class Executor {
       initProposalExecution(proposals, demotedBrokers, concurrentSwaps, null, 0,
                             requestedClusterLeadershipMovementConcurrency, requestedBrokerLeadershipMovementConcurrency,
                             requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
-      startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, replicationThrottle, isTriggeredByUserRequest);
+      startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, null, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
       throw e;
