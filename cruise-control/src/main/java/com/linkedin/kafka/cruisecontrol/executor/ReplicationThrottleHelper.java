@@ -144,7 +144,7 @@ class ReplicationThrottleHelper {
 
     LOG.info("Removing replica movement throttles from brokers in the cluster: {}", brokersToRemoveThrottlesFrom);
     for (int broker : brokersToRemoveThrottlesFrom) {
-      removeThrottledRatesFromBroker(broker);
+      removeThrottledRateFromBroker(broker);
     }
 
     Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
@@ -349,7 +349,7 @@ class ReplicationThrottleHelper {
     }
   }
 
-  private void removeThrottledRatesFromBroker(Integer brokerId)
+  private void removeThrottledRateFromBroker(Integer brokerId)
   throws ExecutionException, InterruptedException, TimeoutException {
     Config brokerConfigs = getBrokerConfigs(brokerId);
     ConfigEntry currLeaderThrottle = brokerConfigs.get(LEADER_THROTTLED_RATE);
