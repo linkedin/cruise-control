@@ -373,7 +373,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     try {
       // Retrieve topic partition count to check and update.
       TopicDescription topicDescription =
-          _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)).values()
+          _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)).topicNameValues()
                       .get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
         _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic,

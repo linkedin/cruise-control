@@ -107,7 +107,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         Properties props = new Properties();
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         AdminClient adminClient = AdminClient.create(props);
-        TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
+        TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get();
         // assert that the metrics topic was created with partitions and replicas as configured for the metrics report auto-creation
         assertEquals(1, topicDescription.partitions().size());
         assertEquals(1, topicDescription.partitions().get(0).replicas().size());
