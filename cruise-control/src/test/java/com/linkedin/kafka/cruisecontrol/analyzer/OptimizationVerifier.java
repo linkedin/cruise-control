@@ -32,7 +32,7 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,7 +140,7 @@ final class OptimizationVerifier {
     props.setProperty(AnalyzerConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG, stringJoiner.toString());
     GoalOptimizer goalOptimizer = new GoalOptimizer(new KafkaCruiseControlConfig(constraint.setProps(props)),
                                                     null,
-                                                    new SystemTime(),
+                                                    Time.SYSTEM,
                                                     new MetricRegistry(),
                                                     EasyMock.mock(Executor.class),
                                                     EasyMock.mock(AdminClient.class));
