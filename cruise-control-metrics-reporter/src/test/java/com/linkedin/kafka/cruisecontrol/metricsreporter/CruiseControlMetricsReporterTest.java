@@ -190,7 +190,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     setSecurityConfigs(props, "admin");
     props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     AdminClient adminClient = AdminClient.create(props);
-    TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
+    TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get();
     assertEquals(1, topicDescription.partitions().size());
     // Shutdown broker
     _brokers.get(0).shutdown();
@@ -205,7 +205,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     // Wait for broker to boot up
     Thread.sleep(5000);
     // Check whether the topic config is updated
-    topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
+    topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get();
     assertEquals(2, topicDescription.partitions().size());
   }
 
