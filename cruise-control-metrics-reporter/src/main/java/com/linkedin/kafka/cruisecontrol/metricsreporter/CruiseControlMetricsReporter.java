@@ -370,11 +370,23 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   protected void maybeIncreaseTopicPartitionCount() {
     String cruiseControlMetricsTopic = _metricsTopic.name();
+
+    // Starting with Kafka 4.0.0, the deprecated method "values()" class is completely removed from "org.apache.kafka.clients.admin.DescribeTopicsResult"
+    // so we have to use the new method "topicNameValues".
+    // To make sure that the internal build pass, this logic is introduced to choose the API based on the Kafka version.
     try {
-      // Retrieve topic partition count to check and update.
-      TopicDescription topicDescription =
-          _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)).topicNameValues()
-                      .get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      Method topicNameValuesMethod = null;
+      try {
+        // First we try to get the topicNameValues() method
+        topicNameValuesMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
+      } catch (ClassNotFoundException | NoSuchMethodException exception) {
+        LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+      }
+
+      TopicDescription topicDescription = topicNameValuesMethod != null? _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)).topicNameValues()
+              .get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS) : _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)).values()
+              .get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+
       if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
         _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic,
                                                                NewPartitions.increaseTo(_metricsTopic.numPartitions())));

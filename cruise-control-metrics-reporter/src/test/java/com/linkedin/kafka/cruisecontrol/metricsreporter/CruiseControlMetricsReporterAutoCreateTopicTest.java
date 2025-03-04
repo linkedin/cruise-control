@@ -22,6 +22,10 @@ import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
@@ -32,6 +36,7 @@ import static org.junit.Assert.assertEquals;
 public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClientsIntegrationTestHarness {
     protected static final String TOPIC = "CruiseControlMetricsReporterTest";
     protected static final String TEST_TOPIC = "TestTopic";
+    private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterAutoCreateTopicTest.class);
 
     /**
      * Setup the unit test.
@@ -107,7 +112,19 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         Properties props = new Properties();
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         AdminClient adminClient = AdminClient.create(props);
-        TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get();
+
+        // Starting with Kafka 4.0.0, the deprecated method "values()" class is completely removed from "org.apache.kafka.clients.admin.DescribeTopicsResult"
+        // so we have to use the new method "topicNameValues".
+        // To make sure that the internal build pass, this logic is introduced to choose the API based on the Kafka version
+        Method topicNameValuesMethod = null;
+        try {
+            // First we try to get the topicNameValues() method
+            topicNameValuesMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
+        } catch (ClassNotFoundException | NoSuchMethodException exception) {
+            LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+        }
+
+        TopicDescription topicDescription = topicNameValuesMethod != null? adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get() : adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
         // assert that the metrics topic was created with partitions and replicas as configured for the metrics report auto-creation
         assertEquals(1, topicDescription.partitions().size());
         assertEquals(1, topicDescription.partitions().get(0).replicas().size());

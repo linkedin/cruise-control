@@ -8,6 +8,8 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetr
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
+
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,6 +43,8 @@ import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_HOST;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_PORT;
@@ -54,6 +58,8 @@ import static org.junit.Assert.assertTrue;
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
   private static final String HOST = "127.0.0.1";
+  private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterAutoCreateTopicTest.class);
+
 
   /**
    * Setup the unit test.
@@ -190,7 +196,19 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     setSecurityConfigs(props, "admin");
     props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     AdminClient adminClient = AdminClient.create(props);
-    TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get();
+
+    // Starting with Kafka 4.0.0, the deprecated method "values()" class is completely removed from "org.apache.kafka.clients.admin.DescribeTopicsResult"
+    // so we have to use the new method "topicNameValues".
+    // To make sure that the internal build pass, this logic is introduced to choose the API based on the Kafka version
+    Method topicNameValuesMethod = null;
+    try {
+      // First we try to get the topicNameValues() method
+      topicNameValuesMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
+    } catch (ClassNotFoundException | NoSuchMethodException exception) {
+      LOG.debug("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+    }
+
+    TopicDescription topicDescription = topicNameValuesMethod != null? adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get() : adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
     assertEquals(1, topicDescription.partitions().size());
     // Shutdown broker
     _brokers.get(0).shutdown();
@@ -205,7 +223,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     // Wait for broker to boot up
     Thread.sleep(5000);
     // Check whether the topic config is updated
-    topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get();
+    topicDescription = topicNameValuesMethod != null? adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get() : adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
     assertEquals(2, topicDescription.partitions().size());
   }
 
