@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,6 +34,7 @@ import org.apache.kafka.clients.admin.AlterConfigsResult;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
+import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -42,6 +44,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
@@ -375,23 +378,36 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     // so we have to use the new method "topicNameValues".
     // To make sure that the internal build pass, this logic is introduced to choose the API based on the Kafka version.
     try {
-      Method topicNameValuesMethod = null;
+      Method topicDescriptionMethod = null;
       try {
         // First we try to get the topicNameValues() method
-        topicNameValuesMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
+       topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
       } catch (ClassNotFoundException | NoSuchMethodException exception) {
         LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
       }
 
-      TopicDescription topicDescription = topicNameValuesMethod != null? _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)).topicNameValues()
-              .get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS) : _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)).values()
-              .get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-
-      if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
-        _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic,
-                                                               NewPartitions.increaseTo(_metricsTopic.numPartitions())));
+      if (topicDescriptionMethod == null) {
+        try {
+          // Second we try to get the values() method
+          topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("values");
+        } catch (ClassNotFoundException | NoSuchMethodException exception) {
+          LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+        }
       }
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+
+      if (topicDescriptionMethod != null) {
+        Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod.invoke(_adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)));
+
+        TopicDescription topicDescription = topicDescriptionMap.get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+
+        if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
+          _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic,
+                  NewPartitions.increaseTo(_metricsTopic.numPartitions())));
+        }
+      } else {
+        throw new NoSuchElementException("Unable to find both values() and topicNameValues() method in the DescribeTopicsResult class ");
+      }
+    } catch (InterruptedException | ExecutionException | TimeoutException | InvocationTargetException | IllegalAccessException e) {
       LOG.warn("Partition count increase to {} for topic {} failed{}.", _metricsTopic.numPartitions(), cruiseControlMetricsTopic,
                (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);
     }
