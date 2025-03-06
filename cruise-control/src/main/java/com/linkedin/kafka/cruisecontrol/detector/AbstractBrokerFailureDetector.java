@@ -15,6 +15,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -118,7 +119,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
     String failedBrokerListString = null;
     try {
       failedBrokerListString = readFileToString(_failedBrokersFile, StandardCharsets.UTF_8);
-    } catch (FileNotFoundException fnfe) {
+    } catch (FileNotFoundException | NoSuchFileException fnfe) {
       // This means no previous failures have ever been persisted in the file.
       failedBrokerListString = "";
     } catch (IOException ioe) {
