@@ -1,13 +1,18 @@
 version: 2.1
+obrs:
+  aws-cli: circleci/aws-cli@5
+  aws-ecr: circleci/aws-ecr@9
+  docker: circleci/docker@2.6.0
 
 jobs:
-
+  # Build job
   build:
+    resource_class: medium
+    docker:
+      - image: cimg/openjdk:11.0
     environment:
       _JAVA_OPTIONS: "-Xms512m -Xmx1g"
     working_directory: ~/workspace
-    docker:
-      - image: cimg/openjdk:11.0
     steps:
       - checkout
       - restore_cache:
@@ -15,7 +20,6 @@ jobs:
       - run:
           command: ./gradlew --no-daemon clean javadoc
       - run:
-          # run static analysis tasks standalone to avoid OOME in CircleCI
           command: ./gradlew --max-workers=1 --no-daemon analyze
       - run:
           no_output_timeout: 15m
@@ -35,63 +39,58 @@ jobs:
       - store_artifacts:
           path: build/libs
 
+  # Integration Test job
   integration-test:
-    environment:
-      _JAVA_OPTIONS: "-Xms512m -Xmx1g"
-    working_directory: ~/workspace
     docker:
       - image: cimg/openjdk:11.0
+    working_directory: ~/workspace
     steps:
       - checkout
-      - restore_cache:
-          key: dependency-cache-{{ checksum "build.gradle" }}
       - run:
-          command: ./gradlew --no-daemon -PmaxParallelForks=1 clean integrationTest
-      - save_cache:
-          key: dependency-cache-{{ checksum "build.gradle" }}
-          paths:
-            - ~/.gradle
-      - run:
-          command: mkdir ~/test-results
-      - run:
-          command: find ~/workspace -type f -regex ".*/test-results/.*xml" -exec ln {} ~/test-results/ \;
+          command: ./gradlew --no-daemon test
       - store_test_results:
-          path: ~/test-results
-      - store_artifacts:
-          path: ~/test-results
+          path: ~/workspace/build/test-results
 
+  # Publish job (Docker image push to ECR)
   publish:
-    working_directory: ~/workspace
     docker:
       - image: cimg/openjdk:11.0
+    environment:
+      ECR_REPOSITORY: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/infra-cruise-control
+    working_directory: ~/workspace
     steps:
       - checkout
-      - restore_cache:
-          key: dependency-cache-{{ checksum "build.gradle" }}
+      - setup_remote_docker
+      - aws-cli/setup:
+          role_arn: arn:aws:iam::717232957798:role/ci-main
+          profile_name: OIDC-USER
+      - aws-ecr/ecr_login:
+          profile_name: OIDC-USER
+          region: $AWS_REGION
       - run:
-          command: ./gradlew :artifactoryPublish :cruise-control:artifactoryPublish :cruise-control-core:artifactoryPublish :cruise-control-metrics-reporter:artifactoryPublish
+          name: Build Docker Image
+          command: |
+            docker build -t $ECR_REPOSITORY:$CIRCLE_SHA1 .
+      - run:
+          name: Push Docker Image to ECR
+          command: |
+            AWS_PROFILE=OIDC-USER docker push $ECR_REPOSITORY:$CIRCLE_SHA1
 
 workflows:
-  version: 2.1
   build-and-publish:
     jobs:
-      - build:
-          filters:
-            tags:
-              only: /.*/
+      - build
       - integration-test:
           requires:
             - build
           filters:
             branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9_]+)?$/
+              only: main  # Runs integration tests only on the `main` branch.
       - publish:
+          context:
+            - aws_empty
           requires:
             - integration-test
           filters:
             branches:
-              ignore: /.*/
-            tags:
-              only: /^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9_]+)?$/
+              only: main  # Pushes to the registry only from the `main` branch.
