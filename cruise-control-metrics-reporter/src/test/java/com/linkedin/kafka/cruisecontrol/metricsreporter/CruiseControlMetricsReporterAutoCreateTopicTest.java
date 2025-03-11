@@ -25,12 +25,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,7 +120,9 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap;
 
         try {
-            topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod.invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
+            topicDescriptionMap =
+                    (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
+                            .invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -151,16 +151,16 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         try {
             // First we try to get the topicNameValues() method
             topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
-        } catch (ClassNotFoundException | NoSuchMethodException exception) {
-            LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", e);
         }
 
         if (topicDescriptionMethod == null) {
             try {
                 // Second we try to get the values() method
                 topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("values");
-            } catch (ClassNotFoundException | NoSuchMethodException exception) {
-                LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+            } catch (ClassNotFoundException | NoSuchMethodException e) {
+                LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", e);
             }
         }
 

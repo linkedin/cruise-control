@@ -378,8 +378,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
       DescribeTopicsResult describeTopicsResult = _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic));
 
-      Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap =
-              (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod.invoke(describeTopicsResult);
+      Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
+              .invoke(describeTopicsResult);
 
       TopicDescription topicDescription = topicDescriptionMap.get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 

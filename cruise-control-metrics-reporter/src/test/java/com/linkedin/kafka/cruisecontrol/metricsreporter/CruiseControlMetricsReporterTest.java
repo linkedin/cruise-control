@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetr
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
@@ -17,17 +16,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -56,7 +52,6 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetr
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.CLIENT_REQUEST_TIMEOUT_MS;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -65,7 +60,6 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
   private static final String HOST = "127.0.0.1";
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterAutoCreateTopicTest.class);
-
 
   /**
    * Setup the unit test.
@@ -208,7 +202,8 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap;
 
     try {
-      topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod.invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
+      topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
+              .invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
     } catch (IllegalAccessException | InvocationTargetException e) {
       throw new RuntimeException(e);
     }
