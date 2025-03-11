@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -374,39 +373,21 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   protected void maybeIncreaseTopicPartitionCount() {
     String cruiseControlMetricsTopic = _metricsTopic.name();
 
-    // Starting with Kafka 4.0.0, the deprecated method "values()" class is completely removed from "org.apache.kafka.clients.admin.DescribeTopicsResult"
-    // so we have to use the new method "topicNameValues".
-    // To make sure that the internal build pass, this logic is introduced to choose the API based on the Kafka version.
     try {
-      Method topicDescriptionMethod = null;
-      try {
-        // First we try to get the topicNameValues() method
-       topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
-      } catch (ClassNotFoundException | NoSuchMethodException exception) {
-        LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+      Method topicDescriptionMethod = topicNameValuesMethod();
+
+      DescribeTopicsResult describeTopicsResult = _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic));
+
+      Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap =
+              (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod.invoke(describeTopicsResult);
+
+      TopicDescription topicDescription = topicDescriptionMap.get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+
+      if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
+        _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic,
+                NewPartitions.increaseTo(_metricsTopic.numPartitions())));
       }
 
-      if (topicDescriptionMethod == null) {
-        try {
-          // Second we try to get the values() method
-          topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("values");
-        } catch (ClassNotFoundException | NoSuchMethodException exception) {
-          LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
-        }
-      }
-
-      if (topicDescriptionMethod != null) {
-        Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod.invoke(_adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)));
-
-        TopicDescription topicDescription = topicDescriptionMap.get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-
-        if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
-          _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic,
-                  NewPartitions.increaseTo(_metricsTopic.numPartitions())));
-        }
-      } else {
-        throw new NoSuchElementException("Unable to find both values() and topicNameValues() method in the DescribeTopicsResult class ");
-      }
     } catch (InterruptedException | ExecutionException | TimeoutException | InvocationTargetException | IllegalAccessException e) {
       LOG.warn("Partition count increase to {} for topic {} failed{}.", _metricsTopic.numPartitions(), cruiseControlMetricsTopic,
                (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);
@@ -539,4 +520,41 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     }
   }
 
+  /**
+   * Attempts to retrieve the method for mapping topic names to futures from the {@link org.apache.kafka.clients.admin.DescribeTopicsResult} class.
+   * This method first tries to get the {@code topicNameValues()} method, which is available in Kafka 4.0.0 or later.
+   * If the method is not found, it falls back to trying to retrieve the {@code values()} method, which is available in Kafka 3.0.0 or earlier.
+   *
+   * If neither of these methods is found, a {@link RuntimeException} is thrown.
+   *
+   * <p>This method is useful for ensuring compatibility with both older and newer versions of Kafka clients.</p>
+   *
+   * @return the {@link Method} object representing the {@code topicNameValues()} or {@code values()} method.
+   * @throws RuntimeException if neither the {@code values()} nor {@code topicNameValues()} methods are found.
+   */
+  /* test */ static Method topicNameValuesMethod() {
+    //
+    Method topicDescriptionMethod = null;
+    try {
+      // First we try to get the topicNameValues() method
+      topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
+    } catch (ClassNotFoundException | NoSuchMethodException exception) {
+      LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+    }
+
+    if (topicDescriptionMethod == null) {
+      try {
+        // Second we try to get the values() method
+        topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("values");
+      } catch (ClassNotFoundException | NoSuchMethodException exception) {
+        LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+      }
+    }
+
+    if (topicDescriptionMethod != null) {
+      return topicDescriptionMethod;
+    } else {
+      throw new RuntimeException("Unable to find both values() and topicNameValues() method in the DescribeTopicsResult class ");
+    }
+  }
 }

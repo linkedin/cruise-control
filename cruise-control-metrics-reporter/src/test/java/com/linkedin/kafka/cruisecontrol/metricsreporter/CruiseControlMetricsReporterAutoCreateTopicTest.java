@@ -117,11 +117,37 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         AdminClient adminClient = AdminClient.create(props);
 
-        // Starting with Kafka 4.0.0, the deprecated method "values()" class is completely removed from "org.apache.kafka.clients.admin.DescribeTopicsResult"
-        // so we have to use the new method "topicNameValues".
-        // To make sure that the internal build pass, this logic is introduced to choose the API based on the Kafka version
-        Method topicDescriptionMethod = null;
+        Method topicDescriptionMethod = topicNameValuesMethod();
 
+        Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap;
+
+        try {
+            topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod.invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+
+        TopicDescription topicDescription = topicDescriptionMap.get(TOPIC).get();
+        // assert that the metrics topic was created with partitions and replicas as configured for the metrics report auto-creation
+        assertEquals(1, topicDescription.partitions().size());
+        assertEquals(1, topicDescription.partitions().get(0).replicas().size());
+    }
+
+    /**
+     * Attempts to retrieve the method for mapping topic names to futures from the {@link org.apache.kafka.clients.admin.DescribeTopicsResult} class.
+     * This method first tries to get the {@code topicNameValues()} method, which is available in Kafka 4.0.0 or later.
+     * If the method is not found, it falls back to trying to retrieve the {@code values()} method, which is available in Kafka 3.0.0 or earlier.
+     *
+     * If neither of these methods is found, a {@link RuntimeException} is thrown.
+     *
+     * <p>This method is useful for ensuring compatibility with both older and newer versions of Kafka clients.</p>
+     *
+     * @return the {@link Method} object representing the {@code topicNameValues()} or {@code values()} method.
+     * @throws RuntimeException if neither the {@code values()} nor {@code topicNameValues()} methods are found.
+     */
+    /* test */ static Method topicNameValuesMethod() {
+        //
+        Method topicDescriptionMethod = null;
         try {
             // First we try to get the topicNameValues() method
             topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
@@ -138,20 +164,10 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
             }
         }
 
-        Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap;
         if (topicDescriptionMethod != null) {
-            try {
-                topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod.invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
-            }
+            return topicDescriptionMethod;
         } else {
-            throw new NoSuchElementException("Unable to find both values() and topicNameValues() method in the DescribeTopicsResult class");
+            throw new RuntimeException("Unable to find both values() and topicNameValues() method in the DescribeTopicsResult class ");
         }
-
-        TopicDescription topicDescription = topicDescriptionMap.get(TOPIC).get();
-        // assert that the metrics topic was created with partitions and replicas as configured for the metrics report auto-creation
-        assertEquals(1, topicDescription.partitions().size());
-        assertEquals(1, topicDescription.partitions().get(0).replicas().size());
     }
 }
