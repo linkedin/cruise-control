@@ -384,8 +384,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       TopicDescription topicDescription = topicDescriptionMap.get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 
       if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
-        _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic,
-                NewPartitions.increaseTo(_metricsTopic.numPartitions())));
+        _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic, NewPartitions.increaseTo(_metricsTopic.numPartitions())));
       }
 
     } catch (InterruptedException | ExecutionException | TimeoutException | InvocationTargetException | IllegalAccessException e) {
@@ -537,16 +536,16 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     Method topicDescriptionMethod = null;
     try {
       // First we try to get the topicNameValues() method
-      topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
-    } catch (ClassNotFoundException | NoSuchMethodException exception) {
+      topicDescriptionMethod = DescribeTopicsResult.class.getMethod("topicNameValues");
+    } catch (NoSuchMethodException exception) {
       LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
     }
 
     if (topicDescriptionMethod == null) {
       try {
         // Second we try to get the values() method
-        topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("values");
-      } catch (ClassNotFoundException | NoSuchMethodException exception) {
+        topicDescriptionMethod = DescribeTopicsResult.class.getMethod("values");
+      } catch (NoSuchMethodException exception) {
         LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
       }
     }

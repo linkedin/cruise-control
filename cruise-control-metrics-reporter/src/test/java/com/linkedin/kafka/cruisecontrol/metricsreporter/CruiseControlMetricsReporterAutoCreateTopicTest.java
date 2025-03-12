@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -150,16 +151,16 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         Method topicDescriptionMethod = null;
         try {
             // First we try to get the topicNameValues() method
-            topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("topicNameValues");
-        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            topicDescriptionMethod = DescribeTopicsResult.class.getMethod("topicNameValues");
+        } catch (NoSuchMethodException e) {
             LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", e);
         }
 
         if (topicDescriptionMethod == null) {
             try {
                 // Second we try to get the values() method
-                topicDescriptionMethod = Class.forName("org.apache.kafka.clients.admin.DescribeTopicsResult").getMethod("values");
-            } catch (ClassNotFoundException | NoSuchMethodException e) {
+                topicDescriptionMethod = DescribeTopicsResult.class.getMethod("values");
+            } catch (NoSuchMethodException e) {
                 LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", e);
             }
         }
