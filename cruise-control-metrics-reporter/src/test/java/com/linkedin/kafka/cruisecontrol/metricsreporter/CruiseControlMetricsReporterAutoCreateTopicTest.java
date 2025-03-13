@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
-import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -34,6 +33,7 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.topicNameValuesMethod;
 import static org.junit.Assert.assertEquals;
 
 public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClientsIntegrationTestHarness {
@@ -116,6 +116,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         AdminClient adminClient = AdminClient.create(props);
 
+        // For compatibility with Kafka 4.0 and beyond we must use new API methods.
         Method topicDescriptionMethod = topicNameValuesMethod();
 
         Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap;
@@ -132,43 +133,5 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         // assert that the metrics topic was created with partitions and replicas as configured for the metrics report auto-creation
         assertEquals(1, topicDescription.partitions().size());
         assertEquals(1, topicDescription.partitions().get(0).replicas().size());
-    }
-
-    /**
-     * Attempts to retrieve the method for mapping topic names to futures from the {@link org.apache.kafka.clients.admin.DescribeTopicsResult} class.
-     * This method first tries to get the {@code topicNameValues()} method, which is available in Kafka 4.0.0 or later.
-     * If the method is not found, it falls back to trying to retrieve the {@code values()} method, which is available in Kafka 3.0.0 or earlier.
-     *
-     * If neither of these methods is found, a {@link RuntimeException} is thrown.
-     *
-     * <p>This method is useful for ensuring compatibility with both older and newer versions of Kafka clients.</p>
-     *
-     * @return the {@link Method} object representing the {@code topicNameValues()} or {@code values()} method.
-     * @throws RuntimeException if neither the {@code values()} nor {@code topicNameValues()} methods are found.
-     */
-    /* test */ static Method topicNameValuesMethod() {
-        //
-        Method topicDescriptionMethod = null;
-        try {
-            // First we try to get the topicNameValues() method
-            topicDescriptionMethod = DescribeTopicsResult.class.getMethod("topicNameValues");
-        } catch (NoSuchMethodException e) {
-            LOG.info("Failed to get method topicNameValues() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", e);
-        }
-
-        if (topicDescriptionMethod == null) {
-            try {
-                // Second we try to get the values() method
-                topicDescriptionMethod = DescribeTopicsResult.class.getMethod("values");
-            } catch (NoSuchMethodException e) {
-                LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", e);
-            }
-        }
-
-        if (topicDescriptionMethod != null) {
-            return topicDescriptionMethod;
-        } else {
-            throw new RuntimeException("Unable to find both values() and topicNameValues() method in the DescribeTopicsResult class ");
-        }
     }
 }

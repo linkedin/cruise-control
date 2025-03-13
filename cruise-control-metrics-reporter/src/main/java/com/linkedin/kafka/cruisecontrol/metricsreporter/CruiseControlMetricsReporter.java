@@ -374,6 +374,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     String cruiseControlMetricsTopic = _metricsTopic.name();
 
     try {
+      // For compatibility with Kafka 4.0 and beyond we must use new API methods.
       Method topicDescriptionMethod = topicNameValuesMethod();
 
       DescribeTopicsResult describeTopicsResult = _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic));
@@ -521,8 +522,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   /**
    * Attempts to retrieve the method for mapping topic names to futures from the {@link org.apache.kafka.clients.admin.DescribeTopicsResult} class.
-   * This method first tries to get the {@code topicNameValues()} method, which is available in Kafka 4.0.0 or later.
-   * If the method is not found, it falls back to trying to retrieve the {@code values()} method, which is available in Kafka 3.0.0 or earlier.
+   * This method first tries to get the {@code topicNameValues()} method, which is available in Kafka 3.1.0 and later.
+   * If the method is not found, it falls back to trying to retrieve the {@code values()} method, which is available in Kafka 3.9.0 and earlier.
    *
    * If neither of these methods is found, a {@link RuntimeException} is thrown.
    *
@@ -546,7 +547,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         // Second we try to get the values() method
         topicDescriptionMethod = DescribeTopicsResult.class.getMethod("values");
       } catch (NoSuchMethodException exception) {
-        LOG.info("Failed to get method values() from DescribeTopicsResult class since we are probably on kafka 3.0.0 or older: ", exception);
+        LOG.info("Failed to get method values() from DescribeTopicsResult class: ", exception);
       }
     }
 
