@@ -387,7 +387,6 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
         _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic, NewPartitions.increaseTo(_metricsTopic.numPartitions())));
       }
-
     } catch (InterruptedException | ExecutionException | TimeoutException | InvocationTargetException | IllegalAccessException e) {
       LOG.warn("Partition count increase to {} for topic {} failed{}.", _metricsTopic.numPartitions(), cruiseControlMetricsTopic,
                (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);

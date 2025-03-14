@@ -44,8 +44,6 @@ import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_HOST;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_PORT;
@@ -60,7 +58,6 @@ import static org.junit.Assert.assertTrue;
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
   private static final String HOST = "127.0.0.1";
-  private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterAutoCreateTopicTest.class);
 
   /**
    * Setup the unit test.

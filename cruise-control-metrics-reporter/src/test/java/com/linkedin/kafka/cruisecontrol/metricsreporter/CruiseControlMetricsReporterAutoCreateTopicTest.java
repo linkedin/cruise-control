@@ -23,8 +23,6 @@ import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -39,7 +37,6 @@ import static org.junit.Assert.assertEquals;
 public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClientsIntegrationTestHarness {
     protected static final String TOPIC = "CruiseControlMetricsReporterTest";
     protected static final String TEST_TOPIC = "TestTopic";
-    private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterAutoCreateTopicTest.class);
 
     /**
      * Setup the unit test.
