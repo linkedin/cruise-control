@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
+import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -15,7 +16,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
 import org.apache.kafka.network.SocketServerConfigs;
 import org.apache.kafka.server.config.ReplicationConfigs;
@@ -23,15 +23,11 @@ import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.topicNameValuesMethod;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.getTopicDescription;
 import static org.junit.Assert.assertEquals;
 
 public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClientsIntegrationTestHarness {
@@ -108,25 +104,18 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
     }
 
     @Test
-    public void testAutoCreateMetricsTopic() throws ExecutionException, InterruptedException {
+    public void testAutoCreateMetricsTopic() {
         Properties props = new Properties();
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         AdminClient adminClient = AdminClient.create(props);
 
         // For compatibility with Kafka 4.0 and beyond we must use new API methods.
-        Method topicDescriptionMethod = topicNameValuesMethod();
-
-        Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap;
-
+        TopicDescription topicDescription;
         try {
-            topicDescriptionMap =
-                    (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
-                            .invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
-        } catch (IllegalAccessException | InvocationTargetException e) {
+            topicDescription = getTopicDescription(adminClient, TOPIC);
+        } catch (KafkaTopicDescriptionException e) {
             throw new RuntimeException(e);
         }
-
-        TopicDescription topicDescription = topicDescriptionMap.get(TOPIC).get();
         // assert that the metrics topic was created with partitions and replicas as configured for the metrics report auto-creation
         assertEquals(1, topicDescription.partitions().size());
         assertEquals(1, topicDescription.partitions().get(0).replicas().size());

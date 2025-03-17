@@ -4,12 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
+import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -18,7 +17,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
@@ -35,7 +33,6 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
 import org.apache.kafka.network.SocketServerConfigs;
@@ -47,7 +44,7 @@ import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_HOST;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_PORT;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.topicNameValuesMethod;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.getTopicDescription;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG;
@@ -189,25 +186,19 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   }
 
   @Test
-  public void testUpdatingMetricsTopicConfig() throws ExecutionException, InterruptedException {
+  public void testUpdatingMetricsTopicConfig() throws InterruptedException {
     Properties props = new Properties();
     setSecurityConfigs(props, "admin");
     props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     AdminClient adminClient = AdminClient.create(props);
 
     // For compatibility with Kafka 4.0 and beyond we must use new API methods.
-    Method topicDescriptionMethod = topicNameValuesMethod();
-
-    Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap;
-
+    TopicDescription topicDescription;
     try {
-      topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
-              .invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
-    } catch (IllegalAccessException | InvocationTargetException e) {
+      topicDescription = getTopicDescription(adminClient, TOPIC);
+    } catch (KafkaTopicDescriptionException e) {
       throw new RuntimeException(e);
     }
-
-    TopicDescription topicDescription = topicDescriptionMap.get(TOPIC).get();
     assertEquals(1, topicDescription.partitions().size());
     // Shutdown broker
     _brokers.get(0).shutdown();
@@ -222,15 +213,12 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     // Wait for broker to boot up
     Thread.sleep(5000);
 
+    // Check whether the topic config is updated
     try {
-      topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
-              .invoke(adminClient.describeTopics(Collections.singleton(TOPIC)));
-    } catch (IllegalAccessException | InvocationTargetException e) {
+      topicDescription = getTopicDescription(adminClient, TOPIC);
+    } catch (KafkaTopicDescriptionException e) {
       throw new RuntimeException(e);
     }
-
-    // Check whether the topic config is updated
-    topicDescription = topicDescriptionMap.get(TOPIC).get();
     assertEquals(2, topicDescription.partitions().size());
   }
 

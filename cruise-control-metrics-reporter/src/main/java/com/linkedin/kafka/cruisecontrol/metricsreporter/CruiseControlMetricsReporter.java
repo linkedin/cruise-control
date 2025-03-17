@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.CruiseControlMetricsReporterException;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricsUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
@@ -375,19 +376,12 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
     try {
       // For compatibility with Kafka 4.0 and beyond we must use new API methods.
-      Method topicDescriptionMethod = topicNameValuesMethod();
-
-      DescribeTopicsResult describeTopicsResult = _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic));
-
-      Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
-              .invoke(describeTopicsResult);
-
-      TopicDescription topicDescription = topicDescriptionMap.get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      TopicDescription topicDescription = getTopicDescription(_adminClient, cruiseControlMetricsTopic);
 
       if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
         _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic, NewPartitions.increaseTo(_metricsTopic.numPartitions())));
       }
-    } catch (InterruptedException | ExecutionException | TimeoutException | InvocationTargetException | IllegalAccessException e) {
+    } catch (KafkaTopicDescriptionException e) {
       LOG.warn("Partition count increase to {} for topic {} failed{}.", _metricsTopic.numPartitions(), cruiseControlMetricsTopic,
                (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);
     }
@@ -554,6 +548,35 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       return topicDescriptionMethod;
     } else {
       throw new RuntimeException("Unable to find both values() and topicNameValues() method in the DescribeTopicsResult class ");
+    }
+  }
+
+  /**
+   * Retrieves the {@link TopicDescription} for the specified Kafka topic, handling compatibility
+   * with Kafka versions 4.0 and above. This method uses reflection to invoke the appropriate method
+   * for retrieving topic description information, depending on the Kafka version.
+   *
+   * @param adminClient The Kafka {@link AdminClient} used to interact with the Kafka cluster.
+   * @param ccMetricsTopic The name of the Kafka topic for which the description is to be retrieved.
+   *
+   * @return The {@link TopicDescription} for the specified Kafka topic.
+   *
+   * @throws KafkaTopicDescriptionException If an error occurs while retrieving the topic description,
+   *         or if the topic name retrieval method cannot be found or invoked properly. This includes
+   *         exceptions related to reflection (e.g., {@link NoSuchMethodException}), invocation issues,
+   *         execution exceptions, timeouts, and interruptions.
+   */
+  /* test */ static TopicDescription getTopicDescription(AdminClient adminClient, String ccMetricsTopic) throws KafkaTopicDescriptionException {
+    try {
+      // For compatibility with Kafka 4.0 and beyond we must use new API methods.
+      Method topicDescriptionMethod = topicNameValuesMethod();
+      DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Collections.singletonList(ccMetricsTopic));
+      Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
+              .invoke(describeTopicsResult);
+      return topicDescriptionMap.get(ccMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (InvocationTargetException | IllegalAccessException | ExecutionException | InterruptedException | TimeoutException e) {
+      throw new KafkaTopicDescriptionException(String.format("Unable to retrieve config of Cruise Cruise Control metrics topic {}.",
+              ccMetricsTopic), e);
     }
   }
 }
