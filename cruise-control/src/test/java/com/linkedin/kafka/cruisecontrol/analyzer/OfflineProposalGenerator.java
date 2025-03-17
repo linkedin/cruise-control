@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 
 
@@ -56,7 +56,7 @@ public final class OfflineProposalGenerator {
     // Instantiate the components.
     GoalOptimizer goalOptimizer = new GoalOptimizer(config,
                                                     null,
-                                                    new SystemTime(),
+                                                    Time.SYSTEM,
                                                     new MetricRegistry(),
                                                     EasyMock.mock(Executor.class),
                                                     EasyMock.mock(AdminClient.class));
