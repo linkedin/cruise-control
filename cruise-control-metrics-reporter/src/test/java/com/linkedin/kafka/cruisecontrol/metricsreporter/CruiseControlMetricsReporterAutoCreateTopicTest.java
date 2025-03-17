@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
+import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -24,9 +25,9 @@ import org.junit.Before;
 import org.junit.Test;
 import java.util.Collections;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.getTopicDescription;
 import static org.junit.Assert.assertEquals;
 
 public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClientsIntegrationTestHarness {
@@ -103,11 +104,18 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
     }
 
     @Test
-    public void testAutoCreateMetricsTopic() throws ExecutionException, InterruptedException {
+    public void testAutoCreateMetricsTopic() {
         Properties props = new Properties();
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         AdminClient adminClient = AdminClient.create(props);
-        TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
+
+        // For compatibility with Kafka 4.0 and beyond we must use new API methods.
+        TopicDescription topicDescription;
+        try {
+            topicDescription = getTopicDescription(adminClient, TOPIC);
+        } catch (KafkaTopicDescriptionException e) {
+            throw new RuntimeException(e);
+        }
         // assert that the metrics topic was created with partitions and replicas as configured for the metrics report auto-creation
         assertEquals(1, topicDescription.partitions().size());
         assertEquals(1, topicDescription.partitions().get(0).replicas().size());

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
+import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
@@ -16,7 +17,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
@@ -44,6 +44,7 @@ import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_HOST;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_PORT;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.getTopicDescription;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG;
@@ -185,12 +186,19 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   }
 
   @Test
-  public void testUpdatingMetricsTopicConfig() throws ExecutionException, InterruptedException {
+  public void testUpdatingMetricsTopicConfig() throws InterruptedException {
     Properties props = new Properties();
     setSecurityConfigs(props, "admin");
     props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     AdminClient adminClient = AdminClient.create(props);
-    TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
+
+    // For compatibility with Kafka 4.0 and beyond we must use new API methods.
+    TopicDescription topicDescription;
+    try {
+      topicDescription = getTopicDescription(adminClient, TOPIC);
+    } catch (KafkaTopicDescriptionException e) {
+      throw new RuntimeException(e);
+    }
     assertEquals(1, topicDescription.partitions().size());
     // Shutdown broker
     _brokers.get(0).shutdown();
@@ -204,8 +212,13 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     broker.startup();
     // Wait for broker to boot up
     Thread.sleep(5000);
+
     // Check whether the topic config is updated
-    topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
+    try {
+      topicDescription = getTopicDescription(adminClient, TOPIC);
+    } catch (KafkaTopicDescriptionException e) {
+      throw new RuntimeException(e);
+    }
     assertEquals(2, topicDescription.partitions().size());
   }
 
