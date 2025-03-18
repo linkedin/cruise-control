@@ -101,7 +101,7 @@ public class MaintenanceEventTest {
                                                           ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
 
     // Expect mocks.
-    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
+    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(4);
     _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
     EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
@@ -139,6 +139,7 @@ public class MaintenanceEventTest {
                                              EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                              EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                              EasyMock.eq(null),
+                                             EasyMock.eq(null),
                                              EasyMock.eq(false),
                                              EasyMock.anyString(),
                                              EasyMock.eq(false));
@@ -175,7 +176,7 @@ public class MaintenanceEventTest {
                                                           ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
 
     // Expect mocks.
-    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
+    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(4);
     _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
     EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
@@ -212,6 +213,7 @@ public class MaintenanceEventTest {
                                            EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                            EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                            EasyMock.eq(null),
+                                           EasyMock.eq(null),
                                            EasyMock.eq(false),
                                            EasyMock.anyString());
     EasyMock.expect(_optimizerResult.getProposalSummaryForJson()).andReturn(Collections.emptyMap());
@@ -246,7 +248,7 @@ public class MaintenanceEventTest {
                                                           ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
 
     // Expect mocks.
-    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
+    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(4);
     _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
     EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
@@ -283,6 +285,7 @@ public class MaintenanceEventTest {
                                              EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                              EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                              EasyMock.eq(null),
+                                             EasyMock.eq(null),
                                              EasyMock.eq(false),
                                              EasyMock.anyString(),
                                              EasyMock.eq(false));
@@ -318,7 +321,7 @@ public class MaintenanceEventTest {
                                                           ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
 
     // Expect mocks.
-    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
+    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(4);
     // This is for rebalance runnable
     _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
     EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
@@ -371,6 +374,7 @@ public class MaintenanceEventTest {
                                              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                              EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                              EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
+                                             EasyMock.eq(null),
                                              EasyMock.eq(null),
                                              EasyMock.eq(false),
                                              EasyMock.anyString(),
@@ -477,7 +481,7 @@ public class MaintenanceEventTest {
                                                           TOPICS_WITH_RF_UPDATE_CONFIG, MOCK_TOPICS_WITH_RF_UPDATE);
 
     // Expect mocks.
-    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
+    EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(4);
     _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
     EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
@@ -516,6 +520,7 @@ public class MaintenanceEventTest {
                                              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                              EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                              EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
+                                             EasyMock.eq(null),
                                              EasyMock.eq(null),
                                              EasyMock.eq(false),
                                              EasyMock.anyString(),
@@ -559,7 +564,7 @@ public class MaintenanceEventTest {
     for (MaintenanceEventType eventType : MaintenanceEventType.cachedValues()) {
       parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, eventType);
       // Expect mocks.
-      EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(6);
+      EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).anyTimes();
       EasyMock.replay(_mockKafkaCruiseControl);
       for (int i = 1; i <= 3; i++) {
         parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS * i);

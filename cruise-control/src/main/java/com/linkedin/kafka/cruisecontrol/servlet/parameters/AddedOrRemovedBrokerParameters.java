@@ -60,6 +60,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _dryRun;
   protected Long _replicationThrottle;
+  protected Long _logDirThrottle;
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Integer _reviewId;
@@ -81,6 +82,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     _brokerLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_BROKER);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
     _replicationThrottle = ParameterUtils.replicationThrottle(_requestContext, _config);
+    _logDirThrottle = ParameterUtils.logDirThrottle(_requestContext, _config);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_requestContext, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
@@ -132,6 +134,10 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  public Long logDirThrottle() {
+    return _logDirThrottle;
   }
 
   public boolean skipHardGoalCheck() {
