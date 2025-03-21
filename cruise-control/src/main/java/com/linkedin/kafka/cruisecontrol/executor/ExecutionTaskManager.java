@@ -156,6 +156,10 @@ public class ExecutionTaskManager {
     }
   }
 
+  Map<Integer, Integer> getSortedBrokerIdToInterBrokerMoveTaskCountMap() {
+    return _executionTaskPlanner.getSortedBrokerIdToInterBrokerMoveTaskCountMap();
+  }
+
   /**
    * Set the execution mode of the tasks to keep track of the ongoing execution mode via sensors.
    *
