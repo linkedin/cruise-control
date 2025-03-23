@@ -168,6 +168,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
                 prometheusQueryResults = _prometheusAdapter.queryMetric(prometheusQuery,
                                                                         metricSamplerOptions.startTimeMs(),
                                                                         metricSamplerOptions.endTimeMs());
+                LOG.info("Received {} results for query {}", prometheusQueryResults.size(), prometheusQuery);
             } catch (IOException e) {
                 LOG.error("Error when attempting to query Prometheus metrics", e);
                 throw new SamplingException("Could not query metrics from Prometheus");
