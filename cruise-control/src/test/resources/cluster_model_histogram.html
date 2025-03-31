@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Histograms in Table</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        table { width: 90%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid black; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        canvas { width: 100%; height: 200px; }
+        .graph {width: 500px; height: 200px; }
+    </style>
+</head>
+<body>
+<h1>Cruise Control Rebalance Evaluation</h1>
+<h4>Cluster - {{clusterDescription}}</h4>
+<h4>#brokers - {{clusterModel.brokers.size}}, #topics - {{clusterModel.topics.size}}</h4>
+
+<h2>Broker Stats</h2>
+<div hidden="hidden">
+    <p id="beforeBrokerLeaderReplicas">{{beforeBrokerLeaderReplicas}}</p>
+    <p id="beforeBrokerReplicas">{{beforeBrokerReplicas}}</p>
+    <p id="afterBrokerLeaderReplicas">{{afterBrokerLeaderReplicas}}</p>
+    <p id="afterBrokerReplicas">{{afterBrokerReplicas}}</p>
+</div>
+<table>
+    <tr>
+        <th>Replica detail (leaders | total) [Before]</th>
+        <th>Replica detail (leaders | total) [After]</th>
+    </tr>
+    <tr>
+        <td><canvas id="beforeChartBroker" class="graph"></canvas></td>
+        <td><canvas id="afterChartBroker" class="graph"></canvas></td>
+    </tr>
+</table>
+
+<h2>Topic Level Stats</h2>
+<table>
+    <tr>
+        <th>Topic Name | Partitions</th>
+        <th>Before Stats</th>
+        <th>After Stats</th>
+        <th>Distribution Before</th>
+        <th>Distribution After</th>
+    </tr>
+    {{#rows}}
+    <tr>
+        <td>{{topicName}} | {{numPartitions}}</td>
+        <td>{{{beforeStatsHtml}}}</td>
+        <td>{{{afterStatsHtml}}}</td>
+        <td><canvas id="beforeChart{{topicName}}" class="graph"></canvas></td>
+        <td><canvas id="afterChart{{topicName}}" class="graph"></canvas></td>
+        <td hidden="hidden" id="before{{topicName}}" class="beforeLeaderData">{{beforeValues}}</td>
+        <td hidden="hidden" id="after{{topicName}}" class="afterLeaderData">{{afterValues}}</td>
+        <td hidden="hidden" id="beforeReplica{{topicName}}" class="beforeReplicaData">{{beforeReplicaValues}}</td>
+        <td hidden="hidden" id="afterReplica{{topicName}}" class="afterReplicaData">{{afterReplicaValues}}</td>
+    </tr>
+    {{/rows}}
+</table>
+<script>
+    function computeHistogram(dataRow, binCount) {
+        let min = Math.min(...dataRow);
+        let max = Math.max(...dataRow);
+        let binSize = (max - min) / binCount;
+        let bins = new Array(binCount).fill(0);
+        let labels = [];
+
+        for (let i = 0; i < binCount; i++) {
+            let lower = (min + i * binSize).toFixed(1);
+            let upper = (min + (i + 1) * binSize).toFixed(1);
+            labels.push(`${lower}-${upper}`);
+        }
+
+        dataRow.forEach(value => {
+            let binIndex = Math.min(Math.floor((value - min) / binSize), binCount - 1);
+            bins[binIndex]++;
+        });
+
+        return { labels, bins };
+    }
+
+    function numberComparator(a, b) {
+        return a - b;
+    }
+
+    function fillChart(chartKey, distribution) {
+        let ctx = document.getElementById(chartKey).getContext("2d");
+        const datasets = Object.entries(distribution).map(([label, dataArray]) => ({
+            label: `${label}`,
+            data: dataArray,
+            backgroundColor: (label === 'leader') ? 'rgba(54, 162, 235, 0.5)' : 'rgba(235, 162, 54, 0.5)',
+            borderColor: (label === 'leader') ? 'rgba(54, 162, 235, 1)' : 'rgba(235, 162, 54, 1)',
+            borderWidth: 1
+        }));
+        window[chartKey] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({ length: distribution.leader.length }, (_, i) => i),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function getNumberArray(element) {
+        return element.innerText.split(',').map(Number.parseFloat).sort(numberComparator);
+    }
+
+    function updateBrokerHistograms(state) {
+        const leader = getNumberArray(document.getElementById(state + "BrokerLeaderReplicas"));
+        const replica = getNumberArray(document.getElementById(state + "BrokerReplicas"));
+        fillChart(state + "ChartBroker", {leader, replica});
+    }
+
+    function updateHistogramsState(state, binCount) {
+        const elements = document.getElementsByClassName(state + "LeaderData");
+        for (let index = 0; index < elements.length; index++) {
+            const element = elements[index];
+            const topicName = element.id.replace(state, "");
+            const leader = getNumberArray(element);
+            const replica = getNumberArray(document.getElementById(state + "Replica" + topicName));
+            // let { labels, bins } = computeHistogram(distribution, binCount);
+            const chartKey = state + "Chart" + topicName;
+            fillChart(chartKey, {leader, replica});
+        }
+    }
+
+    function updateHistograms() {
+        const binCount = 10;
+        updateHistogramsState("before", binCount);
+        updateHistogramsState("after", binCount);
+        updateBrokerHistograms("before");
+        updateBrokerHistograms("after");
+    }
+
+    window.onload = updateHistograms; // Render on page load
+</script>
+</body>
+</html>

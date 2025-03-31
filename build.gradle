@@ -13,6 +13,7 @@ plugins {
   id "org.openapi.generator" version "5.3.0"
 }
 
+
 group = 'com.linkedin.cruisecontrol'
 
 project.ext {
@@ -51,6 +52,9 @@ allprojects {
 
   repositories {
     mavenCentral()
+    maven {
+      url 'https://artifacts.netflix.net/libs-releases-local-pom'
+    }
   }
 
   apply plugin: 'com.github.ben-manes.versions'
@@ -307,6 +311,10 @@ project(':cruise-control') {
     api 'org.json:json:20231013'
     api 'org.xerial.snappy:snappy-java:1.1.10.5'
 
+    testCompileOnly 'org.projectlombok:lombok:1.18.34'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+    testImplementation 'netflix:metatron-ipc-common:1.418.0'
+
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
     testImplementation "org.scala-lang:scala-library:$scalaVersion"
@@ -321,6 +329,8 @@ project(':cruise-control') {
     testImplementation 'com.jayway.jsonpath:json-path:2.7.0'
     testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
     testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
+    testImplementation 'com.github.spullara.mustache.java:compiler:0.9.10'
+    implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
   }
 
   publishing {

@@ -6,4 +6,7 @@
   <suppress checks="RegexpHeader" files="com[\\/]linkedin[\\/]kafka[\\/]cruisecontrol[\\/]testutils"/>
   <suppress checks="MemberName" files="BrokerCapacityConfigFileResolver.java"/>
   <suppress checks="MemberName" files="BrokerSetFileResolver.java"/>
+  <suppress checks="MemberName" files="com[\\/]linkedin[\\/]kafka[\\/]cruisecontrol[\\/]analyzer[\\/]netflix"/>
+  <suppress checks="RegexpHeader" files="com[\\/]linkedin[\\/]kafka[\\/]cruisecontrol[\\/]analyzer[\\/]netflix"/>
+  <suppress checks="JavadocMethod" files="com[\\/]linkedin[\\/]kafka[\\/]cruisecontrol[\\/]analyzer[\\/]netflix"/>
 </suppressions>
