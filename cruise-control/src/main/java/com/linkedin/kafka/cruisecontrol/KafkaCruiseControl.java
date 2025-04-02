@@ -650,9 +650,11 @@ public class KafkaCruiseControl {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            when executing proposals (if null, no throttling is applied).
+   *                            when executing proposals; That is, this parameter only affects inter-broker replica
+   *                            movements (if null, no throttling is applied).
    * @param logDirThrottle The throttle (bytes/second) to apply to replicas being moved between the log dirs
-   *                            when executing proposals (if null, no throttling is applied).
+   *                            when executing proposals; That is, this parameter only affects intra-broker replica
+   *                            movements (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param skipInterBrokerReplicaConcurrencyAdjustment {@code true} to skip auto adjusting concurrency of inter-broker
