@@ -158,7 +158,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
                                          _concurrentInterBrokerPartitionMovements, _maxInterBrokerPartitionMovements,
                                          _clusterLeaderMovementConcurrency, _brokerLeaderMovementConcurrency,
                                          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
-                                         _logDirThrottle, _isTriggeredByUserRequest, _uuid);
+                                         _isTriggeredByUserRequest, _uuid);
     }
 
     return result;

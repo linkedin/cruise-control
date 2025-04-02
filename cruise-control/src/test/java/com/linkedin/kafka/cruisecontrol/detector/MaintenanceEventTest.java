@@ -213,7 +213,6 @@ public class MaintenanceEventTest {
                                            EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                            EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                            EasyMock.eq(null),
-                                           EasyMock.eq(null),
                                            EasyMock.eq(false),
                                            EasyMock.anyString());
     EasyMock.expect(_optimizerResult.getProposalSummaryForJson()).andReturn(Collections.emptyMap());
