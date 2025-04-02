@@ -59,6 +59,7 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
+  protected Long _logDirThrottle;
 
   protected TopicReplicationFactorChangeParameters() {
     super();
@@ -80,6 +81,7 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_requestContext, _config);
     _replicationThrottle = ParameterUtils.replicationThrottle(_requestContext, _config);
+    _logDirThrottle = ParameterUtils.logDirThrottle(_requestContext, _config);
   }
 
   /**
@@ -139,6 +141,10 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  public Long logDirThrottle() {
+    return _logDirThrottle;
   }
 
   @Override
