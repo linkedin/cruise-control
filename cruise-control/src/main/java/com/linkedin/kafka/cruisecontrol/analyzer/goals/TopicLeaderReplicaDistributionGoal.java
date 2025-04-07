@@ -51,7 +51,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributio
  * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG
  * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG
  * @see #balancePercentageWithMargin(OptimizationOptions)
- * 
+ *
  */
 public class TopicLeaderReplicaDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(TopicLeaderReplicaDistributionGoal.class);
@@ -469,7 +469,9 @@ public class TopicLeaderReplicaDistributionGoal extends AbstractGoal {
                                               OptimizationOptions optimizationOptions) {
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(
-        Comparator.comparingInt((Broker b) -> b.numLeadersFor(topic)).thenComparingInt(Broker::id));
+        Comparator.comparingInt((Broker b) -> b.numLeadersFor(topic))
+                .thenComparingInt(b -> b.leaderReplicas().size())
+                .thenComparingInt(Broker::id));
 
     candidateBrokers.addAll(_fixOfflineReplicasOnly ? clusterModel.aliveBrokers() : clusterModel
         .aliveBrokers()
@@ -528,7 +530,9 @@ public class TopicLeaderReplicaDistributionGoal extends AbstractGoal {
                                              Set<Goal> optimizedGoals,
                                              OptimizationOptions optimizationOptions) {
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
-      // Brokers are sorted by (1) current offline topic replica count then (2) all topic replica count then (3) broker id.
+      // Brokers are sorted by (1) current offline topic leader count then
+      // (2) all topic leaders count then (3) all leaders count then (4) broker id.
+
       // B2 Info
       Collection<Replica> leadersOfTopicInB2 = leadersOfTopicInBroker(b2, topic);
       int numLeadersOfTopicInB2 = leadersOfTopicInB2.size();
@@ -538,12 +542,17 @@ public class TopicLeaderReplicaDistributionGoal extends AbstractGoal {
       int numLeadersOfTopicInB1 = leadersOfTopicInB1.size();
       int numOfflineTopicReplicasInB1 = GoalUtils.retainCurrentOfflineBrokerReplicas(b1, leadersOfTopicInB1).size();
 
-      int resultByOfflineReplicas = Integer.compare(numOfflineTopicReplicasInB2, numOfflineTopicReplicasInB1);
-      if (resultByOfflineReplicas == 0) {
-        int resultByAllReplicas = Integer.compare(numLeadersOfTopicInB2, numLeadersOfTopicInB1);
-        return resultByAllReplicas == 0 ? Integer.compare(b1.id(), b2.id()) : resultByAllReplicas;
+      int resultByOfflineLeaders = Integer.compare(numOfflineTopicReplicasInB2, numOfflineTopicReplicasInB1);
+      if (resultByOfflineLeaders == 0) {
+        int resultByTopicLeaders = Integer.compare(numLeadersOfTopicInB2, numLeadersOfTopicInB1);
+        if (resultByTopicLeaders == 0) {
+          int resultByAllLeaders = Integer.compare(b2.leaderReplicas().size(), b1.leaderReplicas().size());
+          return resultByAllLeaders == 0 ? Integer.compare(b2.id(), b1.id()) : resultByAllLeaders;
+        } else {
+          return resultByTopicLeaders;
+        }
       }
-      return resultByOfflineReplicas;
+      return resultByOfflineLeaders;
     });
 
     // Source broker can be dead, alive, or may have bad disks.

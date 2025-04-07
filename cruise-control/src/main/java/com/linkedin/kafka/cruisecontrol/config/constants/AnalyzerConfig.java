@@ -139,7 +139,7 @@ public final class AnalyzerConfig {
    * <code>topic.replica.count.balance.threshold</code>
    */
   public static final String TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "topic.replica.count.balance.threshold";
-  public static final double DEFAULT_TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD = 1.2;
+  public static final double DEFAULT_TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD = 3.00;
   public static final String TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for "
       + "replica distribution from each topic. For example, 1.80 means the highest topic replica count of a broker "
       + "should not be above 1.80x of average replica count of all brokers for the same topic.";
