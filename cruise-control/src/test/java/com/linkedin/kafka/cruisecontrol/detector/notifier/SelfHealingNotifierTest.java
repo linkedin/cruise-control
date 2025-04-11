@@ -177,7 +177,7 @@ public class SelfHealingNotifierTest {
         kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                        BrokerFailures.class,
                                                        parameterConfigOverrides));
-    assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
+    assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
 

@@ -350,7 +350,7 @@ public class AnomalyDetectorManager {
         _anomalyInProgress = null;
         try {
           _anomalyInProgress = _anomalies.take();
-          LOG.trace("Processing anomaly {}.", _anomalyInProgress);
+          LOG.trace("Processing anomaly id: {} {}.", _anomalyInProgress.anomalyId(), _anomalyInProgress);
           if (_anomalyInProgress == SHUTDOWN_ANOMALY) {
             // Service has shutdown.
             _anomalyInProgress = null;
@@ -376,8 +376,8 @@ public class AnomalyDetectorManager {
           postProcessAnomalyInProgress = true;
         }
         if (postProcessAnomalyInProgress) {
-          LOG.info("Post processing anomaly {}.", _anomalyInProgress);
-          postProcessAnomalyInProgress(_brokerFailureDetectionBackoffMs);
+          LOG.info("Post processing anomaly {} id: {}.", _anomalyInProgress, _anomalyInProgress.anomalyId());
+          postProcessAnomalyInProgress(_brokerFailureDetectionBackoffMs, false);
         }
       }
       LOG.info("Anomaly handler exited.");
@@ -392,8 +392,9 @@ public class AnomalyDetectorManager {
       ExecutorState.State executionState = _kafkaCruiseControl.executionState();
       if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS && !_anomalyInProgress.stopOngoingExecution()) {
         LOG.info("Post processing anomaly {} because executor is in {} state.", _anomalyInProgress, executionState);
-        postProcessAnomalyInProgress(_brokerFailureDetectionBackoffMs);
+        postProcessAnomalyInProgress(_brokerFailureDetectionBackoffMs, false);
       } else {
+        LOG.info("Debug: CC Process anomaly in progress: {} with id: {} ", _anomalyInProgress, _anomalyInProgress.anomalyId());
         processAnomalyInProgress(anomalyType);
       }
     }
@@ -415,7 +416,7 @@ public class AnomalyDetectorManager {
             break;
           case CHECK:
             LOG.info("Post processing anomaly {} for {}.", _anomalyInProgress, AnomalyState.Status.CHECK_WITH_DELAY);
-            postProcessAnomalyInProgress(notificationResult.delay());
+            postProcessAnomalyInProgress(notificationResult.delay(), true);
             break;
           case IGNORE:
             _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.IGNORED);
@@ -475,17 +476,27 @@ public class AnomalyDetectorManager {
      * schedules a broker failure detection after the given delay.
      *
      * @param delayMs The delay for broker failure detection.
+     * @param carryForwardRetryCount Whether to carry forward the retry count of check with delays done for the broker failure until now.
      */
-    private void postProcessAnomalyInProgress(long delayMs) {
+    private void postProcessAnomalyInProgress(long delayMs, boolean carryForwardRetryCount) {
       // Anomaly detector does delayed check for broker failures, otherwise it ignores the anomaly.
       if (_anomalyInProgress.anomalyType() == KafkaAnomalyType.BROKER_FAILURE) {
         synchronized (_shutdownLock) {
           if (_shutdown) {
             LOG.debug("Skip delayed checking anomaly {}, because anomaly detector is shutting down.", _anomalyInProgress);
           } else {
-            LOG.debug("Scheduling broker failure detection with delay of {} ms", delayMs);
             _numCheckedWithDelay.incrementAndGet();
-            _detectorScheduler.schedule(() -> _brokerFailureDetector.detectBrokerFailures(false), delayMs, TimeUnit.MILLISECONDS);
+            // By default, the retry count is 0.
+            int retryCount = 0;
+            if (carryForwardRetryCount) {
+              // Only in cases of check with delay, we carry forward the retry count.
+              BrokerFailures brokerFailures = (BrokerFailures) _anomalyInProgress;
+              // Carry forward the count of anomaly fix checks done until now
+              retryCount = brokerFailures.anomalyFixCheckRetryCount() + 1;
+            }
+            int finalRetryCount = retryCount;
+            _detectorScheduler.schedule(() -> _brokerFailureDetector.detectBrokerFailures(false,
+                finalRetryCount), delayMs, TimeUnit.MILLISECONDS);
             _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.CHECK_WITH_DELAY);
           }
         }

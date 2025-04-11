@@ -29,6 +29,7 @@ public class BrokerFailures extends KafkaAnomaly {
   protected Map<Integer, Long> _failedBrokers;
   protected RemoveBrokersRunnable _removeBrokersRunnable;
   protected boolean _fixable;
+  protected int _brokerFailureCheckWithDelayRetryCount;
 
   /**
    * An anomaly to indicate broker failure(s).
@@ -52,6 +53,10 @@ public class BrokerFailures extends KafkaAnomaly {
    */
   public boolean fixable() {
     return _fixable;
+  }
+  
+  public int anomalyFixCheckRetryCount() {
+    return _brokerFailureCheckWithDelayRetryCount;
   }
 
   @Override
@@ -90,6 +95,19 @@ public class BrokerFailures extends KafkaAnomaly {
     return sb.toString();
   }
 
+  /**
+   * Configure the current retry count number for the broker failure check with delay.
+   * @param configs The configuration map.
+   */
+  protected void configureBrokerFailureCheckWithDelayRetryCount(Map<String, ?> configs) {
+    if (configs.containsKey(AbstractBrokerFailureDetector.BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT)) {
+      _brokerFailureCheckWithDelayRetryCount = (int) configs.get(AbstractBrokerFailureDetector.BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT);
+    } else {
+      // If unset we use the default value as 0.
+      _brokerFailureCheckWithDelayRetryCount = 0;
+    }
+  }
+
   @SuppressWarnings("unchecked")
   @Override
   public void configure(Map<String, ?> configs) {
@@ -100,6 +118,7 @@ public class BrokerFailures extends KafkaAnomaly {
       throw new IllegalArgumentException("Missing broker ids for failed brokers anomaly.");
     }
     _fixable = (Boolean) configs.get(AbstractBrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG);
+    configureBrokerFailureCheckWithDelayRetryCount(configs);
     _optimizationResult = null;
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);

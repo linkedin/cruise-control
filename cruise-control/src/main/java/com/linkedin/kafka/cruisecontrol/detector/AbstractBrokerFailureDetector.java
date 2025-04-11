@@ -39,6 +39,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
   public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
   // Config to indicate whether detected broker failures are fixable or not.
   public static final String BROKER_FAILURES_FIXABLE_CONFIG = "broker.failures.fixable.object";
+  public static final String BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT = "anomaly.fix.check.retry.count";
 
   protected final Map<Integer, Long> _failedBrokers;
   protected final File _failedBrokersFile;
@@ -62,6 +63,16 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
    * @param skipReportingIfNotUpdated {@code true} if broker failure reporting will be skipped if failed brokers have not changed.
    */
   synchronized void detectBrokerFailures(boolean skipReportingIfNotUpdated) {
+    detectBrokerFailures(skipReportingIfNotUpdated, 0);
+  }
+
+  /**
+   * Detect broker failures. Skip reporting if the failed brokers have not changed and skipReportingIfNotUpdated is true.
+   *
+   * @param skipReportingIfNotUpdated {@code true} if broker failure reporting will be skipped if failed brokers have not changed.
+   * @param brokerFailureCheckWithDelayRetryCount {@code true} to maintain the anomalyFixCheckretryCount
+   */
+  synchronized void detectBrokerFailures(boolean skipReportingIfNotUpdated, int brokerFailureCheckWithDelayRetryCount) {
     try {
       _aliveBrokers = aliveBrokers();
 
@@ -73,7 +84,8 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
       }
       if (!skipReportingIfNotUpdated || updated) {
         // Report the failures to anomaly detector to handle.
-        reportBrokerFailures();
+        // Pass the current retry count to the broker failure. 
+        reportBrokerFailures(brokerFailureCheckWithDelayRetryCount);
       }
     } catch (Throwable e) {
       LOG.warn("Broker failure detector received exception: ", e);
@@ -185,7 +197,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
            || (double) failedBrokerCount / (failedBrokerCount + aliveBrokerCount) > _fixableFailedBrokerPercentageThreshold;
   }
 
-  private void reportBrokerFailures() {
+  private void reportBrokerFailures(int brokerFailureCheckWithDelayRetryCount) {
     if (!_failedBrokers.isEmpty()) {
       Map<String, Object> parameterConfigOverrides = new HashMap<>();
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
@@ -194,6 +206,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
       parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG,
                                    !tooManyFailedBrokers(failedBrokers.size(), _aliveBrokers.size()));
+      parameterConfigOverrides.put(BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT, brokerFailureCheckWithDelayRetryCount);
 
       BrokerFailures brokerFailures = _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                                          BrokerFailures.class,
