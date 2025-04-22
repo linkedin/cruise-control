@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
@@ -81,6 +82,8 @@ public class AnomalyDetectorState {
   private double _balancednessScore;
   private boolean _hasUnfixableGoals;
   private final Map<AnomalyType, Timer> _anomalyDetectToFixCompleteTimer;
+  private final Map<AnomalyType, Counter> _numSelfHealingStartedPerAnomaly;
+  private final Map<AnomalyType, Counter> _numSelfHealingEndedPerAnomaly;
 
   public AnomalyDetectorState(Time time,
                               AnomalyNotifier anomalyNotifier,
@@ -105,6 +108,8 @@ public class AnomalyDetectorState {
     _ongoingAnomalyDurationSumForAverageMs = 0;
     _numSelfHealingStarted = new AtomicLong(0L);
     _numSelfHealingFailedToStart = new AtomicLong(0L);
+    _numSelfHealingStartedPerAnomaly = new HashMap<>();
+    _numSelfHealingEndedPerAnomaly = new HashMap<>();
 
     Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>();
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
@@ -141,6 +146,14 @@ public class AnomalyDetectorState {
         Timer timer = dropwizardMetricRegistry.timer(
             MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("%s-detect-to-fix-complete-timer", anomalyType.toString().toLowerCase())));
         _anomalyDetectToFixCompleteTimer.put(anomalyType, timer);
+
+        Counter counter = dropwizardMetricRegistry.counter(
+            MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("num-of-self-healing-started-for-%s", anomalyType.toString().toLowerCase())));
+        _numSelfHealingStartedPerAnomaly.put(anomalyType, counter);
+
+        Counter counter1 = dropwizardMetricRegistry.counter(
+            MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("num-of-self-healing-ended-for-%s", anomalyType.toString().toLowerCase())));
+        _numSelfHealingEndedPerAnomaly.put(anomalyType, counter1);
       }
     } else {
       _anomalyRateByType = new HashMap<>();
@@ -260,8 +273,16 @@ public class AnomalyDetectorState {
   /**
    * Increment the number of self healing actions started successfully.
    */
-  void incrementNumSelfHealingStarted() {
+  void incrementNumSelfHealingStarted(AnomalyType anomalyType) {
     _numSelfHealingStarted.incrementAndGet();
+    _numSelfHealingStartedPerAnomaly.get(anomalyType).inc();
+  }
+
+  /**
+   * Increment the number of self healing actions ended successfully per anomaly.
+   */
+  void incrementNumSelfHealingEndedPerAnomaly(AnomalyType anomalyType) {
+    _numSelfHealingEndedPerAnomaly.get(anomalyType).inc();
   }
 
   /**
@@ -309,6 +330,7 @@ public class AnomalyDetectorState {
       // Time the duration if the self-healing is completed successfully.
       // completeWithError is true if the proposal execution is interrupted (receive stop signal) or encountered exception.
       // execution-stopped metrics track the number of stopped execution.
+      incrementNumSelfHealingEndedPerAnomaly(_ongoingSelfHealingAnomaly.anomalyType());
       _anomalyDetectToFixCompleteTimer.get(_ongoingSelfHealingAnomaly.anomalyType()).update(totalTime, TimeUnit.MILLISECONDS);
     }
     _ongoingSelfHealingAnomaly = null;
