@@ -71,7 +71,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   static final long DEFAULT_ALERT_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(15);
   static final long DEFAULT_AUTO_FIX_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(30);
   static final int DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT = 10;
-  static final long DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_INTERVAL_MS = TimeUnit.MINUTES.toMillis(3);
+  static final long DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_INTERVAL_MS = TimeUnit.MINUTES.toMillis(10);
 
   private static final Logger LOG = LoggerFactory.getLogger(SelfHealingNotifier.class);
   protected final Time _time;
@@ -268,7 +268,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
         }
         result = AnomalyNotificationResult.fix();
       } else {
-        // In the case sef healing is disabled, we keep checking the anomaly until 
+        // In the case sef healing is disabled, we keep checking the anomaly until
         // we try for _brokerFailureCheckWithDelayMaxRetryCount times
         // After we exceed this, depending on the self healing state, we can ignore or fix the anomaly
         // This check is to ensure that the broker failure is not ignored
@@ -313,11 +313,11 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     _selfHealingThresholdMs = fixThreshold == null ? DEFAULT_AUTO_FIX_THRESHOLD_MS : Long.parseLong(fixThreshold);
 
     String brokerFailureCheckWithDelayMaxRetryCount = (String) config.get(BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT);
-    _brokerFailureCheckWithDelayMaxRetryCount = brokerFailureCheckWithDelayMaxRetryCount == null  
+    _brokerFailureCheckWithDelayMaxRetryCount = brokerFailureCheckWithDelayMaxRetryCount == null
       ? DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT : Integer.parseInt(brokerFailureCheckWithDelayMaxRetryCount);
-    
+
     String brokerFailureCheckWithDelayIntervalMs = (String) config.get(BROKER_FAILURE_CHECK_WITH_DELAY_INTERVAL_MS);
-    _brokerFailureCheckWithDelayIntervalMs = brokerFailureCheckWithDelayIntervalMs == null 
+    _brokerFailureCheckWithDelayIntervalMs = brokerFailureCheckWithDelayIntervalMs == null
       ? DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_INTERVAL_MS : Long.parseLong(brokerFailureCheckWithDelayIntervalMs);
 
     if (_brokerFailureAlertThresholdMs > _selfHealingThresholdMs) {
