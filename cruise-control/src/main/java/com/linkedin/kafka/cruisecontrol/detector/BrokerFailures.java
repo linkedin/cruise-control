@@ -54,8 +54,8 @@ public class BrokerFailures extends KafkaAnomaly {
   public boolean fixable() {
     return _fixable;
   }
-  
-  public int anomalyFixCheckRetryCount() {
+
+  public int brokerFailureCheckWithDelayRetryCount() {
     return _brokerFailureCheckWithDelayRetryCount;
   }
 

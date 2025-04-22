@@ -394,7 +394,6 @@ public class AnomalyDetectorManager {
         LOG.info("Post processing anomaly {} because executor is in {} state.", _anomalyInProgress, executionState);
         postProcessAnomalyInProgress(_brokerFailureDetectionBackoffMs, false);
       } else {
-        LOG.info("Debug: CC Process anomaly in progress: {} with id: {} ", _anomalyInProgress, _anomalyInProgress.anomalyId());
         processAnomalyInProgress(anomalyType);
       }
     }
@@ -476,7 +475,7 @@ public class AnomalyDetectorManager {
      * schedules a broker failure detection after the given delay.
      *
      * @param delayMs The delay for broker failure detection.
-     * @param carryForwardRetryCount Whether to carry forward the retry count of check with delays done for the broker failure until now.
+     * @param carryForwardRetryCount Retry count is carried forward only in case of check with delays done for the broker failure anomalies
      */
     private void postProcessAnomalyInProgress(long delayMs, boolean carryForwardRetryCount) {
       // Anomaly detector does delayed check for broker failures, otherwise it ignores the anomaly.
@@ -492,7 +491,7 @@ public class AnomalyDetectorManager {
               // Only in cases of check with delay, we carry forward the retry count.
               BrokerFailures brokerFailures = (BrokerFailures) _anomalyInProgress;
               // Carry forward the count of anomaly fix checks done until now
-              retryCount = brokerFailures.anomalyFixCheckRetryCount() + 1;
+              retryCount = brokerFailures.brokerFailureCheckWithDelayRetryCount() + 1;
             }
             int finalRetryCount = retryCount;
             _detectorScheduler.schedule(() -> _brokerFailureDetector.detectBrokerFailures(false,

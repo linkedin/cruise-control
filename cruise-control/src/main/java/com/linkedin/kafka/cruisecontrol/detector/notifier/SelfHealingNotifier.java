@@ -268,12 +268,12 @@ public class SelfHealingNotifier implements AnomalyNotifier {
         }
         result = AnomalyNotificationResult.fix();
       } else {
-        // In the case sef healing is disabled, we keep checking the anomaly until
+        // In the case self healing is disabled, we keep checking the anomaly until
         // we try for _brokerFailureCheckWithDelayMaxRetryCount times
         // After we exceed this, depending on the self healing state, we can ignore or fix the anomaly
-        // This check is to ensure that the broker failure is not ignored
-        // The max is so that we do not keep checking forever in case self healing is disabled forever
-        if (brokerFailures.anomalyFixCheckRetryCount() <= _brokerFailureCheckWithDelayMaxRetryCount) {
+        // This check is to ensure that the broker failure is not ignored.
+        // The max is so that we do not keep checking forever in case self healing is disabled forever.
+        if (brokerFailures.brokerFailureCheckWithDelayRetryCount() <= _brokerFailureCheckWithDelayMaxRetryCount) {
           // This means that we can retry for checking with delay
           if (hasNewFailureToAlert(brokerFailures, autoFixTriggered)) {
             alert(brokerFailures, autoFixTriggered, selfHealingTimeMs, KafkaAnomalyType.BROKER_FAILURE);

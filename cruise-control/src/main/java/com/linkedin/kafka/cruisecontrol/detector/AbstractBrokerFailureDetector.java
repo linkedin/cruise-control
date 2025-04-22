@@ -70,7 +70,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
    * Detect broker failures. Skip reporting if the failed brokers have not changed and skipReportingIfNotUpdated is true.
    *
    * @param skipReportingIfNotUpdated {@code true} if broker failure reporting will be skipped if failed brokers have not changed.
-   * @param brokerFailureCheckWithDelayRetryCount {@code true} to maintain the anomalyFixCheckretryCount
+   * @param brokerFailureCheckWithDelayRetryCount {@code true} to maintain the brokerFailureCheckWithDelayRetryCount
    */
   synchronized void detectBrokerFailures(boolean skipReportingIfNotUpdated, int brokerFailureCheckWithDelayRetryCount) {
     try {
@@ -84,7 +84,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
       }
       if (!skipReportingIfNotUpdated || updated) {
         // Report the failures to anomaly detector to handle.
-        // Pass the current retry count to the broker failure. 
+        // Pass the current retry count to the broker failure.
         reportBrokerFailures(brokerFailureCheckWithDelayRetryCount);
       }
     } catch (Throwable e) {
