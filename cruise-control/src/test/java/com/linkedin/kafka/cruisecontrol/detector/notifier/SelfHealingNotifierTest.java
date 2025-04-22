@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.AbstractBrokerFailureDetector;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Collections;
 import java.util.HashMap;
@@ -178,6 +179,20 @@ public class SelfHealingNotifierTest {
                                                        BrokerFailures.class,
                                                        parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
+    assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
+    assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
+
+    // (2) Test that if retry count exceeds the max retry count, the anomaly is ignored when self healing is disabled.
+    // (2) Test goal violation anomaly can be detected by notifier.
+    anomalyNotifier.resetAlert(KafkaAnomalyType.BROKER_FAILURE);
+    Map<String, Object> newParameterConfigOverrides = new HashMap<>(parameterConfigOverrides);
+    newParameterConfigOverrides.put(AbstractBrokerFailureDetector.BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT, 
+      SelfHealingNotifier.DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT + 1);
+    result = anomalyNotifier.onBrokerFailure(
+        kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                       BrokerFailures.class,
+                                                       newParameterConfigOverrides));
+    assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
 
