@@ -39,7 +39,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
   public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
   // Config to indicate whether detected broker failures are fixable or not.
   public static final String BROKER_FAILURES_FIXABLE_CONFIG = "broker.failures.fixable.object";
-  public static final String BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT = "anomaly.fix.check.retry.count";
+  public static final String BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT = "broker.failure.check.with.delay.retry.count";
 
   protected final Map<Integer, Long> _failedBrokers;
   protected final File _failedBrokersFile;

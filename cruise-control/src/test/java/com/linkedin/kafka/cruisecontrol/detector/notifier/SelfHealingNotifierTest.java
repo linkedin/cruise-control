@@ -186,15 +186,19 @@ public class SelfHealingNotifierTest {
     // (2) Test goal violation anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.BROKER_FAILURE);
     Map<String, Object> parameterConfigOverrides2 = new HashMap<>(parameterConfigOverrides);
+    // Set the current retry count to be greater than DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT
     parameterConfigOverrides2.put(AbstractBrokerFailureDetector.BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT,
         SelfHealingNotifier.DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT + 1);
     result = anomalyNotifier.onBrokerFailure(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
         BrokerFailures.class, parameterConfigOverrides2));
+    // The result should be ignore
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
 
     // (3) Self healing is enabled back when the check with delay is executed but the retry count is less than max
+    // In this case it should be able to trigger a fix
     TestingBrokerFailureAutoFixNotifier selfHealingEnabledAnomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
+    // Set the self healing enabled
     Map<String, String> selfHealingExplicitlyEnabled = Map.of(SelfHealingNotifier.SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG, "true",
         // Set to verify the overriding of specific config over general config
         SelfHealingNotifier.SELF_HEALING_ENABLED_CONFIG, "true");
