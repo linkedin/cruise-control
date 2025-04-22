@@ -272,6 +272,8 @@ public class AnomalyDetectorState {
 
   /**
    * Increment the number of self healing actions started successfully.
+   *
+   * @param anomalyType Type of anomaly
    */
   void incrementNumSelfHealingStarted(AnomalyType anomalyType) {
     _numSelfHealingStarted.incrementAndGet();
@@ -280,6 +282,8 @@ public class AnomalyDetectorState {
 
   /**
    * Increment the number of self healing actions ended successfully per anomaly.
+   *
+   * @param anomalyType Type of anomaly
    */
   void incrementNumSelfHealingEndedPerAnomaly(AnomalyType anomalyType) {
     _numSelfHealingEndedPerAnomaly.get(anomalyType).inc();

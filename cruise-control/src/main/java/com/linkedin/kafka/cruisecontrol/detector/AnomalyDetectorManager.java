@@ -565,7 +565,8 @@ public class AnomalyDetectorManager {
       }
     }
 
-    private void handlePostFixAnomaly(boolean isReadyToFix, boolean fixStarted, String anomalyId, boolean skipReportingIfNotUpdated, AnomalyType anomalyType) {
+    private void handlePostFixAnomaly(boolean isReadyToFix, boolean fixStarted, String anomalyId, boolean skipReportingIfNotUpdated,
+                                      AnomalyType anomalyType) {
       if (isReadyToFix) {
         _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, fixStarted ? AnomalyState.Status.FIX_STARTED
                                                                              : AnomalyState.Status.FIX_FAILED_TO_START);
