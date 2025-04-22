@@ -210,7 +210,6 @@ public class SelfHealingNotifierTest {
     assertEquals(AnomalyNotificationResult.Action.FIX, result.action());
     assertTrue(selfHealingEnabledAnomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
 
-
     // (4) Test goal violation anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.GOAL_VIOLATION);
     result = anomalyNotifier.onGoalViolation(
