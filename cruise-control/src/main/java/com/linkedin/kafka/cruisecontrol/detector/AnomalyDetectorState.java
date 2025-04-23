@@ -108,8 +108,6 @@ public class AnomalyDetectorState {
     _ongoingAnomalyDurationSumForAverageMs = 0;
     _numSelfHealingStarted = new AtomicLong(0L);
     _numSelfHealingFailedToStart = new AtomicLong(0L);
-    _numSelfHealingStartedPerAnomaly = new HashMap<>();
-    _numSelfHealingEndedPerAnomaly = new HashMap<>();
 
     Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>();
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
@@ -130,6 +128,8 @@ public class AnomalyDetectorState {
                                         (Gauge<Integer>) () -> hasUnfixableGoals() ? 1 : 0);
 
       _anomalyRateByType = new HashMap<>();
+      _numSelfHealingStartedPerAnomaly = new HashMap<>();
+      _numSelfHealingEndedPerAnomaly = new HashMap<>();
       _anomalyRateByType.put(BROKER_FAILURE,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "broker-failure-rate")));
       _anomalyRateByType.put(GOAL_VIOLATION,
@@ -143,20 +143,24 @@ public class AnomalyDetectorState {
       _anomalyRateByType.put(MAINTENANCE_EVENT,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "maintenance-event-rate")));
       for (KafkaAnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
-        Timer timer = dropwizardMetricRegistry.timer(
-            MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("%s-detect-to-fix-complete-timer", anomalyType.toString().toLowerCase())));
-        _anomalyDetectToFixCompleteTimer.put(anomalyType, timer);
+        _anomalyDetectToFixCompleteTimer.put(anomalyType,
+                dropwizardMetricRegistry.timer(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
+                        String.format("%s-detect-to-fix-complete-timer", anomalyType.toString().toLowerCase()))));
 
-        Counter counter = dropwizardMetricRegistry.counter(
-            MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("num-of-self-healing-started-for-%s", anomalyType.toString().toLowerCase())));
-        _numSelfHealingStartedPerAnomaly.put(anomalyType, counter);
+        _numSelfHealingStartedPerAnomaly.put(anomalyType,
+                dropwizardMetricRegistry.counter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
+                        String.format("num-of-self-healing-started-for-%s", anomalyType.toString().toLowerCase()))));
 
-        Counter counter1 = dropwizardMetricRegistry.counter(
-            MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("num-of-self-healing-ended-for-%s", anomalyType.toString().toLowerCase())));
-        _numSelfHealingEndedPerAnomaly.put(anomalyType, counter1);
+        _numSelfHealingEndedPerAnomaly.put(anomalyType,
+                dropwizardMetricRegistry.counter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
+                        String.format("num-of-self-healing-ended-for-%s", anomalyType.toString().toLowerCase()))));
       }
     } else {
       _anomalyRateByType = new HashMap<>();
+      _numSelfHealingStartedPerAnomaly = new HashMap<>();
+      _numSelfHealingEndedPerAnomaly = new HashMap<>();
+      KafkaAnomalyType.cachedValues().forEach(anomalyType -> _numSelfHealingStartedPerAnomaly.put(anomalyType, new Counter()));
+      KafkaAnomalyType.cachedValues().forEach(anomalyType -> _numSelfHealingEndedPerAnomaly.put(anomalyType, new Counter()));
       KafkaAnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
     }
     _balancednessScore = INITIAL_BALANCEDNESS_SCORE;
