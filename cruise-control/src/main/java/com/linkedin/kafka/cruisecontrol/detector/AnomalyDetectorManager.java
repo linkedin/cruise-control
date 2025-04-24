@@ -484,6 +484,7 @@ public class AnomalyDetectorManager {
           if (_shutdown) {
             LOG.debug("Skip delayed checking anomaly {}, because anomaly detector is shutting down.", _anomalyInProgress);
           } else {
+            LOG.debug("Scheduling broker failure detection with delay of {} ms", delayMs);
             _numCheckedWithDelay.incrementAndGet();
             // By default, the retry count is 0.
             int retryCount = 0;
