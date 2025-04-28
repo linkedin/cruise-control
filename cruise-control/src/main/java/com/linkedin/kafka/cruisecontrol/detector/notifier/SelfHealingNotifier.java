@@ -66,8 +66,12 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   public static final String SELF_HEALING_TOPIC_ANOMALY_ENABLED_CONFIG = "self.healing.topic.anomaly.enabled";
   public static final String SELF_HEALING_MAINTENANCE_EVENT_ENABLED_CONFIG = "self.healing.maintenance.event.enabled";
   public static final String BROKER_FAILURE_SELF_HEALING_THRESHOLD_MS_CONFIG = "broker.failure.self.healing.threshold.ms";
+  public static final String BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT = "broker.failure.check.with.delay.max.retry.count";
+  public static final String BROKER_FAILURE_CHECK_WITH_DELAY_INTERVAL_MS = "broker.failure.check.with.delay.interval.ms";
   static final long DEFAULT_ALERT_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(15);
   static final long DEFAULT_AUTO_FIX_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(30);
+  static final int DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT = 10;
+  static final long DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_INTERVAL_MS = TimeUnit.MINUTES.toMillis(10);
 
   private static final Logger LOG = LoggerFactory.getLogger(SelfHealingNotifier.class);
   protected final Time _time;
@@ -77,6 +81,8 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   protected final Map<AnomalyType, Long> _selfHealingEnabledHistoricalDurationMs;
   protected long _brokerFailureAlertThresholdMs;
   protected long _selfHealingThresholdMs;
+  protected int _brokerFailureCheckWithDelayMaxRetryCount;
+  protected long _brokerFailureCheckWithDelayIntervalMs;
   // A cache that keeps the most recent broker failure for each broker.
   protected final Map<Boolean, Map<Integer, Long>> _latestFailedBrokersByAutoFixTriggered;
 
@@ -248,11 +254,36 @@ public class SelfHealingNotifier implements AnomalyNotifier {
       result = AnomalyNotificationResult.check(delayMs);
     } else {
       // Reached auto fix threshold. Alert and fix if self healing is enabled and anomaly is fixable.
-      boolean autoFixTriggered = _selfHealingEnabled.get(KafkaAnomalyType.BROKER_FAILURE) && brokerFailures.fixable();
-      if (hasNewFailureToAlert(brokerFailures, autoFixTriggered)) {
-        alert(brokerFailures, autoFixTriggered, selfHealingTimeMs, KafkaAnomalyType.BROKER_FAILURE);
+      boolean selfHealingEnabled = _selfHealingEnabled.get(KafkaAnomalyType.BROKER_FAILURE);
+      boolean brokerFailureFixable = brokerFailures.fixable();
+      boolean autoFixTriggered = selfHealingEnabled && brokerFailures.fixable();
+
+      if (!brokerFailureFixable) {
+        // If broker failure is not fixable then the anomaly can be ignored
+        result = AnomalyNotificationResult.ignore();
+      } else if (selfHealingEnabled) {
+        // If self healing is enabled and broker failure is fixable the fix should be made
+        if (hasNewFailureToAlert(brokerFailures, autoFixTriggered)) {
+          alert(brokerFailures, autoFixTriggered, selfHealingTimeMs, KafkaAnomalyType.BROKER_FAILURE);
+        }
+        result = AnomalyNotificationResult.fix();
+      } else {
+        // In the case self healing is disabled, we keep checking the anomaly until
+        // we try for _brokerFailureCheckWithDelayMaxRetryCount times
+        // After we exceed this, depending on the self healing state, we can ignore or fix the anomaly
+        // This check is to ensure that the broker failure is not ignored.
+        // The max is so that we do not keep checking forever in case self healing is disabled forever.
+        if (brokerFailures.brokerFailureCheckWithDelayRetryCount() <= _brokerFailureCheckWithDelayMaxRetryCount) {
+          // This means that we can retry for checking with delay
+          if (hasNewFailureToAlert(brokerFailures, autoFixTriggered)) {
+            alert(brokerFailures, autoFixTriggered, selfHealingTimeMs, KafkaAnomalyType.BROKER_FAILURE);
+          }
+          result = AnomalyNotificationResult.check(_brokerFailureCheckWithDelayIntervalMs);
+        } else {
+          // This means that we have reached the max retry count and we can ignore the anomaly
+          result = AnomalyNotificationResult.ignore();
+        }
       }
-      result = autoFixTriggered ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
     }
     return result;
   }
@@ -280,6 +311,15 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     _brokerFailureAlertThresholdMs = alertThreshold == null ? DEFAULT_ALERT_THRESHOLD_MS : Long.parseLong(alertThreshold);
     String fixThreshold = (String) config.get(BROKER_FAILURE_SELF_HEALING_THRESHOLD_MS_CONFIG);
     _selfHealingThresholdMs = fixThreshold == null ? DEFAULT_AUTO_FIX_THRESHOLD_MS : Long.parseLong(fixThreshold);
+
+    String brokerFailureCheckWithDelayMaxRetryCount = (String) config.get(BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT);
+    _brokerFailureCheckWithDelayMaxRetryCount = brokerFailureCheckWithDelayMaxRetryCount == null
+      ? DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT : Integer.parseInt(brokerFailureCheckWithDelayMaxRetryCount);
+
+    String brokerFailureCheckWithDelayIntervalMs = (String) config.get(BROKER_FAILURE_CHECK_WITH_DELAY_INTERVAL_MS);
+    _brokerFailureCheckWithDelayIntervalMs = brokerFailureCheckWithDelayIntervalMs == null
+      ? DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_INTERVAL_MS : Long.parseLong(brokerFailureCheckWithDelayIntervalMs);
+
     if (_brokerFailureAlertThresholdMs > _selfHealingThresholdMs) {
       throw new IllegalArgumentException(String.format("The failure detection threshold %d cannot be larger than "
                                                        + "the auto fix threshold. %d",

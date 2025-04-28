@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.AbstractBrokerFailureDetector;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Collections;
 import java.util.HashMap;
@@ -177,11 +178,43 @@ public class SelfHealingNotifierTest {
         kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                        BrokerFailures.class,
                                                        parameterConfigOverrides));
-    assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
+    assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
 
+    // (2) Test that if retry count exceeds the max retry count, the anomaly is ignored when self healing is disabled.
     // (2) Test goal violation anomaly can be detected by notifier.
+    anomalyNotifier.resetAlert(KafkaAnomalyType.BROKER_FAILURE);
+    Map<String, Object> parameterConfigOverrides2 = new HashMap<>(parameterConfigOverrides);
+    // Set the current retry count to be greater than DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT
+    parameterConfigOverrides2.put(AbstractBrokerFailureDetector.BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT,
+        SelfHealingNotifier.DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT + 1);
+    result = anomalyNotifier.onBrokerFailure(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
+        BrokerFailures.class, parameterConfigOverrides2));
+    // The result should be ignore
+    assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
+    assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
+
+    // (3) Self healing is enabled back when the check with delay is executed but the retry count is less than max
+    // In this case it should be able to trigger a fix
+    TestingBrokerFailureAutoFixNotifier selfHealingEnabledAnomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
+    // Set the self healing enabled
+    Map<String, String> selfHealingExplicitlyEnabled = Map.of(SelfHealingNotifier.SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG, "true",
+        // Set to verify the overriding of specific config over general config
+        SelfHealingNotifier.SELF_HEALING_ENABLED_CONFIG, "true");
+    selfHealingEnabledAnomalyNotifier.configure(selfHealingExplicitlyEnabled);
+    selfHealingEnabledAnomalyNotifier.resetAlert(KafkaAnomalyType.BROKER_FAILURE);
+    Map<String, Object> parameterConfigOverrides3 = new HashMap<>(parameterConfigOverrides);
+    parameterConfigOverrides3.put(AbstractBrokerFailureDetector.BROKER_FAILURE_CHECK_WITH_DELAY_RETRY_COUNT,
+        SelfHealingNotifier.DEFAULT_BROKER_FAILURE_CHECK_WITH_DELAY_MAX_RETRY_COUNT - 1);
+    result = selfHealingEnabledAnomalyNotifier.onBrokerFailure(
+        kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
+            BrokerFailures.class,
+            parameterConfigOverrides3));
+    assertEquals(AnomalyNotificationResult.Action.FIX, result.action());
+    assertTrue(selfHealingEnabledAnomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
+
+    // (4) Test goal violation anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.GOAL_VIOLATION);
     result = anomalyNotifier.onGoalViolation(
         kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
@@ -191,7 +224,7 @@ public class SelfHealingNotifierTest {
     assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.GOAL_VIOLATION));
     assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.GOAL_VIOLATION));
 
-    // (3) Test metric anomaly can be detected by notifier.
+    // (5) Test metric anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.METRIC_ANOMALY);
     result = anomalyNotifier.onMetricAnomaly(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG,
                                                                                             KafkaMetricAnomaly.class,
@@ -200,7 +233,7 @@ public class SelfHealingNotifierTest {
     assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.METRIC_ANOMALY));
     assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.METRIC_ANOMALY));
 
-    // (4) Test disk failure anomaly can be detected by notifier.
+    // (6) Test disk failure anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.DISK_FAILURE);
     result = anomalyNotifier.onDiskFailure(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.DISK_FAILURES_CLASS_CONFIG,
                                                                                           DiskFailures.class,
@@ -209,7 +242,7 @@ public class SelfHealingNotifierTest {
     assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.DISK_FAILURE));
     assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.DISK_FAILURE));
 
-    // (5) Test topic anomaly can be detected by notifier.
+    // (7) Test topic anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.TOPIC_ANOMALY);
     TopicReplicationFactorAnomaly topicReplicationFactorAnomaly = new TopicReplicationFactorAnomaly();
     topicReplicationFactorAnomaly.configure(parameterConfigOverrides);
