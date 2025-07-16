@@ -21,7 +21,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -114,7 +114,7 @@ public class RemoveDisksTest {
         _goalToTest.configure(_kafkaCruiseControlConfig.mergedConfigValues());
         GoalOptimizer goalOptimizer = new GoalOptimizer(_kafkaCruiseControlConfig,
                 null,
-                new SystemTime(),
+                Time.SYSTEM,
                 new MetricRegistry(),
                 EasyMock.mock(Executor.class),
                 EasyMock.mock(AdminClient.class));

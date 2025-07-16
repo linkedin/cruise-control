@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.common.config.SslConfigs;
-import org.apache.kafka.common.network.Mode;
+import org.apache.kafka.common.network.ConnectionMode;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
 import org.apache.kafka.network.SocketServerConfigs;
@@ -282,7 +282,7 @@ public class CCEmbeddedBrokerBuilder {
     }
     if (_trustStore != null || _sslPort > 0) {
       try {
-        props.putAll(TestSslUtils.createSslConfig(false, true, Mode.SERVER, _trustStore, "server" + _nodeId));
+        props.putAll(TestSslUtils.createSslConfig(false, true, ConnectionMode.SERVER, _trustStore, "server" + _nodeId));
         // Switch interbroker to ssl
         props.put(ReplicationConfigs.INTER_BROKER_SECURITY_PROTOCOL_CONFIG, SecurityProtocol.SSL.name);
       } catch (Exception e) {
