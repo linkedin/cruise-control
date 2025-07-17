@@ -188,6 +188,17 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
     }
   }
 
+  @Override
+  public boolean isJbodKafkaCluster() {
+    // If and only if all brokers in the cluster are using JBOD, the cluster is considered to be using JBOD
+    for (Map.Entry<Integer, BrokerCapacityInfo> entry : capacitiesForBrokers.entrySet()) {
+      if (entry.getValue().diskCapacityByLogDir() == null || entry.getValue().diskCapacityByLogDir().size() < 2) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private static boolean isJBOD(Map<Resource, Object> brokerCapacity) {
     return brokerCapacity.get(Resource.DISK) instanceof Map;
   }
