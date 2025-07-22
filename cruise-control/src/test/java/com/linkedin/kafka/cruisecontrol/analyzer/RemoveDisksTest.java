@@ -98,7 +98,7 @@ public class RemoveDisksTest {
                     new IntraBrokerDiskCapacityGoal(true),
                     cluster,
                     kafkaCruiseControlConfig,
-                    replicaLoad != TestConstants.LARGE_BROKER_CAPACITY / 2 * balancingConstraint.capacityThreshold(Resource.DISK)
+                    Math.abs(replicaLoad - TestConstants.LARGE_BROKER_CAPACITY / 2 * balancingConstraint.capacityThreshold(Resource.DISK)) > .0000001
             });
         }
 
