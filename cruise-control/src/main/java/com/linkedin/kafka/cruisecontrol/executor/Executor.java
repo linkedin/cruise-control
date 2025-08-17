@@ -1606,13 +1606,33 @@ public class Executor {
 
     private void interBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
       Set<Integer> currentDeadBrokersWithReplicas = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
-      ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, _replicationThrottle,
-          currentDeadBrokersWithReplicas);
+      ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, _replicationThrottle, currentDeadBrokersWithReplicas);
+      final boolean bulkThrottleEnabled = _config.getBoolean(ExecutorConfig.BULK_REPLICATION_THROTTLE_ENABLED_CONFIG);
       int numTotalPartitionMovements = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingInterBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
       LOG.info("User task {}: Starting {} inter-broker partition movements.", _uuid, numTotalPartitionMovements);
 
+      // If bulk throttle is enabled, set throttles once for all pending inter-broker tasks before entering the loop.
+      if (bulkThrottleEnabled && _replicationThrottle != null && numTotalPartitionMovements > 0) {
+        ExecutionTasksSummary summaryAtStart = _executionTaskManager.getExecutionTasksSummary(
+            Collections.singleton(INTER_BROKER_REPLICA_ACTION));
+        Map<ExecutionTaskState, Set<ExecutionTask>> interBrokerTasksByState = summaryAtStart.filteredTasksByState()
+            .get(INTER_BROKER_REPLICA_ACTION);
+        Set<ExecutionTask> pendingAtStart = interBrokerTasksByState.getOrDefault(ExecutionTaskState.PENDING,
+            Collections.emptySet());
+        // Filter out proposals for non-existent topics to avoid admin timeouts on config changes for non-existent topics.
+        Set<String> existingTopics = _metadataClient.refreshMetadata().cluster().topics();
+        List<ExecutionProposal> proposalsForExistingTopics = pendingAtStart.stream()
+            .map(ExecutionTask::proposal)
+            .filter(p -> existingTopics.contains(p.topic()))
+            .collect(Collectors.toList());
+        long numExistingTopicsToThrottle = proposalsForExistingTopics.stream().map(ExecutionProposal::topic).distinct().count();
+        LOG.info("User task {}: Applying bulk replication throttle of {} B/s to {} inter-broker movements "
+                + "({} pending before filtering) across {} topics.",
+          _uuid, _replicationThrottle, proposalsForExistingTopics.size(), pendingAtStart.size(), numExistingTopicsToThrottle);
+        throttleHelper.setThrottles(proposalsForExistingTopics);
+      }
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
       while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
@@ -1622,7 +1642,9 @@ public class Executor {
 
         AlterPartitionReassignmentsResult result = null;
         if (!tasksToExecute.isEmpty()) {
-          throttleHelper.setThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()));
+          if (!bulkThrottleEnabled) {
+            throttleHelper.setThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()));
+          }
           // Execute the tasks.
           _executionTaskManager.markTasksInProgress(tasksToExecute);
           result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToExecute);
@@ -1644,7 +1666,44 @@ public class Executor {
             .filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS)
             .collect(Collectors.toList());
         inProgressTasks.addAll(inExecutionTasks());
-
+        if (!bulkThrottleEnabled) {
+          throttleHelper.clearThrottles(completedTasks, inProgressTasks);
+        }
+      }
+      if (bulkThrottleEnabled && _replicationThrottle != null) {
+        ExecutionTasksSummary summaryAtEnd = _executionTaskManager.getExecutionTasksSummary(
+            Collections.singleton(INTER_BROKER_REPLICA_ACTION));
+        Map<ExecutionTaskState, Set<ExecutionTask>> interBrokerTasksByState = summaryAtEnd.filteredTasksByState()
+            .get(INTER_BROKER_REPLICA_ACTION);
+        List<ExecutionTask> completedTasks = new ArrayList<>();
+        if (interBrokerTasksByState != null) {
+          completedTasks.addAll(
+              interBrokerTasksByState.getOrDefault(ExecutionTaskState.COMPLETED, Collections.emptySet()));
+          completedTasks.addAll(
+              interBrokerTasksByState.getOrDefault(ExecutionTaskState.ABORTED, Collections.emptySet()));
+          completedTasks.addAll(
+              interBrokerTasksByState.getOrDefault(ExecutionTaskState.DEAD, Collections.emptySet()));
+        }
+        List<ExecutionTask> inProgressTasks = new ArrayList<>();
+        if (interBrokerTasksByState != null) {
+          inProgressTasks.addAll(
+              interBrokerTasksByState.getOrDefault(ExecutionTaskState.IN_PROGRESS, Collections.emptySet()));
+          inProgressTasks.addAll(
+              interBrokerTasksByState.getOrDefault(ExecutionTaskState.ABORTING, Collections.emptySet()));
+        }
+        int completedCount = interBrokerTasksByState == null ? 0
+            : interBrokerTasksByState.getOrDefault(ExecutionTaskState.COMPLETED, Collections.emptySet()).size();
+        int abortedCount = interBrokerTasksByState == null ? 0
+            : interBrokerTasksByState.getOrDefault(ExecutionTaskState.ABORTED, Collections.emptySet()).size();
+        int deadCount = interBrokerTasksByState == null ? 0
+            : interBrokerTasksByState.getOrDefault(ExecutionTaskState.DEAD, Collections.emptySet()).size();
+        int inProgressCount = interBrokerTasksByState == null ? 0
+            : interBrokerTasksByState.getOrDefault(ExecutionTaskState.IN_PROGRESS, Collections.emptySet()).size();
+        int abortingCount = interBrokerTasksByState == null ? 0
+            : interBrokerTasksByState.getOrDefault(ExecutionTaskState.ABORTING, Collections.emptySet()).size();
+        LOG.info("User task {}: Clearing bulk replication throttles (configured rate: {} B/s). "
+                + "Completed: {}, Aborted: {}, Dead: {}, InProgress: {}, Aborting: {}.",
+            _uuid, _replicationThrottle, completedCount, abortedCount, deadCount, inProgressCount, abortingCount);
         throttleHelper.clearThrottles(completedTasks, inProgressTasks);
       }
 

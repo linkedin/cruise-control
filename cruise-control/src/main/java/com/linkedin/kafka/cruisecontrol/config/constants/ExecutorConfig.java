@@ -610,6 +610,15 @@ public final class ExecutorConfig {
   public static final String AUTO_STOP_EXTERNAL_AGENT_DOC = "When starting a new proposal execution while external agent is reassigning partitions,"
       + " automatically stop the external agent and start the execution."
       + " Set to false to keep the external agent reassignment and skip starting the execution.";
+
+  /**
+   * <code>bulk.replication.throttle.enabled</code>
+   */
+  public static final String BULK_REPLICATION_THROTTLE_ENABLED_CONFIG = "bulk.replication.throttle.enabled";
+  public static final boolean DEFAULT_BULK_REPLICATION_THROTTLE_ENABLED = false;
+  public static final String BULK_REPLICATION_THROTTLE_ENABLED_DOC = "If true, Cruise Control sets replication throttles once "
+      + "before starting inter-broker replica movements and clears them once after inter-broker replica movements end. "
+      + "If false, throttles are set/cleared per batch.";
   private ExecutorConfig() {
   }
 
@@ -990,6 +999,11 @@ public final class ExecutorConfig {
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_AUTO_STOP_EXTERNAL_AGENT,
                             ConfigDef.Importance.MEDIUM,
-                            AUTO_STOP_EXTERNAL_AGENT_DOC);
+                            AUTO_STOP_EXTERNAL_AGENT_DOC)
+                    .define(BULK_REPLICATION_THROTTLE_ENABLED_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_BULK_REPLICATION_THROTTLE_ENABLED,
+                            ConfigDef.Importance.MEDIUM,
+                            BULK_REPLICATION_THROTTLE_ENABLED_DOC);
   }
 }
