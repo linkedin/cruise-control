@@ -497,6 +497,15 @@ public final class ExecutorConfig {
   public static final String AUTO_STOP_EXTERNAL_AGENT_DOC = "When starting a new proposal execution while external agent is reassigning partitions,"
       + " automatically stop the external agent and start the execution."
       + " Set to false to keep the external agent reassignment and skip starting the execution.";
+
+  /**
+   * <code>bulk.replication.throttle.enabled</code>
+   */
+  public static final String REPLICATION_CONFIG_BULK_OPS_ENABLED_CONFIG = "replication.config.bulk.ops.enabled";
+  public static final boolean DEFAULT_REPLICATION_CONFIG_BULK_OPS_ENABLED = false;
+  public static final String REPLICATION_CONFIG_BULK_OPS_ENABLED_DOC = "Whether to use AdminClient incrementalAlterConfigs/"
+      + "describeConfigs in bulk for replication throttle config updates.";
+
   private ExecutorConfig() {
   }
 
@@ -797,6 +806,11 @@ public final class ExecutorConfig {
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_AUTO_STOP_EXTERNAL_AGENT,
                             ConfigDef.Importance.MEDIUM,
-                            AUTO_STOP_EXTERNAL_AGENT_DOC);
+                            AUTO_STOP_EXTERNAL_AGENT_DOC)
+                    .define(REPLICATION_CONFIG_BULK_OPS_ENABLED_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_REPLICATION_CONFIG_BULK_OPS_ENABLED,
+                            ConfigDef.Importance.MEDIUM,
+                            REPLICATION_CONFIG_BULK_OPS_ENABLED_DOC);
   }
 }
