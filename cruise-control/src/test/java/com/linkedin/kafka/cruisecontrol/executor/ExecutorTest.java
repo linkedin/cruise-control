@@ -489,7 +489,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                           }
                       }
                       return true;
-                  } catch (Exception e) {
+                  } catch (InterruptedException | ExecutionException e) {
                       return false;
                   }
               },
@@ -510,7 +510,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               ? null : topicCfg.get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS).value();
                           return leaderReplicas != null && !leaderReplicas.isEmpty() && leaderReplicas.contains("0:")
                               && followerReplicas != null && !followerReplicas.isEmpty() && followerReplicas.contains("0:");
-                      } catch (Exception e) {
+                      } catch (InterruptedException | ExecutionException e) {
                           return false;
                       }
                   },
@@ -593,7 +593,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                           }
                       }
                       return true;
-                  } catch (Exception e) {
+                  } catch (InterruptedException | ExecutionException e) {
                       return false;
                   }
               },
@@ -614,7 +614,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                           boolean leaderCleared = leaderEntry == null || leaderEntry.value() == null || leaderEntry.value().isEmpty();
                           boolean followerCleared = followerEntry == null || followerEntry.value() == null || followerEntry.value().isEmpty();
                           return leaderCleared && followerCleared;
-                      } catch (Exception e) {
+                      } catch (InterruptedException | ExecutionException e) {
                           return false;
                       }
                   },
