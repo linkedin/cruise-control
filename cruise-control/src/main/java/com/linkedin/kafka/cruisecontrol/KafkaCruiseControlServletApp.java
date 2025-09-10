@@ -8,7 +8,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.ServletRequestHandler;
 import com.linkedin.kafka.cruisecontrol.servlet.security.CruiseControlSecurityHandler;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
-import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.ee10.servlet.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.CustomRequestLog;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -17,11 +17,11 @@ import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.Slf4jRequestLogWriter;
-import org.eclipse.jetty.servlet.DefaultServlet;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.ee10.servlet.DefaultServlet;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
-import javax.servlet.ServletException;
+import jakarta.servlet.ServletException;
 import java.util.List;
 
 public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
@@ -55,7 +55,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         ServerConnector serverConnector;
         Boolean webserverSslEnable = _config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG);
         if (webserverSslEnable != null && webserverSslEnable) {
-            SslContextFactory sslServerContextFactory = new SslContextFactory.Server();
+            SslContextFactory.Server sslServerContextFactory = new SslContextFactory.Server();
             sslServerContextFactory.setKeyStorePath(_config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG));
             sslServerContextFactory.setKeyStorePassword(_config.getPassword(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG).value());
             sslServerContextFactory.setKeyManagerPassword(_config.getPassword(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG).value());
@@ -124,7 +124,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         DefaultServlet defaultServlet = new DefaultServlet();
         ServletHolder holderWebapp = new ServletHolder("default", defaultServlet);
         // holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
-        holderWebapp.setInitParameter("resourceBase", webuiDir);
+        holderWebapp.setInitParameter("baseResource", webuiDir);
         contextHandler.addServlet(holderWebapp, webuiPathPrefix);
     }
 
