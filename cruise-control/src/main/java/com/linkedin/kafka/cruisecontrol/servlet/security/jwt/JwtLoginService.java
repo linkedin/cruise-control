@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.jwt;
 
-import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
+import com.linkedin.kafka.cruisecontrol.servlet.security.RoleProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreRoleProvider;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.JWSVerifier;
@@ -14,13 +15,12 @@ import com.nimbusds.jwt.SignedJWT;
 import org.eclipse.jetty.security.DefaultIdentityService;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.LoginService;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Session;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.eclipse.jetty.util.component.LifeCycle;
 import javax.security.auth.Subject;
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,41 +36,42 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtAuthenticator.JWT_LOGGER;
 
 /**
- * <p>This class validates a JWT token. The token must be cryptographically encrypted and it uses an RSA public key for
+ * <p>This class validates a JWT token. The token must be cryptographically encrypted, and it uses an RSA public key for
  * validation that is expected to be stored in a PEM formatted file.</p>
- * <p>This class implements {@link AbstractLifeCycle} which means it is a managed bean, its lifecycle will be managed
- * by Jetty. It's {@link AuthorizationService} can also be an {@link AbstractLifeCycle} in which case it delegates to
+ * <p>This class implements {@link AbstractLifeCycle} which means it is a managed bean, jetty will manage its lifecycle.
+ * It's {@link RoleProvider} can also be an {@link AbstractLifeCycle} in which case it delegates to
  * this class, so opening and closing connections should be done by implementing the {@link AbstractLifeCycle} interface's
  * {@link #doStart()} and {@link #doStop()} methods respectively. For a simple example see
- * {@link UserStoreAuthorizationService}.</p>
- * <p>The login service also validates expiration time of the token and it expects the token to contain the expiration
+ * {@link UserStoreRoleProvider}.</p>
+ * <p>The login service also validates expiration time of the token, and it expects the token to contain the expiration
  * in Unix epoch time format in UTC.</p>
  */
 public class JwtLoginService extends AbstractLifeCycle implements LoginService {
 
   public static final String X_509_CERT_TYPE = "X.509";
-  private final AuthorizationService _authorizationService;
+  private final RoleProvider _roleProvider;
   private IdentityService _identityService;
   private final RSAPublicKey _publicKey;
   private final List<String> _audiences;
   private Clock _clock;
 
-  public JwtLoginService(AuthorizationService authorizationService, String publicKeyLocation, List<String> audiences)
+  public JwtLoginService(RoleProvider roleProvider, String publicKeyLocation, List<String> audiences)
       throws IOException, CertificateException {
-    this(authorizationService, readPublicKey(publicKeyLocation), audiences);
+    this(roleProvider, readPublicKey(publicKeyLocation), audiences);
   }
 
-  public JwtLoginService(AuthorizationService authorizationService, RSAPublicKey publicKey, List<String> audiences) {
-    this(authorizationService, publicKey, audiences, Clock.systemUTC());
+  public JwtLoginService(RoleProvider roleProvider, RSAPublicKey publicKey, List<String> audiences) {
+    this(roleProvider, publicKey, audiences, Clock.systemUTC());
   }
 
-  public JwtLoginService(AuthorizationService authorizationService, RSAPublicKey publicKey, List<String> audiences, Clock clock) {
-    _authorizationService = authorizationService;
+  public JwtLoginService(RoleProvider roleProvider, RSAPublicKey publicKey, List<String> audiences, Clock clock) {
     _identityService = new DefaultIdentityService();
+    _roleProvider = roleProvider;
     _publicKey = publicKey;
     _audiences = audiences;
     _clock = clock;
@@ -79,16 +80,15 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
   @Override
   protected void doStart() throws Exception {
     super.doStart();
-    // The authorization service might want to start a connection or access a file
-    if (_authorizationService instanceof LifeCycle) {
-      ((LifeCycle) _authorizationService).start();
+    if (_roleProvider instanceof LifeCycle) {
+      ((LifeCycle) _roleProvider).start();
     }
   }
 
   @Override
   protected void doStop() throws Exception {
-    if (_authorizationService instanceof LifeCycle) {
-      ((LifeCycle) _authorizationService).stop();
+    if (_roleProvider instanceof LifeCycle) {
+      ((LifeCycle) _roleProvider).stop();
     }
     super.doStop();
   }
@@ -99,11 +99,8 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
   }
 
   @Override
-  public UserIdentity login(String username, Object credentials, ServletRequest request) {
+  public UserIdentity login(String username, Object credentials, Request request, Function<Boolean, Session> getOrCreateSession) {
     if (!(credentials instanceof SignedJWT)) {
-      return null;
-    }
-    if (!(request instanceof HttpServletRequest)) {
       return null;
     }
 
@@ -117,17 +114,15 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
       JWT_LOGGER.warn(String.format("%s: Couldn't parse a JWT token", username), e);
       return null;
     }
-    if (valid) {
-      String serializedToken = (String) request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE);
-      UserIdentity rolesDelegate = _authorizationService.getUserIdentity((HttpServletRequest) request, username);
-      if (rolesDelegate == null) {
-        return null;
-      } else {
-        return getUserIdentity(jwtToken, claimsSet, serializedToken, username, rolesDelegate);
-      }
-    } else {
+    if (!valid) {
       return null;
     }
+    String[] roles = _roleProvider.rolesFor(request, username);
+    if (roles == null) {
+     return null;
+    }
+    String serializedToken = (String) request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE);
+    return getUserIdentity(jwtToken, claimsSet, serializedToken, username, roles);
   }
 
   @Override
@@ -213,13 +208,13 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     return (RSAPublicKey) cer.getPublicKey();
   }
 
-  private static UserIdentity getUserIdentity(SignedJWT jwtToken, JWTClaimsSet claimsSet, String serializedToken,
-                                              String username, UserIdentity rolesDelegate) {
+  private UserIdentity getUserIdentity(SignedJWT jwtToken, JWTClaimsSet claimsSet, String serializedToken,
+                                       String username, String[] roles) {
     JwtUserPrincipal principal = new JwtUserPrincipal(username, serializedToken);
     Set<Object> privCreds = new HashSet<>();
     privCreds.add(jwtToken);
     privCreds.add(claimsSet);
     Subject subject = new Subject(true, Collections.singleton(principal), Collections.emptySet(), privCreds);
-    return new JwtUserIdentity(subject, principal, rolesDelegate);
+    return new JwtUserIdentity(subject, principal, roles);
   }
 }
