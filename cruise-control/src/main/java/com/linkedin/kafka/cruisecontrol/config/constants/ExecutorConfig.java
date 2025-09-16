@@ -615,7 +615,7 @@ public final class ExecutorConfig {
    * <code>bulk.replication.throttle.enabled</code>
    */
   public static final String BULK_REPLICATION_THROTTLE_ENABLED_CONFIG = "bulk.replication.throttle.enabled";
-  public static final boolean DEFAULT_BULK_REPLICATION_THROTTLE_ENABLED = false;
+  public static final boolean DEFAULT_BULK_REPLICATION_THROTTLE_ENABLED = true;
   public static final String BULK_REPLICATION_THROTTLE_ENABLED_DOC = "If true, Cruise Control sets replication throttles once "
       + "before starting inter-broker replica movements and clears them once after inter-broker replica movements end. "
       + "If false, throttles are set/cleared per batch.";

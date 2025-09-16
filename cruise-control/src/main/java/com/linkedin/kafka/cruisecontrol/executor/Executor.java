@@ -1678,37 +1678,16 @@ public class Executor {
                 Collections.singleton(INTER_BROKER_REPLICA_ACTION));
             Map<ExecutionTaskState, Set<ExecutionTask>> interBrokerTasksByState = summaryAtEnd.filteredTasksByState()
                 .get(INTER_BROKER_REPLICA_ACTION);
-            List<ExecutionTask> completedTasks = new ArrayList<>();
-            if (interBrokerTasksByState != null) {
-              completedTasks.addAll(
-                  interBrokerTasksByState.getOrDefault(ExecutionTaskState.COMPLETED, Collections.emptySet()));
-              completedTasks.addAll(
-                  interBrokerTasksByState.getOrDefault(ExecutionTaskState.ABORTED, Collections.emptySet()));
-              completedTasks.addAll(
-                  interBrokerTasksByState.getOrDefault(ExecutionTaskState.DEAD, Collections.emptySet()));
-            }
-            List<ExecutionTask> inProgressTasks = new ArrayList<>();
-            if (interBrokerTasksByState != null) {
-              inProgressTasks.addAll(
-                  interBrokerTasksByState.getOrDefault(ExecutionTaskState.IN_PROGRESS, Collections.emptySet()));
-              inProgressTasks.addAll(
-                  interBrokerTasksByState.getOrDefault(ExecutionTaskState.ABORTING, Collections.emptySet()));
-            }
-            int completedCount = interBrokerTasksByState == null ? 0
-                : interBrokerTasksByState.getOrDefault(ExecutionTaskState.COMPLETED, Collections.emptySet()).size();
-            int abortedCount = interBrokerTasksByState == null ? 0
-                : interBrokerTasksByState.getOrDefault(ExecutionTaskState.ABORTED, Collections.emptySet()).size();
-            int deadCount = interBrokerTasksByState == null ? 0
-                : interBrokerTasksByState.getOrDefault(ExecutionTaskState.DEAD, Collections.emptySet()).size();
-            int inProgressCount = interBrokerTasksByState == null ? 0
-                : interBrokerTasksByState.getOrDefault(ExecutionTaskState.IN_PROGRESS, Collections.emptySet()).size();
-            int abortingCount = interBrokerTasksByState == null ? 0
-                : interBrokerTasksByState.getOrDefault(ExecutionTaskState.ABORTING, Collections.emptySet()).size();
-            LOG.info("User task {}: Clearing bulk replication throttles (configured rate: {} B/s). "
-                    + "Completed: {}, Aborted: {}, Dead: {}, InProgress: {}, Aborting: {}.",
-                _uuid, _replicationThrottle, completedCount, abortedCount, deadCount, inProgressCount, abortingCount);
+            Map<ExecutionTaskState, Set<ExecutionTask>> tasksByState =
+                interBrokerTasksByState == null ? Collections.emptyMap() : interBrokerTasksByState;
+            logBulkThrottleCleanup(tasksByState);
+            List<ExecutionTask> completedTasks = buildCompletedTasks(tasksByState);
+            List<ExecutionTask> inProgressTasks = buildInProgressTasks(tasksByState);
             throttleHelper.clearThrottles(completedTasks, inProgressTasks);
-          } catch (ExecutionException | InterruptedException | TimeoutException e) {
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.warn("User task {}: Failed to clear bulk replication throttles during cleanup.", _uuid, e);
+          } catch (ExecutionException | TimeoutException e) {
             LOG.warn("User task {}: Failed to clear bulk replication throttles during cleanup.", _uuid, e);
           }
         }
@@ -1847,6 +1826,32 @@ public class Executor {
         }
       }
       return numLeadershipToMove;
+    }
+
+    private void logBulkThrottleCleanup(Map<ExecutionTaskState, Set<ExecutionTask>> tasksByState) {
+      LOG.info("User task {}: Clearing bulk replication throttles (configured rate: {} B/s). "
+              + "Completed: {}, Aborted: {}, Dead: {}, InProgress: {}, Aborting: {}.",
+          _uuid, _replicationThrottle,
+          tasksByState.getOrDefault(ExecutionTaskState.COMPLETED, Collections.emptySet()).size(),
+          tasksByState.getOrDefault(ExecutionTaskState.ABORTED, Collections.emptySet()).size(),
+          tasksByState.getOrDefault(ExecutionTaskState.DEAD, Collections.emptySet()).size(),
+          tasksByState.getOrDefault(ExecutionTaskState.IN_PROGRESS, Collections.emptySet()).size(),
+          tasksByState.getOrDefault(ExecutionTaskState.ABORTING, Collections.emptySet()).size());
+    }
+
+    private List<ExecutionTask> buildCompletedTasks(Map<ExecutionTaskState, Set<ExecutionTask>> tasksByState) {
+      List<ExecutionTask> completedTasks = new ArrayList<>();
+      completedTasks.addAll(tasksByState.getOrDefault(ExecutionTaskState.COMPLETED, Collections.emptySet()));
+      completedTasks.addAll(tasksByState.getOrDefault(ExecutionTaskState.ABORTED, Collections.emptySet()));
+      completedTasks.addAll(tasksByState.getOrDefault(ExecutionTaskState.DEAD, Collections.emptySet()));
+      return completedTasks;
+    }
+
+    private List<ExecutionTask> buildInProgressTasks(Map<ExecutionTaskState, Set<ExecutionTask>> tasksByState) {
+      List<ExecutionTask> inProgressTasks = new ArrayList<>();
+      inProgressTasks.addAll(tasksByState.getOrDefault(ExecutionTaskState.IN_PROGRESS, Collections.emptySet()));
+      inProgressTasks.addAll(tasksByState.getOrDefault(ExecutionTaskState.ABORTING, Collections.emptySet()));
+      return inProgressTasks;
     }
 
     /**
