@@ -868,7 +868,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(REMOVAL_HISTORY_RETENTION_TIME_MS));
     props.setProperty(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG, Long.toString(LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS));
     props.setProperty(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG, Long.toString(LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS));
-    props.setProperty(ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG, "120000");
     return props;
   }
 
