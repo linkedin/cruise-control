@@ -1606,7 +1606,7 @@ public class Executor {
 
     private void interBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
       Set<Integer> currentDeadBrokersWithReplicas = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
-      boolean useBulkOps = _config.getBoolean(ExecutorConfig.REPLICATION_CONFIG_BULK_OPS_ENABLED_CONFIG);
+      boolean useBulkOps = _config.getBoolean(ExecutorConfig.BULK_REPLICATION_THROTTLE_BULK_OPS_ENABLED_CONFIG);
       ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, _replicationThrottle,
           currentDeadBrokersWithReplicas, useBulkOps);
       int numTotalPartitionMovements = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
