@@ -378,6 +378,32 @@ class ReplicationThrottleHelper {
     return String.join(",", throttles);
   }
 
+  private void maybeRemoveThrottledReplicas(String topic,
+                                            Set<String> replicas,
+                                            ConfigEntry throttledReplicasConfig,
+                                            String throttledReplicasConfigKey,
+                                            String replicaType,
+                                            List<AlterConfigOp> ops) {
+    if (throttledReplicasConfig == null) {
+      return;
+    }
+    String configValue = throttledReplicasConfig.value();
+    if (configValue == null) {
+      return;
+    }
+    if (WILDCARD_ASTERISK.equals(configValue)) {
+      LOG.debug("Existing config throttles all {} replicas. So, do not remove any {} replica throttle", replicaType, replicaType);
+      return;
+    }
+    replicas.forEach(r -> LOG.debug("Removing {} throttles for topic {} and replica {}", replicaType, topic, r));
+    String newThrottledReplicas = removeReplicasFromConfig(configValue, replicas);
+    if (newThrottledReplicas.isEmpty()) {
+      ops.add(new AlterConfigOp(new ConfigEntry(throttledReplicasConfigKey, null), AlterConfigOp.OpType.DELETE));
+    } else {
+      ops.add(new AlterConfigOp(new ConfigEntry(throttledReplicasConfigKey, newThrottledReplicas), AlterConfigOp.OpType.SET));
+    }
+  }
+
   /**
    * It gets whether there is any throttled replica specified in the configuration property. If there is and the
    * specified throttled replica does not equal to "*", it modifies the configuration property by removing a
@@ -409,7 +435,7 @@ class ReplicationThrottleHelper {
         }
       }
     }
-    ConfigEntry currentFollowerThrottledReplicas = topicConfigs.get(FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
+    ConfigEntry currentFollowerThrottledReplicas = topicConfigs.get(FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG);
     if (currentFollowerThrottledReplicas != null) {
       if (currentFollowerThrottledReplicas.value().equals(WILDCARD_ASTERISK)) {
         LOG.debug("Existing config throttles all follower replicas. So, do not remove any follower replica throttle");
@@ -417,9 +443,9 @@ class ReplicationThrottleHelper {
         replicas.forEach(r -> LOG.debug("Removing follower throttles for topic {} and replica {}", topic, r));
         String newThrottledReplicas = removeReplicasFromConfig(currentFollowerThrottledReplicas.value(), replicas);
         if (newThrottledReplicas.isEmpty()) {
-          ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, null), AlterConfigOp.OpType.DELETE));
+          ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, null), AlterConfigOp.OpType.DELETE));
         } else {
-          ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, newThrottledReplicas), AlterConfigOp.OpType.SET));
+          ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, newThrottledReplicas), AlterConfigOp.OpType.SET));
         }
       }
     }
@@ -474,42 +500,13 @@ class ReplicationThrottleHelper {
       }
       List<AlterConfigOp> ops = new ArrayList<>();
       ConfigEntry currentLeaderThrottledReplicas = topicConfig.get(LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
-      if (currentLeaderThrottledReplicas != null) {
-        if (currentLeaderThrottledReplicas.value().equals(WILDCARD_ASTERISK)) {
-          LOG.debug(
-            "Existing config throttles all leader replicas. So, do not remove any leader replica throttle");
-        } else {
-          replicas.forEach(r -> LOG.debug("Removing leader throttles for topic {} and replica {}", topic, r));
-          String newThrottledReplicas = removeReplicasFromConfig(currentLeaderThrottledReplicas.value(),
-            replicas);
-          if (newThrottledReplicas.isEmpty()) {
-            ops.add(new AlterConfigOp(new ConfigEntry(LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, null),
-              AlterConfigOp.OpType.DELETE));
-          } else {
-            ops.add(new AlterConfigOp(new ConfigEntry(LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, newThrottledReplicas),
-              AlterConfigOp.OpType.SET));
-          }
-        }
-      }
-      ConfigEntry currentFollowerThrottledReplicas = topicConfig.get(FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
-      if (currentFollowerThrottledReplicas != null) {
-        if (currentFollowerThrottledReplicas.value().equals(WILDCARD_ASTERISK)) {
-          LOG.debug(
-            "Existing config throttles all follower replicas. So, do not remove any follower replica throttle");
-        } else {
-          replicas.forEach(
-            r -> LOG.debug("Removing follower throttles for topic {} and replica {}", topic, r));
-          String newThrottledReplicas = removeReplicasFromConfig(currentFollowerThrottledReplicas.value(),
-            replicas);
-          if (newThrottledReplicas.isEmpty()) {
-            ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, null),
-              AlterConfigOp.OpType.DELETE));
-          } else {
-            ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, newThrottledReplicas),
-              AlterConfigOp.OpType.SET));
-          }
-        }
-      }
+      maybeRemoveThrottledReplicas(topic, replicas, currentLeaderThrottledReplicas, LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "leader", ops);
+    ConfigEntry currentLeaderThrottledReplicas = topicConfigs.get(LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
+    maybeRemoveThrottledReplicas(topic, replicas, currentLeaderThrottledReplicas, LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "leader", ops);
+    ConfigEntry currentFollowerThrottledReplicas = topicConfigs.get(FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG);
+    maybeRemoveThrottledReplicas(topic, replicas, currentFollowerThrottledReplicas, FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, "follower", ops);
+      ConfigEntry currentFollowerThrottledReplicas = topicConfig.get(FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG);
+      maybeRemoveThrottledReplicas(topic, replicas, currentFollowerThrottledReplicas, FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, "follower", ops);
       if (!ops.isEmpty()) {
         bulkOps.put(cf, ops);
       }
