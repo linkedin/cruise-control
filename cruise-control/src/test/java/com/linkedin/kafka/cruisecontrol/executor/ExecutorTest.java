@@ -767,7 +767,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
         new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
                               Arrays.asList(new ReplicaPlacementInfo(initialLeader1), new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
                               Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0), new ReplicaPlacementInfo(initialLeader1)));
-    return Arrays.asList(proposal0, proposal1);
+    return List.of(proposal0, proposal1);
   }
 
   private Executor startExecutionWithBulkThrottle(Collection<ExecutionProposal> proposalsToExecute,
