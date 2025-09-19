@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0 # so gradle doesn't fail traversing the history
       - uses: actions/setup-java@v4
         with:
-          java-version: 11
+          java-version: 17
           distribution: microsoft
           cache: gradle
       - uses: gradle/actions/setup-gradle@v4 # v4.0.0

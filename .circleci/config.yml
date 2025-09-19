@@ -7,7 +7,7 @@ jobs:
       _JAVA_OPTIONS: "-Xms512m -Xmx1g"
     working_directory: ~/workspace
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     steps:
       - checkout
       - restore_cache:
@@ -40,7 +40,7 @@ jobs:
       _JAVA_OPTIONS: "-Xms512m -Xmx1g"
     working_directory: ~/workspace
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     steps:
       - checkout
       - restore_cache:
@@ -63,7 +63,7 @@ jobs:
   publish:
     working_directory: ~/workspace
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     steps:
       - checkout
       - restore_cache:
