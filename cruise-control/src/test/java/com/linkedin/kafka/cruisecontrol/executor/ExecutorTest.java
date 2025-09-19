@@ -429,42 +429,11 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testInterBrokerMoveReplicasWhenBulkThrottleEnabledThenThrottleApplied()
       throws InterruptedException, OngoingExecutionException {
-      // Prepare topics and proposals
-      Map<String, TopicDescription> topicDescriptions = createTopics((int) PRODUCE_SIZE_IN_BYTES);
-      int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
-      int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
+      Collection<ExecutionProposal> proposalsToExecute = createProposalsForTwoTopics(PRODUCE_SIZE_IN_BYTES);
 
-      ExecutionProposal proposal0 =
-          new ExecutionProposal(TP0, PRODUCE_SIZE_IN_BYTES, new ReplicaPlacementInfo(initialLeader0),
-              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
-              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
-      ExecutionProposal proposal1 =
-          new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
-              Arrays.asList(new ReplicaPlacementInfo(initialLeader1), new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
-              Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0), new ReplicaPlacementInfo(initialLeader1)));
-
-      Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-
-      // Enable bulk throttle in config
-      Properties props = getExecutorProperties();
-      props.setProperty(ExecutorConfig.BULK_REPLICATION_THROTTLE_ENABLED_CONFIG, "true");
-      KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(props);
-
-      UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
-      UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo, Collections.singletonList(true));
-      LoadMonitor mockLoadMonitor = getMockLoadMonitor();
-      AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID, false);
-      EasyMock.replay(mockUserTaskInfo, mockUserTaskManager, mockLoadMonitor, mockAnomalyDetectorManager);
-
-      MetricRegistry metricRegistry = new MetricRegistry();
-      Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, mockAnomalyDetectorManager);
-      executor.setUserTaskManager(mockUserTaskManager);
-
-      // Start execution with replication throttle
+      // Start execution with replication throttle using helper
       final long replicationThrottle = PRODUCE_SIZE_IN_BYTES;
-      executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
-      executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null, null, null, null, null,
-          null, null, replicationThrottle, true, RANDOM_UUID, false, false);
+      Executor executor = startExecutionWithBulkThrottle(proposalsToExecute, replicationThrottle);
 
       // Wait for inter-broker movement to start
       waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
@@ -529,42 +498,11 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testInterBrokerMoveReplicasWhenBulkThrottleEnabledThenThrottleClearedAtEnd()
       throws InterruptedException, OngoingExecutionException {
-      // Prepare topics and proposals
-      Map<String, TopicDescription> topicDescriptions = createTopics((int) PRODUCE_SIZE_IN_BYTES);
-      int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
-      int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
+      Collection<ExecutionProposal> proposalsToExecute = createProposalsForTwoTopics(PRODUCE_SIZE_IN_BYTES);
 
-      ExecutionProposal proposal0 =
-          new ExecutionProposal(TP0, PRODUCE_SIZE_IN_BYTES, new ReplicaPlacementInfo(initialLeader0),
-              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
-              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
-      ExecutionProposal proposal1 =
-          new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
-              Arrays.asList(new ReplicaPlacementInfo(initialLeader1), new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
-              Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0), new ReplicaPlacementInfo(initialLeader1)));
-
-      Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-
-      // Enable bulk throttle in config
-      Properties props = getExecutorProperties();
-      props.setProperty(ExecutorConfig.BULK_REPLICATION_THROTTLE_ENABLED_CONFIG, "true");
-      KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(props);
-
-      UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
-      UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo, Collections.singletonList(true));
-      LoadMonitor mockLoadMonitor = getMockLoadMonitor();
-      AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID, false);
-      EasyMock.replay(mockUserTaskInfo, mockUserTaskManager, mockLoadMonitor, mockAnomalyDetectorManager);
-
-      MetricRegistry metricRegistry = new MetricRegistry();
-      Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, mockAnomalyDetectorManager);
-      executor.setUserTaskManager(mockUserTaskManager);
-
-      // Start execution with replication throttle
+      // Start execution with replication throttle using helper
       final long replicationThrottle = PRODUCE_SIZE_IN_BYTES;
-      executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
-      executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null, null, null, null, null,
-          null, null, replicationThrottle, true, RANDOM_UUID, false, false);
+      Executor executor = startExecutionWithBulkThrottle(proposalsToExecute, replicationThrottle);
 
       // Ensure execution started, confirm reassignments began, then stop to expedite teardown and wait for completion
       waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
@@ -815,6 +753,43 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     proposalToExecute.addAll(Arrays.asList(proposal0, proposal1, proposal2, proposal3));
     proposalToVerify.addAll(Arrays.asList(proposal0, proposal1));
+  }
+
+  private Collection<ExecutionProposal> createProposalsForTwoTopics(long produceSizeInBytes) throws InterruptedException {
+    Map<String, TopicDescription> topicDescriptions = createTopics((int) produceSizeInBytes);
+    int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
+    int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
+    ExecutionProposal proposal0 =
+        new ExecutionProposal(TP0, produceSizeInBytes, new ReplicaPlacementInfo(initialLeader0),
+                              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
+                              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
+    ExecutionProposal proposal1 =
+        new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
+                              Arrays.asList(new ReplicaPlacementInfo(initialLeader1), new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
+                              Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0), new ReplicaPlacementInfo(initialLeader1)));
+    return Arrays.asList(proposal0, proposal1);
+  }
+
+  private Executor startExecutionWithBulkThrottle(Collection<ExecutionProposal> proposalsToExecute,
+                                                  long replicationThrottle) throws OngoingExecutionException {
+    Properties props = getExecutorProperties();
+    props.setProperty(ExecutorConfig.BULK_REPLICATION_THROTTLE_ENABLED_CONFIG, "true");
+    KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(props);
+
+    UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
+    UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo, Collections.singletonList(true));
+    LoadMonitor mockLoadMonitor = getMockLoadMonitor();
+    AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID, false);
+    EasyMock.replay(mockUserTaskInfo, mockUserTaskManager, mockLoadMonitor, mockAnomalyDetectorManager);
+
+    MetricRegistry metricRegistry = new MetricRegistry();
+    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, mockAnomalyDetectorManager);
+    executor.setUserTaskManager(mockUserTaskManager);
+
+    executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
+    executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null, null, null, null, null,
+                              null, null, replicationThrottle, true, RANDOM_UUID, false, false);
+    return executor;
   }
 
   /**
