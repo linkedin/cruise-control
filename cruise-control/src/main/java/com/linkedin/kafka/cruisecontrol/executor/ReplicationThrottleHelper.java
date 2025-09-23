@@ -11,7 +11,7 @@ import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.config.ConfigResource;
-import org.apache.kafka.server.config.QuotaConfigs;
+import org.apache.kafka.server.config.QuotaConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
@@ -37,10 +37,10 @@ import java.util.stream.Stream;
 class ReplicationThrottleHelper {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicationThrottleHelper.class);
   static final String WILDCARD_ASTERISK = "*";
-  static final String LEADER_THROTTLED_RATE = QuotaConfigs.LEADER_REPLICATION_THROTTLED_RATE_CONFIG;
-  static final String FOLLOWER_THROTTLED_RATE = QuotaConfigs.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG;
-  static final String LEADER_THROTTLED_REPLICAS = QuotaConfigs.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG;
-  static final String FOLLOWER_THROTTLED_REPLICAS = QuotaConfigs.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG;
+  static final String LEADER_THROTTLED_RATE = QuotaConfig.LEADER_REPLICATION_THROTTLED_RATE_CONFIG;
+  static final String FOLLOWER_THROTTLED_RATE = QuotaConfig.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG;
+  static final String LEADER_THROTTLED_REPLICAS = QuotaConfig.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG;
+  static final String FOLLOWER_THROTTLED_REPLICAS = QuotaConfig.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG;
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   static final int RETRIES = 30;
 

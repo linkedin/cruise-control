@@ -15,18 +15,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.LogDirDescription;
+import org.apache.kafka.clients.admin.ReplicaInfo;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartitionReplica;
 import org.apache.kafka.common.errors.KafkaStorageException;
 import org.apache.kafka.common.errors.LogDirNotFoundException;
 import org.apache.kafka.common.errors.ReplicaNotAvailableException;
-import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
-import static org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 
 public final class ExecutorAdminUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorAdminUtils.class);
@@ -107,12 +107,12 @@ public final class ExecutorAdminUtils {
   static boolean hasOngoingIntraBrokerReplicaMovement(Collection<Integer> brokersToCheck, AdminClient adminClient,
                                                       KafkaCruiseControlConfig config)
       throws InterruptedException, ExecutionException, TimeoutException {
-    Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId = adminClient.describeLogDirs(brokersToCheck).values();
-    for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
-      Map<String, LogDirInfo> logInfos = entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
-      for (LogDirInfo info : logInfos.values()) {
-        if (info.error == Errors.NONE) {
-          if (info.replicaInfos.values().stream().anyMatch(i -> i.isFuture)) {
+    Map<Integer, KafkaFuture<Map<String, LogDirDescription>>> logDirsByBrokerId = adminClient.describeLogDirs(brokersToCheck).descriptions();
+    for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirDescription>>> entry : logDirsByBrokerId.entrySet()) {
+      Map<String, LogDirDescription> logInfos = entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
+      for (LogDirDescription info : logInfos.values()) {
+        if (info.error() == null) {
+          if (info.replicaInfos().values().stream().anyMatch(ReplicaInfo::isFuture)) {
             return true;
           }
         }

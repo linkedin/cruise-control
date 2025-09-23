@@ -36,6 +36,7 @@ import org.apache.kafka.metadata.properties.MetaPropertiesEnsemble.VerificationF
 import org.apache.kafka.metadata.properties.MetaPropertiesVersion;
 import org.apache.kafka.raft.QuorumConfig;
 import org.apache.kafka.server.ProcessRole;
+import org.apache.kafka.server.ServerSocketFactory;
 import org.apache.kafka.server.config.KRaftConfigs;
 import org.apache.kafka.server.config.ServerLogConfigs;
 import org.apache.kafka.server.config.ServerTopicConfigSynonyms;
@@ -102,9 +103,10 @@ public class CCKafkaRaftServer implements Server {
                 metaPropsEnsemble,
                 time,
                 _metrics,
-                CompletableFuture.completedFuture(QuorumConfig.parseVoterConnections(config.quorumVoters())),
+                CompletableFuture.completedFuture(QuorumConfig.parseVoterConnections(config.quorumConfig().voters())),
                 new ArrayList<>(),
-                new StandardFaultHandlerFactory()
+                new StandardFaultHandlerFactory(),
+                new ServerSocketFactory.KafkaServerSocketFactory()
         );
 
         _broker = config.processRoles().contains(ProcessRole.BrokerRole)
@@ -207,8 +209,7 @@ public class CCKafkaRaftServer implements Server {
         MetaPropertiesEnsemble metaPropsEnsemble = copier.copy();
 
         // Load the BootstrapMetadata
-        BootstrapDirectory bootstrapDirectory = new BootstrapDirectory(
-                config.metadataLogDir(), Optional.ofNullable(config.interBrokerProtocolVersionString()));
+        BootstrapDirectory bootstrapDirectory = new BootstrapDirectory(config.metadataLogDir());
         BootstrapMetadata bootstrapMetadata;
         try {
             bootstrapMetadata = bootstrapDirectory.read();
