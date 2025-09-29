@@ -60,7 +60,7 @@ Cruise Control for Apache Kafka
 * The `kafka_2_0_to_2_3` and `kafka_0_11_and_1_0` branches compile with `Scala 2.11`.
 * The branch `migrate_to_kafka_2_4` compiles with `Scala 2.12`.
 * The branch `migrate_to_kafka_2_5` compile with `Scala 2.13`.
-* This project requires Java 11, also compatible with Java 17.
+* This project requires Java 17.
 
 #### Known Compatibility Issues ####
 * Support for Apache Kafka `2.0`, `2.1`, `2.2`, and `2.3` requires [KAFKA-8875](https://issues.apache.org/jira/browse/KAFKA-8875) hotfix.
@@ -77,7 +77,7 @@ Cruise Control for Apache Kafka
         && git tag -a 0.1.10 -m "Init local version."`
 1. This step is required if `CruiseControlMetricsReporter` is used for metrics collection (i.e. the default for Cruise
 Control). The metrics reporter periodically samples the Kafka raw metrics on the broker and sends them to a Kafka topic.
-    * `./gradlew jar` (Note: This project requires Java 11 or 17)
+    * `./gradlew jar` (Note: This project requires Java 17)
     * Copy `./cruise-control-metrics-reporter/build/libs/cruise-control-metrics-reporter-A.B.C.jar` (Where `A.B.C` is
     the version of the Cruise Control) to your Kafka server dependency jar folder. For Apache Kafka, the folder would
     be `core/build/dependant-libs-SCALA_VERSION/` (for a Kafka source checkout) or `libs/` (for a Kafka release download).
