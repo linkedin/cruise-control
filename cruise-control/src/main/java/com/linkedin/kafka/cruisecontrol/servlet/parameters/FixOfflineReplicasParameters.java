@@ -79,6 +79,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
+  protected Long _logDirThrottle;
   protected Integer _reviewId;
   protected String _reason;
   protected boolean _stopOngoingExecution;
@@ -99,6 +100,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_requestContext, _config);
     _replicationThrottle = ParameterUtils.replicationThrottle(_requestContext, _config);
+    _logDirThrottle = ParameterUtils.logDirThrottle(_requestContext, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_requestContext, twoStepVerificationEnabled);
     boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
@@ -152,6 +154,10 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  public Long logDirThrottle() {
+    return _logDirThrottle;
   }
 
   public String reason() {

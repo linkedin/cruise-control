@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.google.common.collect.Sets;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -111,28 +112,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   @Test
-  public void testIsNoOpWhenThrottleIsNull() throws Exception {
-    AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
-    EasyMock.replay(mockAdminClient);
-
-    // Test would fail on any unexpected interactions with the kafkaZkClient
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, null);
-    ExecutionProposal proposal = new ExecutionProposal(new TopicPartition("topic", 0),
-                                           100,
-                                                       new ReplicaPlacementInfo(0),
-                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
-                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
-
-    ExecutionTask task = completedTaskForProposal(0, proposal);
-
-    throttleHelper.setThrottles(Collections.singletonList(proposal));
-    throttleHelper.clearThrottles(Collections.singletonList(task), Collections.emptyList());
-    EasyMock.verify(mockAdminClient);
-  }
-
-  @Test
   public void testClearThrottleOnNonExistentTopic() throws Exception {
-    final long throttleRate = 100L;
     final int brokerId0 = 0;
     final int brokerId1 = 1;
     final int brokerId2 = 2;
@@ -146,7 +126,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
                                                        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId2)));
 
     AdminClient mockAdminClient = EasyMock.mock(AdminClient.class);
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, throttleRate);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient);
 
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
 
@@ -167,7 +147,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     ExecutionTask mockCompleteTask = prepareMockCompleteTask(proposal);
     EasyMock.replay(mockAdminClient);
 
-    throttleHelper.clearThrottles(Collections.singletonList(mockCompleteTask), Collections.emptyList());
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(mockCompleteTask), Collections.emptyList());
     EasyMock.verify(mockAdminClient, mockCompleteTask);
 
     // Case 2: a situation where Topic0 gets deleted after its configs were read.
@@ -186,7 +166,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.replay(mockAdminClient);
 
     // Expect no exception
-    throttleHelper.clearThrottles(Collections.singletonList(mockCompleteTask), Collections.emptyList());
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(mockCompleteTask), Collections.emptyList());
     EasyMock.verify(mockAdminClient, mockCompleteTask);
   }
 
@@ -206,7 +186,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
                                                        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId2)));
 
     AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, throttleRate);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient);
 
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
     expectDescribeBrokerConfigs(mockAdminClient, brokers);
@@ -216,7 +196,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     expectListTopics(mockAdminClient, Collections.emptySet());
     EasyMock.replay(mockAdminClient);
     // Expect no exception
-    throttleHelper.setThrottles(Collections.singletonList(proposal));
+    throttleHelper.setReplicationThrottles(Collections.singletonList(proposal), throttleRate);
     EasyMock.verify(mockAdminClient);
 
     // Case 2: a situation where Topic0 gets deleted after its configs were read. Change configs should not fail.
@@ -231,7 +211,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     expectListTopics(mockAdminClient, Collections.emptySet());
     EasyMock.replay(mockAdminClient);
     // Expect no exception
-    throttleHelper.setThrottles(Collections.singletonList(proposal));
+    throttleHelper.setReplicationThrottles(Collections.singletonList(proposal), throttleRate);
     EasyMock.verify(mockAdminClient);
   }
 
@@ -240,7 +220,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     createTopics();
 
     final long throttleRate = 100L;
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, throttleRate);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient);
     ExecutionProposal proposal = new ExecutionProposal(new TopicPartition(TOPIC0, 0),
                                            100,
                                                        new ReplicaPlacementInfo(0),
@@ -249,22 +229,37 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     ExecutionTask task = completedTaskForProposal(0, proposal);
 
-    throttleHelper.setThrottles(Collections.singletonList(proposal));
+    throttleHelper.setReplicationThrottles(Collections.singletonList(proposal), throttleRate);
+    throttleHelper.setLogDirThrottles(Collections.singletonList(proposal), throttleRate);
 
-    assertExpectedThrottledRateForBroker(0, throttleRate);
-    assertExpectedThrottledRateForBroker(1, throttleRate);
-    assertExpectedThrottledRateForBroker(2, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(0, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(1, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(2, throttleRate);
     // No throttle on broker 3 because it's not involved in any of the execution proposals:
-    assertExpectedThrottledRateForBroker(3, null);
+    assertExpectedReplicationThrottledRateForBroker(3, null);
     assertExpectedThrottledReplicas(TOPIC0, "0:0,0:1,0:2");
 
-    // We expect all throttles to be cleaned up
-    throttleHelper.clearThrottles(Collections.singletonList(task), Collections.emptyList());
+    assertExpectedLogDirThrottledRateForBroker(0, throttleRate);
+    assertExpectedLogDirThrottledRateForBroker(1, throttleRate);
+    assertExpectedLogDirThrottledRateForBroker(2, throttleRate);
+
+    // We expect all inter-broker throttles to be cleaned up (not intra-broker throttles)
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(task), Collections.emptyList());
 
     for (int i = 0; i < clusterSize(); i++) {
-      assertExpectedThrottledRateForBroker(i, null);
+      assertExpectedReplicationThrottledRateForBroker(i, null);
     }
     assertExpectedThrottledReplicas(TOPIC0, "");
+
+    assertExpectedLogDirThrottledRateForBroker(0, throttleRate);
+    assertExpectedLogDirThrottledRateForBroker(1, throttleRate);
+    assertExpectedLogDirThrottledRateForBroker(2, throttleRate);
+
+    // We expect all intra-broker throttles to be cleaned up
+    throttleHelper.clearIntraBrokerThrottles(Sets.newHashSet(0, 1, 2));
+    for (int i = 0; i < clusterSize(); i++) {
+      assertExpectedLogDirThrottledRateForBroker(i, null);
+    }
   }
 
   @Test
@@ -272,7 +267,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     createTopics();
 
     final long throttleRate = 100L;
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, throttleRate);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient);
     ExecutionProposal proposal = new ExecutionProposal(
         new TopicPartition(TOPIC0, 0),
         100,
@@ -309,26 +304,26 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
       new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS, "1:1"), AlterConfigOp.OpType.SET));
     throttleHelper.changeTopicConfigs(TOPIC1, topic1Config);
 
-    throttleHelper.setThrottles(Collections.singletonList(proposal));
+    throttleHelper.setReplicationThrottles(Collections.singletonList(proposal), throttleRate);
 
-    assertExpectedThrottledRateForBroker(0, throttleRate);
-    assertExpectedThrottledRateForBroker(1, throttleRate);
-    assertExpectedThrottledRateForBroker(2, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(0, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(1, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(2, throttleRate);
     // No throttle on broker 3 because it's not involved in any of the execution proposals:
-    assertExpectedThrottledRateForBroker(3, null);
+    assertExpectedReplicationThrottledRateForBroker(3, null);
     // Existing throttled replicas are merged with new throttled replicas for topic 0:
     assertExpectedThrottledReplicas(TOPIC0, "0:0,0:1,0:2,1:0,1:1");
     // Existing throttled replicas are unchanged for topic 1:
     assertExpectedThrottledReplicas(TOPIC1, "1:1");
 
-    throttleHelper.clearThrottles(Collections.singletonList(task), Collections.emptyList());
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(task), Collections.emptyList());
 
     // We expect all throttles related to replica movement to be removed. Specifically,
     // any throttles related to partitions which were not moved will remain.
     // However, we do expect the broker throttles to be removed.
-    throttleHelper.clearThrottles(Collections.singletonList(task), Collections.emptyList());
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(task), Collections.emptyList());
     for (int i = 0; i < clusterSize(); i++) {
-      assertExpectedThrottledRateForBroker(i, null);
+      assertExpectedReplicationThrottledRateForBroker(i, null);
     }
     assertExpectedThrottledReplicas(TOPIC0, "1:0,1:1");
     assertExpectedThrottledReplicas(TOPIC1, "1:1");
@@ -340,7 +335,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     final long throttleRate = 100L;
 
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, throttleRate);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient);
 
     // Set replica throttle config values for both topics
     setWildcardThrottleReplicaForTopic(throttleHelper, TOPIC0);
@@ -357,48 +352,48 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
                                                         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(3)),
                                                         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
 
-    throttleHelper.setThrottles(Arrays.asList(proposal, proposal2));
+    throttleHelper.setReplicationThrottles(Arrays.asList(proposal, proposal2), throttleRate);
 
     ExecutionTask completedTask = completedTaskForProposal(0, proposal);
     ExecutionTask inProgressTask = inProgressTaskForProposal(1, proposal2);
 
-    assertExpectedThrottledRateForBroker(0, throttleRate);
-    assertExpectedThrottledRateForBroker(1, throttleRate);
-    assertExpectedThrottledRateForBroker(2, throttleRate);
-    assertExpectedThrottledRateForBroker(3, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(0, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(1, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(2, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(3, throttleRate);
     // Topic-level throttled replica config value should remain as "*"
     assertExpectedThrottledReplicas(TOPIC0, ReplicationThrottleHelper.WILDCARD_ASTERISK);
     assertExpectedThrottledReplicas(TOPIC1, ReplicationThrottleHelper.WILDCARD_ASTERISK);
 
-    throttleHelper.clearThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
-    assertExpectedThrottledRateForBroker(0, throttleRate);
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
+    assertExpectedReplicationThrottledRateForBroker(0, throttleRate);
     // we expect broker 1 to be null since all replica movement related to it has completed.
-    assertExpectedThrottledRateForBroker(1, null);
-    assertExpectedThrottledRateForBroker(2, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(1, null);
+    assertExpectedReplicationThrottledRateForBroker(2, throttleRate);
     // We expect broker 3 to have a throttle on it because there is an in-progress replica being moved
-    assertExpectedThrottledRateForBroker(3, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(3, throttleRate);
     // Topic-level throttled replica config value should remain as "*"
     assertExpectedThrottledReplicas(TOPIC0, ReplicationThrottleHelper.WILDCARD_ASTERISK);
     assertExpectedThrottledReplicas(TOPIC1, ReplicationThrottleHelper.WILDCARD_ASTERISK);
 
     // passing an inProgress task that is not complete should have no effect.
-    throttleHelper.clearThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
-    assertExpectedThrottledRateForBroker(0, throttleRate);
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
+    assertExpectedReplicationThrottledRateForBroker(0, throttleRate);
     // we expect broker 1 to be null since all replica movement related to it has completed.
-    assertExpectedThrottledRateForBroker(1, null);
-    assertExpectedThrottledRateForBroker(2, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(1, null);
+    assertExpectedReplicationThrottledRateForBroker(2, throttleRate);
     // We expect broker 3 to have a throttle on it because there is an in-progress replica being moved
-    assertExpectedThrottledRateForBroker(3, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(3, throttleRate);
     // Topic-level throttled replica config value should remain as "*"
     assertExpectedThrottledReplicas(TOPIC0, ReplicationThrottleHelper.WILDCARD_ASTERISK);
     assertExpectedThrottledReplicas(TOPIC1, ReplicationThrottleHelper.WILDCARD_ASTERISK);
 
     // Completing the in-progress task and the "*" should not be cleaned up.
     inProgressTask.completed(3);
-    throttleHelper.clearThrottles(Arrays.asList(completedTask, inProgressTask), Collections.emptyList());
+    throttleHelper.clearInterBrokerThrottles(Arrays.asList(completedTask, inProgressTask), Collections.emptyList());
 
     for (int i = 0; i < clusterSize(); i++) {
-      assertExpectedThrottledRateForBroker(i, null);
+      assertExpectedReplicationThrottledRateForBroker(i, null);
     }
     // Topic-level throttled replica config value should remain as "*"
     assertExpectedThrottledReplicas(TOPIC0, ReplicationThrottleHelper.WILDCARD_ASTERISK);
@@ -411,7 +406,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     final long throttleRate = 100L;
 
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, throttleRate);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient);
     ExecutionProposal proposal = new ExecutionProposal(new TopicPartition(TOPIC0, 0),
                                            100,
                                                        new ReplicaPlacementInfo(0),
@@ -424,42 +419,42 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
                                                         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(3)),
                                                         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
 
-    throttleHelper.setThrottles(Arrays.asList(proposal, proposal2));
+    throttleHelper.setReplicationThrottles(Arrays.asList(proposal, proposal2), throttleRate);
 
     ExecutionTask completedTask = completedTaskForProposal(0, proposal);
     ExecutionTask inProgressTask = inProgressTaskForProposal(1, proposal2);
 
-    assertExpectedThrottledRateForBroker(0, throttleRate);
-    assertExpectedThrottledRateForBroker(1, throttleRate);
-    assertExpectedThrottledRateForBroker(2, throttleRate);
-    assertExpectedThrottledRateForBroker(3, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(0, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(1, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(2, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(3, throttleRate);
     assertExpectedThrottledReplicas(TOPIC0, "0:0,0:1,0:2,1:0,1:2,1:3");
 
-    throttleHelper.clearThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
-    assertExpectedThrottledRateForBroker(0, throttleRate);
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
+    assertExpectedReplicationThrottledRateForBroker(0, throttleRate);
     // we expect broker 1 to be null since all replica movement related to it has completed.
-    assertExpectedThrottledRateForBroker(1, null);
-    assertExpectedThrottledRateForBroker(2, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(1, null);
+    assertExpectedReplicationThrottledRateForBroker(2, throttleRate);
     // We expect broker 3 to have a throttle on it because there is an in-progress replica being moved
-    assertExpectedThrottledRateForBroker(3, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(3, throttleRate);
     assertExpectedThrottledReplicas(TOPIC0, "1:0,1:2,1:3");
 
     // passing an inProgress task that is not complete should have no effect.
-    throttleHelper.clearThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
-    assertExpectedThrottledRateForBroker(0, throttleRate);
+    throttleHelper.clearInterBrokerThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
+    assertExpectedReplicationThrottledRateForBroker(0, throttleRate);
     // we expect broker 1 to be null since all replica movement related to it has completed.
-    assertExpectedThrottledRateForBroker(1, null);
-    assertExpectedThrottledRateForBroker(2, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(1, null);
+    assertExpectedReplicationThrottledRateForBroker(2, throttleRate);
     // We expect broker 3 to have a throttle on it because there is an in-progress replica being moved
-    assertExpectedThrottledRateForBroker(3, throttleRate);
+    assertExpectedReplicationThrottledRateForBroker(3, throttleRate);
     assertExpectedThrottledReplicas(TOPIC0, "1:0,1:2,1:3");
 
     // Completing the in-progress task and clearing the throttles should clean everything up.
     inProgressTask.completed(3);
-    throttleHelper.clearThrottles(Arrays.asList(completedTask, inProgressTask), Collections.emptyList());
+    throttleHelper.clearInterBrokerThrottles(Arrays.asList(completedTask, inProgressTask), Collections.emptyList());
 
     for (int i = 0; i < clusterSize(); i++) {
-      assertExpectedThrottledRateForBroker(i, null);
+      assertExpectedReplicationThrottledRateForBroker(i, null);
     }
     assertExpectedThrottledReplicas(TOPIC0, "");
   }
@@ -484,7 +479,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
       expectDescribeTopicConfigs(mockAdminClient, TOPIC0, EMPTY_CONFIG, true);
     }
     EasyMock.replay(mockAdminClient);
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, 100L, retries);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, retries);
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, TOPIC0);
     assertThrows(IllegalStateException.class, () -> throttleHelper.waitForConfigs(cf, Collections.singletonList(
             new AlterConfigOp(new ConfigEntry("k", "v"), AlterConfigOp.OpType.SET)
@@ -627,7 +622,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     }
   }
 
-  private void assertExpectedThrottledRateForBroker(int brokerId, Long expectedRate) throws ExecutionException, InterruptedException {
+  private void assertExpectedReplicationThrottledRateForBroker(int brokerId, Long expectedRate) throws ExecutionException, InterruptedException {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
     Map<ConfigResource, Config> brokerConfig = _adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
     String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
@@ -638,6 +633,18 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     } else {
       assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE).value());
       assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE).value());
+    }
+  }
+
+  private void assertExpectedLogDirThrottledRateForBroker(int brokerId, Long expectedRate) throws ExecutionException, InterruptedException {
+    ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
+    Map<ConfigResource, Config> brokerConfig = _adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
+    String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
+    assertNotNull(brokerConfig.get(cf));
+    if (expectedRate == null) {
+      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.LOG_DIR_THROTTLED_RATE));
+    } else {
+      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.LOG_DIR_THROTTLED_RATE).value());
     }
   }
 

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.DEFAULT_LOG_DIR_THROTTLE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.*;
 
@@ -33,6 +34,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final Long _logDirThrottle;
   protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = false;
 
   /**
@@ -55,6 +57,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _logDirThrottle = kafkaCruiseControl.config().getLong(DEFAULT_LOG_DIR_THROTTLE_CONFIG);
   }
 
   public FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -70,6 +73,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
+    _logDirThrottle = parameters.logDirThrottle();
   }
 
   @Override
@@ -111,6 +115,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                            _executionProgressCheckIntervalMs,
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
+                                           _logDirThrottle,
                                            _isTriggeredByUserRequest,
                                            _uuid,
                                            SKIP_AUTO_REFRESHING_CONCURRENCY);

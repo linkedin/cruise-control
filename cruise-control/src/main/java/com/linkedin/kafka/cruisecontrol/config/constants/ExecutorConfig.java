@@ -207,6 +207,14 @@ public final class ExecutorConfig {
       + "moved, in bytes per second.";
 
   /**
+   * <code>default.log.dir.throttle</code>
+   */
+  public static final String DEFAULT_LOG_DIR_THROTTLE_CONFIG = "default.log.dir.throttle";
+  public static final Long DEFAULT_DEFAULT_LOG_DIR_THROTTLE = null;
+  public static final String DEFAULT_LOG_DIR_THROTTLE_DOC = "The throttle applied to replicas being moved between "
+      + "the log dirs, in bytes per second.";
+
+  /**
    * <code>replica.movement.strategies</code>
    */
   public static final String REPLICA_MOVEMENT_STRATEGIES_CONFIG = "replica.movement.strategies";
@@ -741,6 +749,11 @@ public final class ExecutorConfig {
                             DEFAULT_DEFAULT_REPLICATION_THROTTLE,
                             ConfigDef.Importance.MEDIUM,
                             DEFAULT_REPLICATION_THROTTLE_DOC)
+                    .define(DEFAULT_LOG_DIR_THROTTLE_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_DEFAULT_LOG_DIR_THROTTLE,
+                            ConfigDef.Importance.MEDIUM,
+                            DEFAULT_LOG_DIR_THROTTLE_DOC)
                     .define(REPLICA_MOVEMENT_STRATEGIES_CONFIG,
                             ConfigDef.Type.LIST,
                             DEFAULT_REPLICA_MOVEMENT_STRATEGIES,
