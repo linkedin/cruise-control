@@ -484,6 +484,7 @@ project(':cruise-control-metrics-reporter') {
     testImplementation "org.apache.kafka:kafka-raft:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-storage:$kafkaVersion"
     testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation "org.testcontainers:kafka:1.21.3"
     testOutput sourceSets.test.output
   }
 

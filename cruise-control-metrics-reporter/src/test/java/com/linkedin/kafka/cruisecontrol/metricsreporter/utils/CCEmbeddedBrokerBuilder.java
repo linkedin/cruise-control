@@ -266,6 +266,7 @@ public class CCEmbeddedBrokerBuilder {
     if (_logDirectory == null) {
       throw new IllegalArgumentException("log directory must be specified");
     }
+
     if (_metadataLogDirectory == null) {
       throw new IllegalArgumentException("metadata log directory must be specified");
     }

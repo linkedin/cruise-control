@@ -91,8 +91,10 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractKRaftTestH
 
   protected Map<Object, Object> createBrokerConfig(int brokerId) {
     CCEmbeddedBrokerBuilder builder = new CCEmbeddedBrokerBuilder();
-    builder.kraftConnect(kraftController());
-    builder.clusterId(kraftController());
+    if (_controller != null) {
+      builder.kraftConnect(kraftController());
+      builder.clusterId(kraftController());
+    }
     builder.nodeId(brokerId);
     builder.enable(securityProtocol());
     if (securityProtocol() == SecurityProtocol.SSL) {
