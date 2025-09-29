@@ -109,7 +109,6 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
 
     Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     properties.put(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    properties.put(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect());
     properties.put(ExecutorConfig.AUTO_STOP_EXTERNAL_AGENT_CONFIG, false);
     properties.put(KafkaSampleStore.PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG, "__partition_samples");
     properties.put(KafkaSampleStore.BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG, "__broker_samples");

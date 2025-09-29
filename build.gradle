@@ -289,7 +289,6 @@ project(':cruise-control') {
     api project(':cruise-control-core')
     implementation "org.slf4j:slf4j-api:1.7.36"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
-    implementation "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     implementation "io.netty:netty-handler:${nettyVersion}"
     implementation "io.netty:netty-transport-native-epoll:${nettyVersion}"
     api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
@@ -481,9 +480,10 @@ project(':cruise-control-metrics-reporter') {
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-server-common:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-group-coordinator:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-metadata:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-raft:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-storage:$kafkaVersion"
     testImplementation 'commons-io:commons-io:2.11.0'
-    testImplementation "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     testOutput sourceSets.test.output
   }
 

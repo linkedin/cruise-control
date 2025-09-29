@@ -6,12 +6,12 @@ package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.server.config.ZkConfigs;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -45,7 +45,7 @@ public class CaseInsensitiveGoalConfigTest {
     Collection<Object[]> params = new ArrayList<>();
 
     Properties sharedProps = new Properties();
-    sharedProps.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
+    sharedProps.setProperty(ZkConfigs.ZK_CONNECT_CONFIG, "localhost:2121");
     sharedProps.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "aaa");
 
     // Test: With case insensitive goal names (No exception)

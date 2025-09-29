@@ -5,8 +5,7 @@ StopProposalExecutionEndpoint:
     parameters:
       - name: force_stop
         in: query
-        description: If true, stop execution forcefully by deleting the /admin/partition_reassignemt, /preferred_replica_election
-                     and /controller zNodes in Zookeeper.
+        description: If true, stop execution forcefully.
         schema:
           type: boolean
           default: false
