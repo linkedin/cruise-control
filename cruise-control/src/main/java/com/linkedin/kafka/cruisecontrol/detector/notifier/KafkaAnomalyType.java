@@ -38,6 +38,8 @@ public enum KafkaAnomalyType implements AnomalyType {
   @JsonResponseField
   GOAL_VIOLATION(4),
   @JsonResponseField
+  INTRA_BROKER_GOAL_VIOLATION(4),
+  @JsonResponseField
   TOPIC_ANOMALY(5);
 
   private static final List<KafkaAnomalyType> CACHED_VALUES = List.of(values());

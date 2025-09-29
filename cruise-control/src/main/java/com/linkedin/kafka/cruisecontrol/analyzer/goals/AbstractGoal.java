@@ -433,4 +433,34 @@ public abstract class AbstractGoal implements Goal {
   public String toString() {
     return name();
   }
+
+  // Overriding equals() to compare two AbstractGoals objects
+  @Override
+  public boolean equals(Object o) {
+
+    // If the object is compared with itself then return true
+    if (o == this) {
+      return true;
+    }
+
+    // Check if o is an instance of AbstractGoals or not "null instanceof [type]" also returns false
+    if (!(o instanceof AbstractGoal)) {
+      return false;
+    }
+
+    // typecast o to AbstractGoals so that we can compare data members
+    AbstractGoal c = (AbstractGoal) o;
+
+    // Compare the data members and return accordingly
+    return c.name().equals(((AbstractGoal) o).name());
+  }
+
+  // Overriding hasCode() to allow proper comparison
+  @Override
+  public int hashCode() {
+    int result = 17;
+    result = 31 * result + name().hashCode();
+    result = 31 * result + _numWindows;
+    return result;
+  }
 }
