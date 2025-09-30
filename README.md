@@ -91,7 +91,7 @@ Control). The metrics reporter periodically samples the Kafka raw metrics on the
     * If the default broker cleanup policy is `compact`, make sure that the topic to which Cruise Control metrics
     reporter should send messages is created with the `delete` cleanup policy -- the default metrics reporter topic
     is `__CruiseControlMetrics`.
-2. Start Kafka server ([See tutorial](https://kafka.apache.org/quickstart)).
+2. Start Kafka server ([See tutorial](https://kafka.apache.org/quickstart)), and if you're using a ZooKeeper-based Kafka cluster also start a ZooKeeper server.
 3. Modify `config/cruisecontrol.properties` of Cruise Control:
     * (Required) fill in `bootstrap.servers` to the Kafka cluster to be monitored.
     * (Required) update `capacity.config.file` to the path of your capacity file.  

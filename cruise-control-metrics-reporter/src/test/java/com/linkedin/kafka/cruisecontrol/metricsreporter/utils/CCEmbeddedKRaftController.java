@@ -6,10 +6,6 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 import kafka.server.KafkaConfig;
 import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.utils.Time;
-import org.apache.kafka.network.SocketServerConfigs;
-import org.apache.kafka.raft.QuorumConfig;
-import org.apache.kafka.server.config.KRaftConfigs;
-import org.apache.kafka.server.config.ServerLogConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
@@ -88,13 +84,13 @@ public class CCEmbeddedKRaftController implements AutoCloseable {
 
     private Properties createControllerProperties() {
         Properties props = new Properties();
-        props.setProperty(KRaftConfigs.PROCESS_ROLES_CONFIG, "controller");
-        props.setProperty(KRaftConfigs.NODE_ID_CONFIG, String.valueOf(ID));
-        props.setProperty(KRaftConfigs.CONTROLLER_LISTENER_NAMES_CONFIG, "CONTROLLER");
-        props.setProperty(SocketServerConfigs.LISTENERS_CONFIG, "CONTROLLER://:" + _port);
-        props.setProperty(QuorumConfig.QUORUM_VOTERS_CONFIG, quorumVoters());
-        props.setProperty(ServerLogConfigs.LOG_DIR_CONFIG, _logDir.getAbsolutePath());
-        props.setProperty(KRaftConfigs.METADATA_LOG_DIR_CONFIG, _logDir.getAbsolutePath());
+        props.setProperty("process.roles", "controller");
+        props.setProperty("node.id", String.valueOf(ID));
+        props.setProperty("controller.listener.names", "CONTROLLER");
+        props.setProperty("listeners", "CONTROLLER://:" + _port);
+        props.setProperty("controller.quorum.voters", quorumVoters());
+        props.setProperty("log.dir", _logDir.getAbsolutePath());
+        props.setProperty("metadata.log.dir", _logDir.getAbsolutePath());
         return props;
     }
 
