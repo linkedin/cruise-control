@@ -40,7 +40,6 @@ public class CCEmbeddedBrokerBuilder {
   private long _socketTimeoutMs = 1500;
   //feature control
   private boolean _enableControlledShutdown;
-  private long _controlledShutdownRetryBackoff = 100;
   private boolean _enableDeleteTopic;
   private boolean _enableLogCleaner;
   //resource management
@@ -197,15 +196,6 @@ public class CCEmbeddedBrokerBuilder {
    */
   public CCEmbeddedBrokerBuilder enableControlledShutdown(boolean enableControlledShutdown) {
     _enableControlledShutdown = enableControlledShutdown;
-    return this;
-  }
-
-  /**
-   * @param controlledShutdownRetryBackoff controlled shutdown retry backoff.
-   * @return This
-   */
-  public CCEmbeddedBrokerBuilder controlledShutdownRetryBackoff(long controlledShutdownRetryBackoff) {
-    _controlledShutdownRetryBackoff = controlledShutdownRetryBackoff;
     return this;
   }
 
