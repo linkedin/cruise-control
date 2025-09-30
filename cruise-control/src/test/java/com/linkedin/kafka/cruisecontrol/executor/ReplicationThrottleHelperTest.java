@@ -115,7 +115,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
     EasyMock.replay(mockAdminClient);
 
-    // Test would fail on any unexpected interactions with the kafkaZkClient
+    // Test would fail on any unexpected interactions with the adminClient
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, null);
     ExecutionProposal proposal = new ExecutionProposal(new TopicPartition("topic", 0),
                                            100,
