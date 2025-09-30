@@ -19,6 +19,16 @@ public class CCEmbeddedKRaftController implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(CCEmbeddedKRaftController.class);
     private static final String HOST = "localhost";
     private static final int ID = 100;
+
+    // Instead of using config constants from internal Kafka classes, we declare them here to reduce dependency on them
+    private static final String PROCESS_ROLES_CONFIG = "process.roles";
+    private static final String NODE_ID_CONFIG = "node.id";
+    private static final String CONTROLLER_LISTENER_NAMES_CONFIG = "controller.listener.names";
+    private static final String LISTENERS_CONFIG = "listeners";
+    private static final String QUORUM_VOTERS_CONFIG = "controller.quorum.voters";
+    private static final String LOG_DIR_CONFIG = "log.dir";
+    private static final String METADATA_LOG_DIR_CONFIG = "metadata.log.dir";
+
     private int _port = 0;
     private final File _logDir;
     private final String _clusterId;
@@ -84,13 +94,13 @@ public class CCEmbeddedKRaftController implements AutoCloseable {
 
     private Properties createControllerProperties() {
         Properties props = new Properties();
-        props.setProperty("process.roles", "controller");
-        props.setProperty("node.id", String.valueOf(ID));
-        props.setProperty("controller.listener.names", "CONTROLLER");
-        props.setProperty("listeners", "CONTROLLER://:" + _port);
-        props.setProperty("controller.quorum.voters", quorumVoters());
-        props.setProperty("log.dir", _logDir.getAbsolutePath());
-        props.setProperty("metadata.log.dir", _logDir.getAbsolutePath());
+        props.setProperty(PROCESS_ROLES_CONFIG, "controller");
+        props.setProperty(NODE_ID_CONFIG, String.valueOf(ID));
+        props.setProperty(CONTROLLER_LISTENER_NAMES_CONFIG, "CONTROLLER");
+        props.setProperty(LISTENERS_CONFIG, "CONTROLLER://:" + _port);
+        props.setProperty(QUORUM_VOTERS_CONFIG, quorumVoters());
+        props.setProperty(LOG_DIR_CONFIG, _logDir.getAbsolutePath());
+        props.setProperty(METADATA_LOG_DIR_CONFIG, _logDir.getAbsolutePath());
         return props;
     }
 
