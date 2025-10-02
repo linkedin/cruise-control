@@ -6,10 +6,6 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 import kafka.server.KafkaConfig;
 import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.utils.Time;
-import org.apache.kafka.network.SocketServerConfigs;
-import org.apache.kafka.raft.QuorumConfig;
-import org.apache.kafka.server.config.KRaftConfigs;
-import org.apache.kafka.server.config.ServerLogConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
@@ -23,6 +19,16 @@ public class CCEmbeddedKRaftController implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(CCEmbeddedKRaftController.class);
     private static final String HOST = "localhost";
     private static final int ID = 100;
+
+    // Instead of using config constants from internal Kafka classes, we declare them here to reduce dependency on them
+    private static final String PROCESS_ROLES_CONFIG = "process.roles";
+    private static final String NODE_ID_CONFIG = "node.id";
+    private static final String CONTROLLER_LISTENER_NAMES_CONFIG = "controller.listener.names";
+    private static final String LISTENERS_CONFIG = "listeners";
+    private static final String QUORUM_VOTERS_CONFIG = "controller.quorum.voters";
+    private static final String LOG_DIR_CONFIG = "log.dir";
+    private static final String METADATA_LOG_DIR_CONFIG = "metadata.log.dir";
+
     private int _port = 0;
     private final File _logDir;
     private final String _clusterId;
@@ -88,13 +94,13 @@ public class CCEmbeddedKRaftController implements AutoCloseable {
 
     private Properties createControllerProperties() {
         Properties props = new Properties();
-        props.setProperty(KRaftConfigs.PROCESS_ROLES_CONFIG, "controller");
-        props.setProperty(KRaftConfigs.NODE_ID_CONFIG, String.valueOf(ID));
-        props.setProperty(KRaftConfigs.CONTROLLER_LISTENER_NAMES_CONFIG, "CONTROLLER");
-        props.setProperty(SocketServerConfigs.LISTENERS_CONFIG, "CONTROLLER://:" + _port);
-        props.setProperty(QuorumConfig.QUORUM_VOTERS_CONFIG, quorumVoters());
-        props.setProperty(ServerLogConfigs.LOG_DIR_CONFIG, _logDir.getAbsolutePath());
-        props.setProperty(KRaftConfigs.METADATA_LOG_DIR_CONFIG, _logDir.getAbsolutePath());
+        props.setProperty(PROCESS_ROLES_CONFIG, "controller");
+        props.setProperty(NODE_ID_CONFIG, String.valueOf(ID));
+        props.setProperty(CONTROLLER_LISTENER_NAMES_CONFIG, "CONTROLLER");
+        props.setProperty(LISTENERS_CONFIG, "CONTROLLER://:" + _port);
+        props.setProperty(QUORUM_VOTERS_CONFIG, quorumVoters());
+        props.setProperty(LOG_DIR_CONFIG, _logDir.getAbsolutePath());
+        props.setProperty(METADATA_LOG_DIR_CONFIG, _logDir.getAbsolutePath());
         return props;
     }
 
