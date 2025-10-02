@@ -40,7 +40,8 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
       }
     }
     props.putAll(super.overridingProps());
-    props.put("listener.security.protocol.map", String.join(",", "CONTROLLER:PLAINTEXT",
+    props.put("listener.security.protocol.map", String.join(",",
+      CCContainerizedKraftCluster.CONTROLLER_LISTENER_NAME + ":PLAINTEXT",
       CCContainerizedKraftCluster.INTERNAL_LISTENER_NAME + ":SSL",
       CCContainerizedKraftCluster.EXTERNAL_LISTENER_NAME + ":SSL"));
     // The Kafka brokers should use the same key manager algorithm as the host that generates the certs

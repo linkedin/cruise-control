@@ -109,7 +109,8 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
     props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
       HOST + ":" + CCContainerizedKraftCluster.CONTAINER_INTERNAL_LISTENER_PORT);
-    props.put("listener.security.protocol.map", String.join(",", "CONTROLLER:PLAINTEXT",
+    props.put("listener.security.protocol.map", String.join(",",
+      CCContainerizedKraftCluster.CONTROLLER_LISTENER_NAME + ":PLAINTEXT",
       CCContainerizedKraftCluster.INTERNAL_LISTENER_NAME + ":PLAINTEXT",
       CCContainerizedKraftCluster.EXTERNAL_LISTENER_NAME + ":PLAINTEXT"));
     props.setProperty(CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");

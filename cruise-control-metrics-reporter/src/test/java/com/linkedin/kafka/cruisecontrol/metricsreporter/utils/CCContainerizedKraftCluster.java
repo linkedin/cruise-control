@@ -48,16 +48,23 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetr
  */
 public class CCContainerizedKraftCluster implements Startable {
   private static final String KAFKA_IMAGE = System.getenv().getOrDefault("KAFKA_IMAGE", "apache/kafka:3.9.1");
-  // Determines the hostname used by containers to connect to services running on the host machine.
-  // This is useful in CI environment like CircleCI where the Docker network bridge requires a specific hostname.
+  /**
+   * Determines the hostname used by containers to connect to services running on the host machine.
+   * Required for CI environments like CircleCI, where the Docker executor relies on a specific hostname
+   * for the CircleCI job to communicate with TestContainers services.
+   */
   private static final String CONTAINER_HOST = System.getenv().getOrDefault("CONTAINER_HOST", "localhost");
-  // Selects or creates the Docker network used for Test Container communication.
-  // This is useful in CI environment like CircleCI where the Docker network needs to be shared with Test Container client.
+  /**
+   * Selects or creates the Docker network used for TestContainers communication.
+   * Required for CI environments like CircleCI, where the Docker executor requires sharing the Docker network
+   * to allow the CircleCI job to communicate with TestContainers services.
+   */
   private static final Network NETWORK = System.getenv("NETWORK_NAME") != null
     ? Network.builder().id(System.getenv("NETWORK_NAME")).build()
     : Network.newNetwork();
 
   private static final String NETWORK_ALIAS_PREFIX = "broker";
+  public static final String CONTROLLER_LISTENER_NAME = "CONTROLLER";
   public static final String INTERNAL_LISTENER_NAME = "INTERNAL";
   public static final String EXTERNAL_LISTENER_NAME = "EXTERNAL";
 
@@ -69,7 +76,7 @@ public class CCContainerizedKraftCluster implements Startable {
   private final String _bootstrapServers;
 
   public CCContainerizedKraftCluster(int numOfBrokers, List<Map<Object, Object>> brokerConfigs, Properties adminClientProps) {
-    if (numOfBrokers < 0) {
+    if (numOfBrokers <= 0) {
       throw new IllegalArgumentException("numOfBrokers '" + numOfBrokers + "' must be greater than 0");
     }
 
@@ -77,12 +84,21 @@ public class CCContainerizedKraftCluster implements Startable {
     String controllerQuorumVoters = getControllerQuorumVoters(numOfBrokers);
     List<Integer> containerHostPorts = getContainerHostPorts(numOfBrokers);
     String listeners = String.join(",",
-      "CONTROLLER://0.0.0.0:" + CONTAINER_CONTROLLER_LISTENER_PORT,
+      CONTROLLER_LISTENER_NAME + "://0.0.0.0:" + CONTAINER_CONTROLLER_LISTENER_PORT,
       INTERNAL_LISTENER_NAME + "://0.0.0.0:" + CONTAINER_INTERNAL_LISTENER_PORT,
       EXTERNAL_LISTENER_NAME + "://0.0.0.0:" + CONTAINER_EXTERNAL_LISTENER_PORT
     );
     this._bootstrapServers = generateBootstrapServersList(numOfBrokers, containerHostPorts);
-    adminClientProps.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, _bootstrapServers);
+
+    /*
+     * Ideally, we would construct the admin client properties directly in this constructor. However, due to the current
+     * inheritance structure in the test classes, we rely on externally provided properties to preserve required security
+     * configurations. Cloning and augmenting the provided properties here is the simplest and safest way to handle this
+     * without breaking existing test setups.
+     */
+    Properties adminClientPropsWithBootstrapAddress = new Properties();
+    adminClientPropsWithBootstrapAddress.putAll(adminClientProps);
+    adminClientPropsWithBootstrapAddress.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, _bootstrapServers);
 
     this._brokers =
       IntStream
@@ -127,7 +143,7 @@ public class CCContainerizedKraftCluster implements Startable {
             //.withLogConsumer(outputFrame -> System.out.print(networkAlias + " | " + outputFrame.getUtf8String()))
             // Uncomment the following line when debugging SSL connection problems.
             //.withEnv("KAFKA_OPTS", "-Djavax.net.debug=ssl,handshake")
-            .waitingFor(new BrokerWaitStrategy(brokerNum, metricsTopic, adminClientProps)
+            .waitingFor(new BrokerWaitStrategy(brokerNum, metricsTopic, adminClientPropsWithBootstrapAddress)
               .withStartupTimeout(Duration.ofMinutes(1))
             );
           kafkaContainer.setPortBindings(List.of(containerHostPort + ":" + CONTAINER_EXTERNAL_LISTENER_PORT));

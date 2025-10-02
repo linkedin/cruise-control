@@ -25,10 +25,11 @@ jobs:
           command: |
             export NETWORK_NAME="test_containers_network"
 
-            # Create dedicated Docker network for the CircleCI job container and TestContainers to communicate.
+            # Create a shared Docker network, required for communication between the CircleCI job container
+            # and TestContainers services.
             docker network create $NETWORK_NAME
 
-            # Extract Docker host for helping CircleCI find Kafka containers.
+            # Extract Docker host for helping CircleCI find TestContainer services.
             export CONTAINER_HOST=$(docker network inspect "$NETWORK_NAME" --format='{{(index .IPAM.Config 0).Gateway}}')
 
             ./gradlew --no-daemon -PmaxParallelForks=1 build
