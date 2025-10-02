@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
@@ -51,6 +52,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetr
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
@@ -186,7 +188,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   }
 
   @Test
-  public void testUpdatingMetricsTopicConfig() throws InterruptedException {
+  public void testUpdatingMetricsTopicConfig() throws ExecutionException, InterruptedException {
     Properties props = new Properties();
     setSecurityConfigs(props, "admin");
     props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
@@ -207,19 +209,26 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     brokerConfig.put(CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG, "true");
     brokerConfig.put(CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG, "2");
     brokerConfig.put(CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
-    CCEmbeddedBroker broker = new CCEmbeddedBroker(brokerConfig);
-    // Restart broker
-    broker.startup();
-    // Wait for broker to boot up
-    Thread.sleep(5000);
+    try (CCEmbeddedBroker broker = new CCEmbeddedBroker(brokerConfig)) {
+      // Restart broker
+      broker.startup();
+      // Check whether the topic config is updated
+      long startTime = System.currentTimeMillis();
+      boolean isTopicConfigChanged = false;
+      while (!isTopicConfigChanged) {
+        if (System.currentTimeMillis() > startTime + 60000) {
+          fail("Topic config was not updated");
+        }
 
-    // Check whether the topic config is updated
-    try {
-      topicDescription = getTopicDescription(adminClient, TOPIC);
-    } catch (KafkaTopicDescriptionException e) {
-      throw new RuntimeException(e);
+        TopicDescription description = adminClient.describeTopics(Collections.singleton(TOPIC)).topicNameValues().get(TOPIC).get();
+        isTopicConfigChanged = 2 == description.partitions().size();
+
+        try {
+          Thread.sleep(5000);
+        } catch (InterruptedException ignored) {
+        }
+      }
     }
-    assertEquals(2, topicDescription.partitions().size());
   }
 
   @Test

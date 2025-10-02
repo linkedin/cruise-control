@@ -91,9 +91,9 @@ Control). The metrics reporter periodically samples the Kafka raw metrics on the
     * If the default broker cleanup policy is `compact`, make sure that the topic to which Cruise Control metrics
     reporter should send messages is created with the `delete` cleanup policy -- the default metrics reporter topic
     is `__CruiseControlMetrics`.
-2. Start ZooKeeper and Kafka server ([See tutorial](https://kafka.apache.org/quickstart)).
+2. Start Kafka server ([See tutorial](https://kafka.apache.org/quickstart)).
 3. Modify `config/cruisecontrol.properties` of Cruise Control:
-    * (Required) fill in `bootstrap.servers` and `zookeeper.connect` to the Kafka cluster to be monitored.
+    * (Required) fill in `bootstrap.servers` to the Kafka cluster to be monitored.
     * (Required) update `capacity.config.file` to the path of your capacity file.  
       * Capacity file is a JSON file that provides the capacity of the brokers
       * You can start Cruise Control server with the default file (`config/capacityJBOD.json`), but it may not reflect the actual capacity of the brokers 
