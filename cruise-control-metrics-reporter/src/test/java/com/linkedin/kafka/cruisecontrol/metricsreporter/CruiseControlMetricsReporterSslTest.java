@@ -7,19 +7,12 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
-import org.apache.kafka.clients.CommonClientConfigs;
+import javax.net.ssl.KeyManagerFactory;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKraftCluster;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
-import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
-import org.apache.kafka.network.SocketServerConfigs;
-import org.apache.kafka.server.config.ReplicationConfigs;
-import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.Assert;
-
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
-
 
 public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsReporterTest {
 
@@ -37,7 +30,6 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
   @Override
   public Properties overridingProps() {
     Properties props = new Properties();
-    int port = CCKafkaTestUtils.findLocalPort();
     // We need to convert all the properties to the Cruise Control properties.
     setSecurityConfigs(props, "producer");
     for (String configName : ProducerConfig.configNames()) {
@@ -47,21 +39,14 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
         props.put(appendPrefix(configName), value);
       }
     }
-    props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
-    props.setProperty(SocketServerConfigs.LISTENERS_CONFIG, "SSL://127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG), "127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG), SecurityProtocol.SSL.name);
-    props.setProperty(CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
-    props.setProperty(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
-    props.setProperty(ServerLogConfigs.LOG_FLUSH_INTERVAL_MESSAGES_CONFIG, "1");
-    props.setProperty(GroupCoordinatorConfig.OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
-    props.setProperty(ReplicationConfigs.DEFAULT_REPLICATION_FACTOR_CONFIG, "2");
+    props.putAll(super.overridingProps());
+    props.put("listener.security.protocol.map", String.join(",",
+      CCContainerizedKraftCluster.CONTROLLER_LISTENER_NAME + ":PLAINTEXT",
+      CCContainerizedKraftCluster.INTERNAL_LISTENER_NAME + ":SSL",
+      CCContainerizedKraftCluster.EXTERNAL_LISTENER_NAME + ":SSL"));
+    // The Kafka brokers should use the same key manager algorithm as the host that generates the certs
+    props.setProperty(SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG, KeyManagerFactory.getDefaultAlgorithm());
     return props;
-  }
-
-  @Override
-  public void testUpdatingMetricsTopicConfig() {
-   // Skip this test since it is flaky due to undetermined time to propagate metadata.
   }
 
   @Override
