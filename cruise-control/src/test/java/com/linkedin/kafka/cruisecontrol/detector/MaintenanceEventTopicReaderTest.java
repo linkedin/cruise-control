@@ -157,8 +157,8 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()));
     try {
       while (true) {
-        description0 = adminClient0.describeTopics(Collections.singleton(TEST_TOPIC)).values().get(TEST_TOPIC).get();
-        description1 = adminClient1.describeTopics(Collections.singleton(TEST_TOPIC)).values().get(TEST_TOPIC).get();
+        description0 = adminClient0.describeTopics(Collections.singleton(TEST_TOPIC)).topicNameValues().get(TEST_TOPIC).get();
+        description1 = adminClient1.describeTopics(Collections.singleton(TEST_TOPIC)).topicNameValues().get(TEST_TOPIC).get();
         topicConfig0 = adminClient0.describeConfigs(Collections.singleton(topicResource)).values().get(topicResource).get();
         topicConfig1 = adminClient1.describeConfigs(Collections.singleton(topicResource)).values().get(topicResource).get();
         if (description0 != null && description1 != null && topicConfig0 != null && topicConfig1 != null
@@ -229,10 +229,6 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
                                                                                   parameterConfigOverrides);
 
     assertNotNull(maintenanceEventReader);
-    long start = System.currentTimeMillis();
-    while (System.currentTimeMillis() < start + 15000) {
-      //wait
-    }
     verify(newPartitionCount, newRF, newRetentionMs, true);
     Set<MaintenanceEvent> events = maintenanceEventReader.readEvents(TEST_TIMEOUT);
     EasyMock.verify(mockKafkaCruiseControl);

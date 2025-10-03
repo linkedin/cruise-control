@@ -151,7 +151,7 @@ public class PartitionProvisionerTest extends AbstractProvisionerTest {
     Map<String, KafkaFuture<TopicDescription>> describeTopicsValues = Collections.singletonMap(MOCK_TOPIC, MOCK_TOPIC_DESCRIPTION_FUTURE);
 
     EasyMock.expect(MOCK_ADMIN_CLIENT.describeTopics(Collections.singletonList(MOCK_TOPIC))).andReturn(MOCK_DESCRIBE_TOPICS_RESULT);
-    EasyMock.expect(MOCK_DESCRIBE_TOPICS_RESULT.values()).andReturn(describeTopicsValues);
+    EasyMock.expect(MOCK_DESCRIBE_TOPICS_RESULT.topicNameValues()).andReturn(describeTopicsValues);
 
     if (partitionIncreaseCompletion == COMPLETED) {
       EasyMock.expect(MOCK_TOPIC_DESCRIPTION_FUTURE.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)).andReturn(MOCK_TOPIC_DESCRIPTION);

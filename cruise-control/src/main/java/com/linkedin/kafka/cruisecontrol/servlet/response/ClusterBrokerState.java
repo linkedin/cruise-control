@@ -23,12 +23,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.LogDirDescription;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.protocol.Errors;
-import org.apache.kafka.common.requests.DescribeLogDirsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,15 +180,15 @@ public class ClusterBrokerState {
       }
     }
 
-    Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> logDirsByBrokerId
-        = _adminClient.describeLogDirs(aliveBrokers).values();
-    for (Map.Entry<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
+    Map<Integer, KafkaFuture<Map<String, LogDirDescription>>> logDirsByBrokerId
+        = _adminClient.describeLogDirs(aliveBrokers).descriptions();
+    for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirDescription>>> entry : logDirsByBrokerId.entrySet()) {
       onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
       offlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
 
       try {
         entry.getValue().get(_config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS).forEach((key, value) -> {
-          if (value.error == Errors.NONE) {
+          if (value.error() == null) {
             onlineLogDirsByBrokerId.get(entry.getKey()).add(key);
           } else {
             offlineLogDirsByBrokerId.get(entry.getKey()).add(key);

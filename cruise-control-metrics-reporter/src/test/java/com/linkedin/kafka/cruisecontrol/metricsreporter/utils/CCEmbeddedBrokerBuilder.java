@@ -40,7 +40,6 @@ public class CCEmbeddedBrokerBuilder {
   private long _socketTimeoutMs = 1500;
   //feature control
   private boolean _enableControlledShutdown;
-  private long _controlledShutdownRetryBackoff = 100;
   private boolean _enableDeleteTopic;
   private boolean _enableLogCleaner;
   //resource management
@@ -201,15 +200,6 @@ public class CCEmbeddedBrokerBuilder {
   }
 
   /**
-   * @param controlledShutdownRetryBackoff controlled shutdown retry backoff.
-   * @return This
-   */
-  public CCEmbeddedBrokerBuilder controlledShutdownRetryBackoff(long controlledShutdownRetryBackoff) {
-    _controlledShutdownRetryBackoff = controlledShutdownRetryBackoff;
-    return this;
-  }
-
-  /**
    * Enable delete topic.
    *
    * @param enableDeleteTopic {@code true} to enable delete topic, {@code false} otherwise.
@@ -300,7 +290,6 @@ public class CCEmbeddedBrokerBuilder {
     props.put(ReplicationConfigs.CONTROLLER_SOCKET_TIMEOUT_MS_CONFIG, Long.toString(_socketTimeoutMs));
     props.put(ServerConfigs.CONTROLLED_SHUTDOWN_ENABLE_CONFIG, Boolean.toString(_enableControlledShutdown));
     props.put(ServerConfigs.DELETE_TOPIC_ENABLE_CONFIG, Boolean.toString(_enableDeleteTopic));
-    props.put(ServerConfigs.CONTROLLED_SHUTDOWN_RETRY_BACKOFF_MS_CONFIG, Long.toString(_controlledShutdownRetryBackoff));
     props.put(CleanerConfig.LOG_CLEANER_DEDUPE_BUFFER_SIZE_PROP, Long.toString(_logCleanerDedupBufferSize));
     props.put(CleanerConfig.LOG_CLEANER_ENABLE_PROP, Boolean.toString(_enableLogCleaner));
     props.put(GroupCoordinatorConfig.OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");

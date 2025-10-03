@@ -96,7 +96,7 @@ public class SamplingUtilsTest {
     CreatePartitionsResult createPartitionsResult = EasyMock.createMock(CreatePartitionsResult.class);
 
     EasyMock.expect(adminClient.describeTopics(Collections.singletonList(MOCK_TOPIC))).andReturn(describeTopicsResult);
-    EasyMock.expect(describeTopicsResult.values()).andReturn(describeTopicsValues);
+    EasyMock.expect(describeTopicsResult.topicNameValues()).andReturn(describeTopicsValues);
     EasyMock.expect(topicDescriptionFuture.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)).andReturn(topicDescription);
     EasyMock.expect(topicDescription.partitions()).andReturn(MOCK_PARTITIONS);
     EasyMock.expect(adminClient.createPartitions(Collections.singletonMap(MOCK_TOPIC, EasyMock.anyObject())))

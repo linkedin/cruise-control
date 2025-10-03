@@ -314,7 +314,7 @@ public final class KafkaCruiseControlUtils {
     // Retrieve partition count of topic to check if it needs a partition count update.
     TopicDescription topicDescription;
     try {
-      topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).values()
+      topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).topicNameValues()
                                     .get(topicName).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       LOG.warn("Partition count increase check for topic {} failed due to failure to describe cluster.", topicName, e);
