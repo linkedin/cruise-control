@@ -5,11 +5,14 @@ jobs:
   build:
     environment:
       _JAVA_OPTIONS: "-Xms512m -Xmx1g"
+      TESTCONTAINERS_RYUK_DISABLED: "true"
     working_directory: ~/workspace
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     steps:
       - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
       - restore_cache:
           key: dependency-cache-{{ checksum "build.gradle" }}
       - run:
@@ -19,7 +22,17 @@ jobs:
           command: ./gradlew --max-workers=1 --no-daemon analyze
       - run:
           no_output_timeout: 15m
-          command: ./gradlew --no-daemon -PmaxParallelForks=1 build
+          command: |
+            export NETWORK_NAME="test_containers_network"
+
+            # Create a shared Docker network, required for communication between the CircleCI job container
+            # and TestContainers services.
+            docker network create $NETWORK_NAME
+
+            # Extract Docker host for helping CircleCI find TestContainer services.
+            export CONTAINER_HOST=$(docker network inspect "$NETWORK_NAME" --format='{{(index .IPAM.Config 0).Gateway}}')
+
+            ./gradlew --no-daemon -PmaxParallelForks=1 build
       - save_cache:
           key: dependency-cache-{{ checksum "build.gradle" }}
           paths:
@@ -40,7 +53,7 @@ jobs:
       _JAVA_OPTIONS: "-Xms512m -Xmx1g"
     working_directory: ~/workspace
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     steps:
       - checkout
       - restore_cache:
@@ -63,7 +76,7 @@ jobs:
   publish:
     working_directory: ~/workspace
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0
     steps:
       - checkout
       - restore_cache:

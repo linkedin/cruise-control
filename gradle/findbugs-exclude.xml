@@ -79,6 +79,10 @@
     <Bug pattern="SF_SWITCH_FALLTHROUGH" />
   </Match>
 
+  <Match>
+    <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+  </Match>
+
   <!-- False positive of DMI_RANDOM_USED_ONLY_ONCE (see https://github.com/spotbugs/spotbugs/issues/1539) -->
   <Match>
     <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE, ..." />

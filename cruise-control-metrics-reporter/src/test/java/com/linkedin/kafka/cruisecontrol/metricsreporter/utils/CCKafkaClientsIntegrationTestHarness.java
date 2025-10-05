@@ -11,10 +11,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.config.SslConfigs;
-import org.apache.kafka.common.network.Mode;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.test.TestSslUtils;
 
 
 public abstract class CCKafkaClientsIntegrationTestHarness extends CCKafkaIntegrationTestHarness {
@@ -58,7 +56,8 @@ public abstract class CCKafkaClientsIntegrationTestHarness extends CCKafkaIntegr
       clientProps.setProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, protocol.name);
       clientProps.setProperty(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
       try {
-        clientProps.putAll(TestSslUtils.createSslConfig(true, true, Mode.CLIENT, trustStoreFile, certAlias));
+        clientProps.putAll(CCSslTestUtils.createSslConfig(true, true,
+            CCSslTestUtils.ConnectionMode.CLIENT, trustStoreFile, certAlias));
       } catch (Exception e) {
         throw new IllegalStateException(e);
       }

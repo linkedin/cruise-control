@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,7 +44,6 @@ public class CaseInsensitiveGoalConfigTest {
     Collection<Object[]> params = new ArrayList<>();
 
     Properties sharedProps = new Properties();
-    sharedProps.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
     sharedProps.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "aaa");
 
     // Test: With case insensitive goal names (No exception)

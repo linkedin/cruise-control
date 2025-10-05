@@ -19,7 +19,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.cr
  */
 public class ReadOnlyKafkaSampleStore extends KafkaSampleStore {
   /**
-   * We have to override the configure method so that no producer is created and no ZK topic configuration change
+   * We have to override the configure method so that no producer is created and no topic configuration change
    * is made either.
    */
   @Override

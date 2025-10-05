@@ -298,8 +298,10 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
       Set<BrokerCapacity> brokerCapacities = ((BrokerCapacities) gson.fromJson(reader, BrokerCapacities.class)).brokerCapacities;
       capacitiesForBrokers = new HashMap<>();
       Set<Boolean> numCoresConfigConsistency = new HashSet<>();
-      for (BrokerCapacity bc : brokerCapacities) {
-        capacitiesForBrokers.put(bc.brokerId, getBrokerCapacityInfo(bc, numCoresConfigConsistency));
+      if (brokerCapacities != null) {
+        for (BrokerCapacity bc : brokerCapacities) {
+          capacitiesForBrokers.put(bc.brokerId, getBrokerCapacityInfo(bc, numCoresConfigConsistency));
+        }
       }
     } finally {
       try {

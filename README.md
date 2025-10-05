@@ -52,7 +52,8 @@ Cruise Control for Apache Kafka
 * The `main` (previously `migrate_to_kafka_2_5`) branch of Cruise Control is compatible with Apache Kafka `2.5+` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.*`),
   `2.6` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.11+`), `2.7` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.36+`),
   `2.8` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.66+`), `3.0` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.85+`),
-  and `3.1` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.85+`).
+  `3.1` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.85+`), `3.8` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.142+`),
+  `3.9` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.143+`), and `4.0` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.144+`)
 * The `migrate_to_kafka_2_4` branch of Cruise Control is compatible with Apache Kafka `2.4` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.4.*`).
 * The `kafka_2_0_to_2_3` branch (deprecated) of Cruise Control is compatible with Apache Kafka `2.0`, `2.1`, `2.2`, and `2.3` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.0.*`).
 * The `kafka_0_11_and_1_0` branch (deprecated) of Cruise Control is compatible with Apache Kafka `0.11.0.0`, `1.0`, and `1.1` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `0.1.*`).
@@ -60,7 +61,7 @@ Cruise Control for Apache Kafka
 * The `kafka_2_0_to_2_3` and `kafka_0_11_and_1_0` branches compile with `Scala 2.11`.
 * The branch `migrate_to_kafka_2_4` compiles with `Scala 2.12`.
 * The branch `migrate_to_kafka_2_5` compile with `Scala 2.13`.
-* This project requires Java 11.
+* This project requires Java 17.
 
 #### Known Compatibility Issues ####
 * Support for Apache Kafka `2.0`, `2.1`, `2.2`, and `2.3` requires [KAFKA-8875](https://issues.apache.org/jira/browse/KAFKA-8875) hotfix.
@@ -77,7 +78,7 @@ Cruise Control for Apache Kafka
         && git tag -a 0.1.10 -m "Init local version."`
 1. This step is required if `CruiseControlMetricsReporter` is used for metrics collection (i.e. the default for Cruise
 Control). The metrics reporter periodically samples the Kafka raw metrics on the broker and sends them to a Kafka topic.
-    * `./gradlew jar` (Note: This project requires Java 11)
+    * `./gradlew jar` (Note: This project requires Java 17)
     * Copy `./cruise-control-metrics-reporter/build/libs/cruise-control-metrics-reporter-A.B.C.jar` (Where `A.B.C` is
     the version of the Cruise Control) to your Kafka server dependency jar folder. For Apache Kafka, the folder would
     be `core/build/dependant-libs-SCALA_VERSION/` (for a Kafka source checkout) or `libs/` (for a Kafka release download).
@@ -91,9 +92,9 @@ Control). The metrics reporter periodically samples the Kafka raw metrics on the
     * If the default broker cleanup policy is `compact`, make sure that the topic to which Cruise Control metrics
     reporter should send messages is created with the `delete` cleanup policy -- the default metrics reporter topic
     is `__CruiseControlMetrics`.
-2. Start ZooKeeper and Kafka server ([See tutorial](https://kafka.apache.org/quickstart)).
+2. Start Kafka server ([See tutorial](https://kafka.apache.org/quickstart)), and if you're using a ZooKeeper-based Kafka cluster also start a ZooKeeper server.
 3. Modify `config/cruisecontrol.properties` of Cruise Control:
-    * (Required) fill in `bootstrap.servers` and `zookeeper.connect` to the Kafka cluster to be monitored.
+    * (Required) fill in `bootstrap.servers` to the Kafka cluster to be monitored.
     * (Required) update `capacity.config.file` to the path of your capacity file.  
       * Capacity file is a JSON file that provides the capacity of the brokers
       * You can start Cruise Control server with the default file (`config/capacityJBOD.json`), but it may not reflect the actual capacity of the brokers 

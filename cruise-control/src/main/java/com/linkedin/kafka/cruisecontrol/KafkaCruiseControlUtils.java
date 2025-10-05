@@ -17,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtil
 import com.linkedin.kafka.cruisecontrol.metricsreporter.config.EnvConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -53,8 +52,6 @@ import org.apache.kafka.common.requests.AbstractResponse;
 import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.utils.SystemTime;
-import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.servlet.ServletException;
@@ -63,7 +60,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -78,7 +74,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import scala.Option;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
@@ -100,9 +95,6 @@ public final class KafkaCruiseControlUtils {
   // Config to pass an Admin client to a pluggable component
   public static final String ADMIN_CLIENT_CONFIG = "admin.client.object";
   public static final double MAX_BALANCEDNESS_SCORE = 100.0;
-  public static final int ZK_SESSION_TIMEOUT = (int) TimeUnit.MINUTES.toMillis(2);
-  public static final int ZK_CONNECTION_TIMEOUT = (int) TimeUnit.MINUTES.toMillis(2);
-  public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final int SEC_TO_MS = (int) TimeUnit.SECONDS.toMillis(1);
   private static final int MIN_TO_MS = SEC_TO_MS * 60;
@@ -322,7 +314,7 @@ public final class KafkaCruiseControlUtils {
     // Retrieve partition count of topic to check if it needs a partition count update.
     TopicDescription topicDescription;
     try {
-      topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).values()
+      topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).topicNameValues()
                                     .get(topicName).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       LOG.warn("Partition count increase check for topic {} failed due to failure to describe cluster.", topicName, e);
@@ -497,24 +489,6 @@ public final class KafkaCruiseControlUtils {
   }
 
   /**
-   * Close the given KafkaZkClient with the default timeout of {@link #KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS}.
-   *
-   * @param kafkaZkClient KafkaZkClient to be closed.
-   */
-  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient) {
-    closeKafkaZkClientWithTimeout(kafkaZkClient, KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS);
-  }
-
-  /**
-   * Close the given KafkaZkClient with the given timeout.
-   * @param kafkaZkClient KafkaZkClient to be closed
-   * @param timeoutMs the timeout.
-   */
-  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
-    closeClientWithTimeout(kafkaZkClient::close, timeoutMs);
-  }
-
-  /**
    * Check if set a contains any element in set b.
    * @param a the first set.
    * @param b the second set.
@@ -522,68 +496,6 @@ public final class KafkaCruiseControlUtils {
    */
   public static boolean containsAny(Set<Integer> a, Set<Integer> b) {
     return b.stream().mapToInt(i -> i).anyMatch(a::contains);
-  }
-
-  /**
-   * Create an instance of KafkaZkClient with security disabled.
-   * Name of the underlying {@link kafka.zookeeper.ZooKeeperClient} instance is derived using the combination given
-   * metricGroup and metricType with a dash in between.
-   *
-   * @param connectString Comma separated host:port pairs, each corresponding to a zk server
-   * @param metricGroup Metric group
-   * @param metricType Metric type
-   * @param zkSecurityEnabled {@code true} if zkSecurityEnabled, {@code false} otherwise.
-   * @param zkClientConfig The ZooKeeper client configuration
-   * @return A new instance of KafkaZkClient
-   */
-  public static KafkaZkClient createKafkaZkClient(String connectString,
-                                                  String metricGroup,
-                                                  String metricType,
-                                                  boolean zkSecurityEnabled,
-                                                  ZKClientConfig zkClientConfig) {
-    KafkaZkClient kafkaZkClient = null;
-    try {
-      String zkClientName = String.format("%s-%s", metricGroup, metricType);
-      Method kafka38PlusMet = KafkaZkClient.class.getMethod("apply", String.class, boolean.class, int.class, int.class, int.class,
-              org.apache.kafka.common.utils.Time.class, String.class, ZKClientConfig.class,
-              String.class, String.class, boolean.class, boolean.class);
-      kafkaZkClient = (KafkaZkClient) kafka38PlusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-              Integer.MAX_VALUE, new SystemTime(), zkClientName, zkClientConfig, metricGroup,
-              metricType, false, true);
-    } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-      LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.8+.", e);
-    }
-    if (kafkaZkClient == null) {
-      try {
-        String zkClientName = String.format("%s-%s", metricGroup, metricType);
-        Method kafka31PlusMet = KafkaZkClient.class.getMethod("apply", String.class, boolean.class, int.class, int.class, int.class,
-                org.apache.kafka.common.utils.Time.class, String.class, ZKClientConfig.class,
-                String.class, String.class, boolean.class);
-        kafkaZkClient = (KafkaZkClient) kafka31PlusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-                Integer.MAX_VALUE, new SystemTime(), zkClientName, zkClientConfig, metricGroup,
-                metricType, false);
-      } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-        LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.1+.", e);
-      }
-    }
-    if (kafkaZkClient == null) {
-      try {
-        Option<String> zkClientName = Option.apply(String.format("%s-%s", metricGroup, metricType));
-        Option<ZKClientConfig> zkConfig = Option.apply(zkClientConfig);
-        Method kafka31MinusMet = KafkaZkClient.class.getMethod("apply", String.class, boolean.class, int.class, int.class, int.class,
-                                                               org.apache.kafka.common.utils.Time.class, String.class, String.class, Option.class,
-                                                               Option.class);
-        kafkaZkClient = (KafkaZkClient) kafka31MinusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-                                                               Integer.MAX_VALUE, new SystemTime(), metricGroup, metricType, zkClientName, zkConfig);
-      } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-        LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.1-.", e);
-      }
-    }
-    if (kafkaZkClient != null) {
-      return kafkaZkClient;
-    } else {
-      throw new NoSuchElementException("Unable to find viable apply function version for the KafkaZkClient class ");
-    }
   }
 
   /**

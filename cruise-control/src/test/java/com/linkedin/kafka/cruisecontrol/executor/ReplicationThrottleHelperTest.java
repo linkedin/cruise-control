@@ -89,8 +89,8 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   private static void setWildcardThrottleReplicaForTopic(ReplicationThrottleHelper helper, String topicName) throws Exception {
-    for (String replicaThrottleProp : Arrays.asList(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS,
-                                                    ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS)) {
+    for (String replicaThrottleProp : Arrays.asList(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG,
+                                                    ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG)) {
       Collection<AlterConfigOp> configs = Collections.singletonList(
               new AlterConfigOp(new ConfigEntry(replicaThrottleProp, ReplicationThrottleHelper.WILDCARD_ASTERISK), AlterConfigOp.OpType.SET)
       );
@@ -115,7 +115,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
     EasyMock.replay(mockAdminClient);
 
-    // Test would fail on any unexpected interactions with the kafkaZkClient
+    // Test would fail on any unexpected interactions with the adminClient
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, null);
     ExecutionProposal proposal = new ExecutionProposal(new TopicPartition("topic", 0),
                                            100,
@@ -152,12 +152,18 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     // Before the dynamic broker config is removed for the follower throttle rate
     Config brokerConfig = new Config(Arrays.asList(
-            mockConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, "200", ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG),
-            mockConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, "200", ConfigEntry.ConfigSource.DYNAMIC_BROKER_CONFIG)));
+            mockConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_RATE_CONFIG, "200",
+                    ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG),
+            mockConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, "200",
+                    ConfigEntry.ConfigSource.DYNAMIC_BROKER_CONFIG))
+    );
     // After the dynamic broker config is removed for the follower throttle rate
     Config brokerConfig2 = new Config(Arrays.asList(
-            mockConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, "200", ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG),
-            mockConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, "300", ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG)));
+            mockConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_RATE_CONFIG, "200",
+                    ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG),
+            mockConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, "300",
+                    ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG))
+    );
     // Expect that only the dynamic throttle rate configs are removed when clearing throttles
     expectDescribeBrokerConfigs(mockAdminClient, brokers, brokerConfig);
     expectIncrementalBrokerConfigs(mockAdminClient, brokers);
@@ -177,8 +183,8 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     expectDescribeBrokerConfigs(mockAdminClient, brokers, EMPTY_CONFIG);
     String throttledReplicas = brokerId0 + "," + brokerId1;
     Config topicConfigProps = new Config(Arrays.asList(
-            new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS, throttledReplicas),
-            new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS, throttledReplicas)));
+            new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, throttledReplicas),
+            new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, throttledReplicas)));
     expectDescribeTopicConfigs(mockAdminClient, TOPIC0, topicConfigProps, true);
     expectIncrementalTopicConfigs(mockAdminClient, TOPIC0, false);
     expectListTopics(mockAdminClient, Collections.emptySet());
@@ -224,8 +230,8 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     expectDescribeBrokerConfigs(mockAdminClient, brokers);
     String throttledReplicas = brokerId0 + "," + brokerId1;
     Config topicConfigs = new Config(Arrays.asList(
-      new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS, throttledReplicas),
-      new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS, throttledReplicas)));
+      new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, throttledReplicas),
+      new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, throttledReplicas)));
     expectDescribeTopicConfigs(mockAdminClient, TOPIC0, topicConfigs, true);
     expectIncrementalTopicConfigs(mockAdminClient, TOPIC0, false);
     expectListTopics(mockAdminClient, Collections.emptySet());
@@ -287,10 +293,10 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     long preExistingBroker0ThrottleRate = 200L;
     List<AlterConfigOp> broker0Configs = Arrays.asList(
       new AlterConfigOp(
-              new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, String.valueOf(preExistingBroker0ThrottleRate)),
+              new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_RATE_CONFIG, String.valueOf(preExistingBroker0ThrottleRate)),
               AlterConfigOp.OpType.SET),
       new AlterConfigOp(
-              new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, String.valueOf(throttleRate)),
+              new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, String.valueOf(throttleRate)),
               AlterConfigOp.OpType.SET)
     );
     throttleHelper.changeBrokerConfigs(0, broker0Configs);
@@ -299,14 +305,20 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     // replicas (on both leaders and followers); we expect these configurations to be merged
     // with our new throttled replicas.
     List<AlterConfigOp> topic0Configs = Arrays.asList(
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS, "1:0,1:1"), AlterConfigOp.OpType.SET),
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS, "1:0,1:1"), AlterConfigOp.OpType.SET));
+      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:0,1:1"),
+              AlterConfigOp.OpType.SET),
+      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:0,1:1"),
+              AlterConfigOp.OpType.SET)
+    );
     throttleHelper.changeTopicConfigs(TOPIC0, topic0Configs);
 
     // Topic 1 is not involved in any execution proposal. It has pre-existing throttled replicas.
     List<AlterConfigOp> topic1Config = Arrays.asList(
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS, "1:1"), AlterConfigOp.OpType.SET),
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS, "1:1"), AlterConfigOp.OpType.SET));
+      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:1"),
+              AlterConfigOp.OpType.SET),
+      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:1"),
+              AlterConfigOp.OpType.SET)
+    );
     throttleHelper.changeTopicConfigs(TOPIC1, topic1Config);
 
     throttleHelper.setThrottles(Collections.singletonList(proposal));
@@ -595,8 +607,8 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   throws ExecutionException, InterruptedException, TimeoutException {
     // All participating brokers have throttled rate set already
     Config brokerConfig = new Config(Arrays.asList(
-      new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, "100"),
-      new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, "100")));
+      new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_RATE_CONFIG, "100"),
+      new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, "100")));
     expectDescribeBrokerConfigs(adminClient, brokers, brokerConfig);
   }
 
@@ -633,11 +645,11 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
     assertNotNull(brokerConfig.get(cf));
     if (expectedRate == null) {
-      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE));
-      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE));
+      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_RATE_CONFIG));
+      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG));
     } else {
-      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE).value());
-      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE).value());
+      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_RATE_CONFIG).value());
+      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG).value());
     }
   }
 
@@ -645,7 +657,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
     Map<ConfigResource, Config> topicConfig = _adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
     assertNotNull(topicConfig.get(cf));
-    assertEquals(expectedReplicas, topicConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS).value());
-    assertEquals(expectedReplicas, topicConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS).value());
+    assertEquals(expectedReplicas, topicConfig.get(cf).get(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG).value());
+    assertEquals(expectedReplicas, topicConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG).value());
   }
 }

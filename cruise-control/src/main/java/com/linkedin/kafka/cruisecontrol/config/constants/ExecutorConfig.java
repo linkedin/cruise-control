@@ -14,7 +14,6 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeSmallReplica
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.server.config.ZkConfigs;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
@@ -25,118 +24,6 @@ import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
 public final class ExecutorConfig {
-
-  /**
-   * <code>zookeeper.connect</code>
-   */
-  public static final String ZOOKEEPER_CONNECT_CONFIG = ZkConfigs.ZK_CONNECT_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_CONNECT = null;
-  public static final String ZOOKEEPER_CONNECT_DOC = ZkConfigs.ZK_CONNECT_DOC;
-
-  /**
-   * <code>zookeeper.security.enabled</code>
-   */
-  public static final String ZOOKEEPER_SECURITY_ENABLED_CONFIG = "zookeeper.security.enabled";
-  public static final boolean DEFAULT_ZOOKEEPER_SECURITY_ENABLED = false;
-  public static final String ZOOKEEPER_SECURITY_ENABLED_DOC = "Specify if ZooKeeper is secured, true or false";
-
-  /**
-   * <code>zookeeper.ssl.client.enable</code>
-   */
-  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_CONFIG = ZkConfigs.ZK_SSL_CLIENT_ENABLE_CONFIG;
-  public static final boolean DEFAULT_ZOOKEEPER_SSL_CLIENT_ENABLE = false;
-  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_DOC = ZkConfigs.ZK_SSL_CLIENT_ENABLE_DOC;
-
-  /**
-   * <code>zookeeper.clientCnxnSocket</code>
-   */
-  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_CONFIG = ZkConfigs.ZK_CLIENT_CNXN_SOCKET_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_CNXN_SOCKET = null;
-  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_DOC = ZkConfigs.ZK_CLIENT_CNXN_SOCKET_DOC;
-
-  /**
-   * <code>zookeeper.ssl.keystore.location</code>
-   */
-  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_CONFIG = ZkConfigs.ZK_SSL_KEY_STORE_LOCATION_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_LOCATION = null;
-  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_DOC = ZkConfigs.ZK_SSL_KEY_STORE_LOCATION_DOC;
-
-  /**
-   * <code>zookeeper.ssl.keystore.password</code>
-   */
-  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_CONFIG = ZkConfigs.ZK_SSL_KEY_STORE_PASSWORD_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_PASSWORD = null;
-  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_DOC = ZkConfigs.ZK_SSL_KEY_STORE_PASSWORD_DOC;
-
-  /**
-   * <code>zookeeper.ssl.keystore.type</code>
-   */
-  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_CONFIG = ZkConfigs.ZK_SSL_KEY_STORE_TYPE_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_TYPE = null;
-  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_DOC = ZkConfigs.ZK_SSL_KEY_STORE_TYPE_DOC;
-
-  /**
-   * <code>zookeeper.ssl.truststore.location</code>
-   */
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_CONFIG = ZkConfigs.ZK_SSL_TRUST_STORE_LOCATION_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_LOCATION = null;
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_DOC = ZkConfigs.ZK_SSL_TRUST_STORE_LOCATION_DOC;
-
-  /**
-   * <code>zookeeper.ssl.truststore.password</code>
-   */
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_CONFIG = ZkConfigs.ZK_SSL_TRUST_STORE_PASSWORD_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD = null;
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_DOC = ZkConfigs.ZK_SSL_TRUST_STORE_PASSWORD_DOC;
-
-  /**
-   * <code>zookeeper.ssl.truststore.type</code>
-   */
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_CONFIG = ZkConfigs.ZK_SSL_TRUST_STORE_TYPE_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_TYPE = null;
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_DOC = ZkConfigs.ZK_SSL_TRUST_STORE_TYPE_DOC;
-
-  /**
-   * <code>zookeeper.ssl.protocol</code>
-   */
-  public static final String ZOOKEEPER_SSL_PROTOCOL_CONFIG = ZkConfigs.ZK_SSL_PROTOCOL_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_PROTOCOL = ZkConfigs.ZK_SSL_PROTOCOL;
-  public static final String ZOOKEEPER_SSL_PROTOCOL_DOC = ZkConfigs.ZK_SSL_PROTOCOL_DOC;
-
-  /**
-   * <code>zookeeper.ssl.enabled.protocols</code>
-   */
-  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_CONFIG = ZkConfigs.ZK_SSL_ENABLED_PROTOCOLS_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_ENABLED_PROTOCOLS = null;
-  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_DOC = ZkConfigs.ZK_SSL_ENABLED_PROTOCOLS_DOC;
-
-  /**
-   * <code>zookeeper.ssl.cipher.suites</code>
-   */
-  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_CONFIG = ZkConfigs.ZK_SSL_CIPHER_SUITES_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_CIPHER_SUITES = null;
-  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_DOC = ZkConfigs.ZK_SSL_CIPHER_SUITES_DOC;
-
-  /**
-   * <code>zookeeper.ssl.endpoint.identification.algorithm</code>
-   */
-  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG = ZkConfigs.ZK_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG;
-  public static final String DEFAULT_ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM = "HTTPS";
-  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC = ZkConfigs.ZK_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC;
-
-  /**
-   * <code>zookeeper.ssl.crl.enable</code>
-   */
-  public static final String ZOOKEEPER_SSL_CRL_ENABLE_CONFIG = ZkConfigs.ZK_SSL_CRL_ENABLE_CONFIG;
-  public static final boolean DEFAULT_ZOOKEEPER_SSL_CRL_ENABLE = false;
-  public static final String ZOOKEEPER_SSL_CRL_ENABLE_DOC = ZkConfigs.ZK_SSL_CRL_ENABLE_DOC;
-
-  /**
-   * <code>zookeeper.ssl.ocsp.enable</code>
-   */
-  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_CONFIG = ZkConfigs.ZK_SSL_OCSP_ENABLE_CONFIG;
-  public static final boolean DEFAULT_ZOOKEEPER_SSL_OCSP_ENABLE = false;
-  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_DOC = ZkConfigs.ZK_SSL_OCSP_ENABLE_DOC;
 
   /**
    * <code>num.concurrent.partition.movements.per.broker</code>
@@ -620,87 +507,7 @@ public final class ExecutorConfig {
    * @return The given ConfigDef after defining the configs for Executor.
    */
   public static ConfigDef define(ConfigDef configDef) {
-    return configDef.define(ZOOKEEPER_CONNECT_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_ZOOKEEPER_CONNECT,
-                            ConfigDef.Importance.HIGH,
-                            ZOOKEEPER_CONNECT_DOC)
-                    .define(ZOOKEEPER_SECURITY_ENABLED_CONFIG,
-                            ConfigDef.Type.BOOLEAN,
-                            DEFAULT_ZOOKEEPER_SECURITY_ENABLED,
-                            ConfigDef.Importance.HIGH,
-                            ZOOKEEPER_SECURITY_ENABLED_DOC)
-                    .define(ZOOKEEPER_SSL_CLIENT_ENABLE_CONFIG,
-                            ConfigDef.Type.BOOLEAN,
-                            DEFAULT_ZOOKEEPER_SSL_CLIENT_ENABLE,
-                            ConfigDef.Importance.MEDIUM,
-                            ZOOKEEPER_SSL_CLIENT_ENABLE_DOC)
-                    .define(ZOOKEEPER_SSL_CNXN_SOCKET_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_ZOOKEEPER_SSL_CNXN_SOCKET,
-                            ConfigDef.Importance.MEDIUM,
-                            ZOOKEEPER_SSL_CNXN_SOCKET_DOC)
-                    .define(ZOOKEEPER_SSL_KEYSTORE_LOCATION_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_ZOOKEEPER_SSL_KEYSTORE_LOCATION,
-                            ConfigDef.Importance.MEDIUM,
-                            ZOOKEEPER_SSL_KEYSTORE_LOCATION_DOC)
-                    .define(ZOOKEEPER_SSL_KEYSTORE_PASSWORD_CONFIG,
-                            ConfigDef.Type.PASSWORD,
-                            DEFAULT_ZOOKEEPER_SSL_KEYSTORE_PASSWORD,
-                            ConfigDef.Importance.MEDIUM,
-                            ZOOKEEPER_SSL_KEYSTORE_PASSWORD_DOC)
-                    .define(ZOOKEEPER_SSL_KEYSTORE_TYPE_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_ZOOKEEPER_SSL_KEYSTORE_TYPE,
-                            ConfigDef.Importance.MEDIUM,
-                            ZOOKEEPER_SSL_KEYSTORE_TYPE_DOC)
-                    .define(ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_LOCATION,
-                            ConfigDef.Importance.MEDIUM,
-                            ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_DOC)
-                    .define(ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_CONFIG,
-                            ConfigDef.Type.PASSWORD,
-                            DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD,
-                            ConfigDef.Importance.MEDIUM,
-                            ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_DOC)
-                    .define(ZOOKEEPER_SSL_TRUSTSTORE_TYPE_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_TYPE,
-                            ConfigDef.Importance.MEDIUM,
-                            ZOOKEEPER_SSL_TRUSTSTORE_TYPE_DOC)
-                    .define(ZOOKEEPER_SSL_PROTOCOL_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_ZOOKEEPER_SSL_PROTOCOL,
-                            ConfigDef.Importance.LOW,
-                            ZOOKEEPER_SSL_PROTOCOL_DOC)
-                    .define(ZOOKEEPER_SSL_ENABLED_PROTOCOLS_CONFIG,
-                            ConfigDef.Type.LIST,
-                            DEFAULT_ZOOKEEPER_SSL_ENABLED_PROTOCOLS,
-                            ConfigDef.Importance.LOW,
-                            ZOOKEEPER_SSL_ENABLED_PROTOCOLS_DOC)
-                    .define(ZOOKEEPER_SSL_CIPHER_SUITES_CONFIG,
-                            ConfigDef.Type.LIST,
-                            DEFAULT_ZOOKEEPER_SSL_CIPHER_SUITES,
-                            ConfigDef.Importance.LOW,
-                            ZOOKEEPER_SSL_CIPHER_SUITES_DOC)
-                    .define(ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM,
-                            ConfigDef.Importance.LOW,
-                            ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC)
-                    .define(ZOOKEEPER_SSL_CRL_ENABLE_CONFIG,
-                            ConfigDef.Type.BOOLEAN,
-                            DEFAULT_ZOOKEEPER_SSL_CRL_ENABLE,
-                            ConfigDef.Importance.LOW,
-                            ZOOKEEPER_SSL_CRL_ENABLE_DOC)
-                    .define(ZOOKEEPER_SSL_OCSP_ENABLE_CONFIG,
-                            ConfigDef.Type.BOOLEAN,
-                            DEFAULT_ZOOKEEPER_SSL_OCSP_ENABLE,
-                            ConfigDef.Importance.LOW,
-                            ZOOKEEPER_SSL_OCSP_ENABLE_DOC)
-                    .define(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
+    return configDef.define(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
                             ConfigDef.Type.INT,
                             DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER,
                             atLeast(1),

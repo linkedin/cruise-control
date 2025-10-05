@@ -35,6 +35,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createAdminClient;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.DEFAULT_MAINTENANCE_PLAN_EXPIRATION_MS;
@@ -156,8 +157,8 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()));
     try {
       while (true) {
-        description0 = adminClient0.describeTopics(Collections.singleton(TEST_TOPIC)).values().get(TEST_TOPIC).get();
-        description1 = adminClient1.describeTopics(Collections.singleton(TEST_TOPIC)).values().get(TEST_TOPIC).get();
+        description0 = adminClient0.describeTopics(Collections.singleton(TEST_TOPIC)).topicNameValues().get(TEST_TOPIC).get();
+        description1 = adminClient1.describeTopics(Collections.singleton(TEST_TOPIC)).topicNameValues().get(TEST_TOPIC).get();
         topicConfig0 = adminClient0.describeConfigs(Collections.singleton(topicResource)).values().get(topicResource).get();
         topicConfig1 = adminClient1.describeConfigs(Collections.singleton(topicResource)).values().get(topicResource).get();
         if (description0 != null && description1 != null && topicConfig0 != null && topicConfig1 != null
@@ -176,22 +177,30 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
     }
   }
 
-  private void verify(String partitionCount, String replicationFactor, String retentionMs, boolean testingTopicConfigUpdate)
-      throws ExecutionException, InterruptedException {
-    retrieveLatestMetadata();
-    // Verify that the maintenance event topic has been created with the desired properties.
-    assertEquals(Integer.parseInt(partitionCount), _topicDescription.partitions().size());
-    if (!testingTopicConfigUpdate) {
-      assertEquals(Integer.parseInt(replicationFactor), _topicDescription.partitions().get(0).replicas().size());
-    }
+  private void verify(String partitionCount, String replicationFactor, String retentionMs, boolean testingTopicConfigUpdate) {
+    waitUntilTrue(() -> {
+      try {
+        retrieveLatestMetadata();
+      } catch (InterruptedException | ExecutionException e) {
+        return false;
+      }
+      // Verify that the maintenance event topic has the desired properties
+      if (Integer.parseInt(partitionCount) != _topicDescription.partitions().size()) {
+        return false;
+      }
 
-    String currentRetentionMs = _topicConfig.get(RETENTION_MS_CONFIG).value();
-    assertEquals(retentionMs, currentRetentionMs);
+      if (!testingTopicConfigUpdate) {
+        if (Integer.parseInt(replicationFactor) != _topicDescription.partitions().get(0).replicas().size()) {
+          return false;
+        }
+      }
+
+      return retentionMs.equals(_topicConfig.get(RETENTION_MS_CONFIG).value());
+    }, "Maintenance event topic has missing properties", TimeUnit.SECONDS.toMillis(30), TimeUnit.SECONDS.toMillis(5));
   }
 
   @Test
-  public void testMaintenanceEventTopicCreationUpdateAndRead()
-      throws ExecutionException, InterruptedException, SamplingException {
+  public void testMaintenanceEventTopicCreationUpdateAndRead() throws SamplingException {
     // Verify that the maintenance event topic has been created with the desired properties.
     verify(TEST_TOPIC_PARTITION_COUNT, TEST_TOPIC_REPLICATION_FACTOR, TEST_TOPIC_RETENTION_TIME_MS, false);
 

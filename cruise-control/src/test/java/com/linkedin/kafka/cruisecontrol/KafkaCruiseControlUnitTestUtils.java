@@ -51,7 +51,6 @@ public final class KafkaCruiseControlUnitTestUtils {
             TestConstants.DEFAULT_CLUSTER_CONFIGS_FILE)).getFile();
     String brokerSetsDataFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
             TestConstants.DEFAULT_BROKER_SET_RESOLVER_FILE)).getFile();
-    props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
     props.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     props.setProperty(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
