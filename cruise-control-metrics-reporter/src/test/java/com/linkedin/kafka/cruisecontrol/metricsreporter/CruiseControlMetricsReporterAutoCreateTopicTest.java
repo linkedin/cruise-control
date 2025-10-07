@@ -31,6 +31,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
     private static final String HOST = "127.0.0.1";
     protected static final String TOPIC = "CruiseControlMetricsReporterTest";
     protected static final String TEST_TOPIC = "TestTopic";
+    private CCContainerizedKraftCluster _cluster;
 
     /**
      * Setup the unit test.
@@ -40,9 +41,9 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         Properties adminClientProps = new Properties();
         setSecurityConfigs(adminClientProps, "admin");
 
-        CCContainerizedKraftCluster cluster = new CCContainerizedKraftCluster(NUM_OF_BROKERS, buildBrokerConfigs(), adminClientProps);
-        cluster.start();
-        _bootstrapUrl = cluster.getExternalBootstrapAddress();
+        _cluster = new CCContainerizedKraftCluster(NUM_OF_BROKERS, buildBrokerConfigs(), adminClientProps);
+        _cluster.start();
+        _bootstrapUrl = _cluster.getExternalBootstrapAddress();
 
         // creating the "TestTopic" explicitly because the topic auto-creation is disabled on the broker
         Properties adminProps = new Properties();
@@ -76,9 +77,14 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         assertEquals(0, producerFailed.get());
     }
 
+    /**
+     * Tear down the unit test.
+     */
     @After
     public void tearDown() {
-        super.tearDown();
+        if (_cluster != null) {
+            _cluster.close();
+        }
     }
 
     @Override
@@ -101,7 +107,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
         // disable topic auto-creation to leave the metrics reporter to create the metrics topic
         props.setProperty("auto.create.topics.enable", "false");
-        props.setProperty("flush.messages", "1");
+        props.setProperty("log.flush.interval.messages", "1");
         props.setProperty("offsets.topic.replication.factor", "1");
         props.setProperty("default.replication.factor", "2");
         props.setProperty("num.partitions", "2");
