@@ -107,7 +107,6 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
         // disable topic auto-creation to leave the metrics reporter to create the metrics topic
         props.setProperty("auto.create.topics.enable", "false");
-        props.setProperty("log.flush.interval.messages", "1");
         props.setProperty("offsets.topic.replication.factor", "1");
         props.setProperty("default.replication.factor", "2");
         props.setProperty("num.partitions", "2");
