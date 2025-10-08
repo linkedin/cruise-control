@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKraftCluster;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.KafkaServerConfigs;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
@@ -27,8 +28,6 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetr
 import static org.junit.Assert.assertEquals;
 
 public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClientsIntegrationTestHarness {
-    private static final int NUM_OF_BROKERS = 2;
-    private static final String HOST = "127.0.0.1";
     protected static final String TOPIC = "CruiseControlMetricsReporterTest";
     protected static final String TEST_TOPIC = "TestTopic";
     private CCContainerizedKraftCluster _cluster;
@@ -41,7 +40,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         Properties adminClientProps = new Properties();
         setSecurityConfigs(adminClientProps, "admin");
 
-        _cluster = new CCContainerizedKraftCluster(NUM_OF_BROKERS, buildBrokerConfigs(), adminClientProps);
+        _cluster = new CCContainerizedKraftCluster(2, buildBrokerConfigs(), adminClientProps);
         _cluster.start();
         _bootstrapUrl = _cluster.getExternalBootstrapAddress();
 
@@ -92,7 +91,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         Properties props = new Properties();
         props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
         props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
-          HOST + ":" + CCContainerizedKraftCluster.CONTAINER_INTERNAL_LISTENER_PORT);
+          "127.0.0.1:" + CCContainerizedKraftCluster.CONTAINER_INTERNAL_LISTENER_PORT);
         props.put("listener.security.protocol.map", String.join(",",
           CCContainerizedKraftCluster.CONTROLLER_LISTENER_NAME + ":PLAINTEXT",
           CCContainerizedKraftCluster.INTERNAL_LISTENER_NAME + ":PLAINTEXT",
@@ -106,10 +105,10 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG, "1");
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
         // disable topic auto-creation to leave the metrics reporter to create the metrics topic
-        props.setProperty("auto.create.topics.enable", "false");
-        props.setProperty("offsets.topic.replication.factor", "1");
-        props.setProperty("default.replication.factor", "2");
-        props.setProperty("num.partitions", "2");
+        props.setProperty(KafkaServerConfigs.AUTO_CREATE_TOPICS_ENABLE_CONFIG, "false");
+        props.setProperty(KafkaServerConfigs.OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
+        props.setProperty(KafkaServerConfigs.DEFAULT_REPLICATION_FACTOR_CONFIG, "2");
+        props.setProperty(KafkaServerConfigs.NUM_PARTITIONS_CONFIG, "2");
         return props;
     }
 
