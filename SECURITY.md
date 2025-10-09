@@ -7,7 +7,7 @@ This document lists known security vulnerabilities and their fixes for dependenc
 ### Eclipse Jetty
 
 **Issue Description:**  
-In Eclipse Jetty versions 9.4.0 to 9.4.56 a buffer can be incorrectly released when confronted with a gzip error when inflating a request body. This can result in corrupted and/or inadvertent sharing of data between requests.
+In Eclipse Jetty versions 9.4.0 to 9.4.56 a buffer can be incorrectly released when confronted with a gzip error when inflating a request body. This can result in corrupted and/or inadvertent sharing of data between requests. This is a critical security vulnerability.
 
 **Fix:**  
 This CVE has been fixed in version 9.4.57.v20241219.
