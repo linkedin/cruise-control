@@ -330,15 +330,19 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     // replicas (on both leaders and followers); we expect these configurations to be merged
     // with our new throttled replicas.
     List<AlterConfigOp> topic0Configs = Arrays.asList(
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:0,1:1"), AlterConfigOp.OpType.SET),
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:0,1:1"), AlterConfigOp.OpType.SET));
-    throttleHelper.changeTopicConfigs(TOPIC0, topic0Configs);
+        new AlterConfigOp(
+            new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:0,1:1"),
+            AlterConfigOp.OpType.SET),
+        new AlterConfigOp(
+            new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:0,1:1"),
+            AlterConfigOp.OpType.SET));
+    applyTopicConfigs(TOPIC0, topic0Configs);
 
     // Topic 1 is not involved in any execution proposal. It has pre-existing throttled replicas.
     List<AlterConfigOp> topic1Config = Arrays.asList(
       new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:1"), AlterConfigOp.OpType.SET),
       new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:1"), AlterConfigOp.OpType.SET));
-    throttleHelper.changeTopicConfigs(TOPIC1, topic1Config);
+    applyTopicConfigs(TOPIC1, topic1Config);
 
     throttleHelper.setThrottles(Collections.singletonList(proposal));
 
@@ -623,29 +627,26 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.replay(mockListTopicsResult, mockFuture);
   }
 
-	private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers)
-		throws ExecutionException, InterruptedException, TimeoutException {
-		// All participating brokers have throttled rate set already
-		Config brokerConfig = new Config(Arrays.asList(
-			new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_RATE_CONFIG, "100"),
-			new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, "100")));
-		expectDescribeBrokerConfigs(adminClient, brokers, brokerConfig);
-	}
+  private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers)
+  throws ExecutionException, InterruptedException, TimeoutException {
+    // All participating brokers have throttled rate set already
+    expectDescribeBrokerConfigs(adminClient, brokers, EMPTY_CONFIG);
+  }
 
-	private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers, Config brokerConfig)
-		throws ExecutionException, InterruptedException, TimeoutException {
-		Map<ConfigResource, Config> brokerConfigs = new HashMap<>();
-		for (int i : brokers) {
-			ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(i));
-			brokerConfigs.put(cf, brokerConfig);
-		}
-		DescribeConfigsResult mockDescribeConfigsResult = EasyMock.mock(DescribeConfigsResult.class);
-		KafkaFuture<Map<ConfigResource, Config>> mockFuture = EasyMock.mock(KafkaFuture.class);
-		EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject())).andReturn(brokerConfigs);
-		EasyMock.expect(mockDescribeConfigsResult.all()).andReturn(mockFuture);
-		EasyMock.expect(adminClient.describeConfigs(EasyMock.anyObject())).andReturn(mockDescribeConfigsResult);
-		EasyMock.replay(mockDescribeConfigsResult, mockFuture);
-	}
+  private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers, Config brokerConfig)
+  throws ExecutionException, InterruptedException, TimeoutException {
+    Map<ConfigResource, Config> brokerConfigs = new HashMap<>();
+    for (int i : brokers) {
+      ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(i));
+      brokerConfigs.put(cf, brokerConfig);
+    }
+    DescribeConfigsResult mockDescribeConfigsResult = EasyMock.mock(DescribeConfigsResult.class);
+    KafkaFuture<Map<ConfigResource, Config>> mockFuture = EasyMock.mock(KafkaFuture.class);
+    EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject())).andReturn(brokerConfigs);
+    EasyMock.expect(mockDescribeConfigsResult.all()).andReturn(mockFuture);
+    EasyMock.expect(adminClient.describeConfigs(EasyMock.anyObject())).andReturn(mockDescribeConfigsResult);
+    EasyMock.replay(mockDescribeConfigsResult, mockFuture);
+  }
 
   private void expectIncrementalBrokerConfigs(AdminClient adminClient)
   throws ExecutionException, InterruptedException, TimeoutException {
@@ -692,13 +693,6 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     Config brokerConfigAlready = new Config(Arrays.asList(
         new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_RATE_CONFIG, String.valueOf(throttleRate)),
         new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, String.valueOf(throttleRate))));
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:0,1:1"), AlterConfigOp.OpType.SET),
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:0,1:1"), AlterConfigOp.OpType.SET));
-    applyTopicConfigs(TOPIC0, topic0Configs);
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:1"), AlterConfigOp.OpType.SET),
-      new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "1:1"), AlterConfigOp.OpType.SET));
-    applyTopicConfigs(TOPIC1, topic1Config);
-    Map<ConfigResource, Config> brokerConfigs = new HashMap<>();
     expectDescribeBrokerConfigs(mockAdminClient, brokers, brokerConfigAlready);
 
     Config wildcardTopicConfig = new Config(Arrays.asList(
@@ -712,8 +706,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   /**
-   * waitForConfigs should throw when verification exceeds the maximum
-   * number of retries.
+   * waitForConfigs should throw when verification exceeds the maximum number of retries.
    */
   @Test
   public void waitForConfigsWhenExceedsRetriesThenThrow() throws Exception {

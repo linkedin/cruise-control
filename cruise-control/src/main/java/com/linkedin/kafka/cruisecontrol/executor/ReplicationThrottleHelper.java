@@ -40,8 +40,14 @@ class ReplicationThrottleHelper {
   static final String WILDCARD_ASTERISK = "*";
   static final String LEADER_REPLICATION_THROTTLED_RATE_CONFIG = "leader.replication.throttled.rate";
   static final String FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG = "follower.replication.throttled.rate";
+  private static final List<String> REPLICATION_THROTTLED_RATE_CONFIGS = Arrays.asList(
+      LEADER_REPLICATION_THROTTLED_RATE_CONFIG,
+      FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG);
   static final String LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG = "leader.replication.throttled.replicas";
   static final String FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG = "follower.replication.throttled.replicas";
+  private static final List<String> REPLICATION_THROTTLED_REPLICAS_CONFIGS = Arrays.asList(
+      LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG,
+      FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   static final int RETRIES = 30;
 
@@ -146,8 +152,10 @@ class ReplicationThrottleHelper {
   private Set<Integer> getParticipatingBrokers(List<ExecutionProposal> replicaMovementProposals) {
     Set<Integer> participatingBrokers = new TreeSet<>();
     for (ExecutionProposal proposal : replicaMovementProposals) {
-      participatingBrokers.addAll(proposal.oldReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
-      participatingBrokers.addAll(proposal.newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
+      participatingBrokers.addAll(
+          proposal.oldReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
+      participatingBrokers.addAll(
+          proposal.newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
     }
     participatingBrokers.removeAll(_deadBrokers);
     return participatingBrokers;
@@ -212,7 +220,7 @@ class ReplicationThrottleHelper {
         brokerConfigs = new Config(Collections.emptyList());
       }
       List<AlterConfigOp> ops = new ArrayList<>();
-      for (String replicaThrottleRateConfigKey : Arrays.asList(LEADER_REPLICATION_THROTTLED_RATE_CONFIG, FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG)) {
+      for (String replicaThrottleRateConfigKey : REPLICATION_THROTTLED_RATE_CONFIGS) {
         ConfigEntry currThrottleRate = brokerConfigs.get(replicaThrottleRateConfigKey);
         if (currThrottleRate == null || !currThrottleRate.value().equals(String.valueOf(_throttleRate))) {
           LOG.debug("Setting {} to {} bytes/second for broker {}", replicaThrottleRateConfigKey, _throttleRate, cf.name());
@@ -245,7 +253,7 @@ class ReplicationThrottleHelper {
         topicConfig = new Config(Collections.emptyList());
       }
       List<AlterConfigOp> ops = new ArrayList<>();
-      for (String replicaThrottleConfigKey : Arrays.asList(LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG)) {
+      for (String replicaThrottleConfigKey : REPLICATION_THROTTLED_REPLICAS_CONFIGS) {
         ConfigEntry currThrottledReplicas = topicConfig.get(replicaThrottleConfigKey);
         if (currThrottledReplicas != null && currThrottledReplicas.value().trim().equals(WILDCARD_ASTERISK)) {
           continue;
@@ -254,7 +262,8 @@ class ReplicationThrottleHelper {
         if (currThrottledReplicas != null && !"".equals(currThrottledReplicas.value())) {
           newThrottledReplicas.addAll(Arrays.asList(currThrottledReplicas.value().split(",")));
         }
-        ops.add(new AlterConfigOp(new ConfigEntry(replicaThrottleConfigKey, String.join(",", newThrottledReplicas)), AlterConfigOp.OpType.SET));
+        ops.add(new AlterConfigOp(new ConfigEntry(replicaThrottleConfigKey, String.join(",", newThrottledReplicas)),
+            AlterConfigOp.OpType.SET));
       }
       if (!ops.isEmpty()) {
         bulkOps.put(cf, ops);
@@ -328,13 +337,21 @@ class ReplicationThrottleHelper {
       }
       List<AlterConfigOp> ops = new ArrayList<>();
       ConfigEntry currentLeaderThrottledReplicas = topicConfig.get(LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
-      maybeRemoveThrottledReplicas(topic, replicas, currentLeaderThrottledReplicas, LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "leader", ops);
-    ConfigEntry currentLeaderThrottledReplicas = topicConfigs.get(LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
-    maybeRemoveThrottledReplicas(topic, replicas, currentLeaderThrottledReplicas, LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, "leader", ops);
-    ConfigEntry currentFollowerThrottledReplicas = topicConfigs.get(FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG);
-    maybeRemoveThrottledReplicas(topic, replicas, currentFollowerThrottledReplicas, FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, "follower", ops);
-      ConfigEntry currentFollowerThrottledReplicas = topicConfig.get(FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG);
-      maybeRemoveThrottledReplicas(topic, replicas, currentFollowerThrottledReplicas, FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG, "follower", ops);
+      maybeRemoveThrottledReplicas(
+        topic,
+        replicas,
+        currentLeaderThrottledReplicas,
+        LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG,
+        "leader",
+        ops);
+      ConfigEntry currentFollowerThrottledReplicas = topicConfig.get(FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
+      maybeRemoveThrottledReplicas(
+        topic,
+        replicas,
+        currentFollowerThrottledReplicas,
+        FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG,
+        "follower",
+        ops);
       if (!ops.isEmpty()) {
         bulkOps.put(cf, ops);
       }
