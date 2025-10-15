@@ -4,26 +4,27 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 
-import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreRoleProvider;
-import org.eclipse.jetty.security.UserStore;
+import com.linkedin.kafka.cruisecontrol.servlet.ExposedPropertyUserStore;
+import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
+import org.eclipse.jetty.security.UserIdentity;
 import org.eclipse.jetty.server.Request;
 
-public class SpnegoUserStoreRoleProvider extends UserStoreRoleProvider {
+public class SpnegoUserStoreAuthorizationService extends UserStoreAuthorizationService {
 
-  public SpnegoUserStoreRoleProvider(String privilegesFilePath) {
+  public SpnegoUserStoreAuthorizationService(String privilegesFilePath) {
     super(privilegesFilePath);
   }
 
-  public SpnegoUserStoreRoleProvider(UserStore userStore) {
+  public SpnegoUserStoreAuthorizationService(ExposedPropertyUserStore userStore) {
     super(userStore);
   }
 
   @Override
-  public String[] rolesFor(Request request, String name) {
+  public UserIdentity getUserIdentity(Request request, String name) {
     int hostSeparator = name.indexOf('/');
     String shortName = hostSeparator > 0 ? name.substring(0, hostSeparator) : name;
     int realmSeparator = shortName.indexOf('@');
     shortName = realmSeparator > 0 ? shortName.substring(0, realmSeparator) : shortName;
-    return super.rolesFor(request, shortName);
+    return super.getUserIdentity(request, shortName);
   }
 }

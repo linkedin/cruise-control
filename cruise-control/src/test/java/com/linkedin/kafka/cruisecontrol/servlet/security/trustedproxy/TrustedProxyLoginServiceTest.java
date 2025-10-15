@@ -5,15 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
-import com.linkedin.kafka.cruisecontrol.servlet.security.RoleProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.AuthorizationService;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoLoginServiceWithAuthServiceLifecycle;
 import org.eclipse.jetty.http.HttpURI;
+import org.eclipse.jetty.security.DefaultIdentityService;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.RoleDelegateUserIdentity;
 import org.eclipse.jetty.security.RolePrincipal;
 import org.eclipse.jetty.security.SPNEGOUserPrincipal;
 import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.security.UserPrincipal;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.ConnectionMetaData;
 import org.eclipse.jetty.server.Context;
@@ -44,21 +46,33 @@ public class TrustedProxyLoginServiceTest {
   public static final String ENCODED_TOKEN = "encoded_token";
   public static final String TEST_USER = "testUser";
 
-  private static class TestAuthorizer implements RoleProvider {
+  private static class TestAuthorizer implements AuthorizationService {
 
     private final UserStore _adminUserStore = new UserStore();
+    private IdentityService _identityService = new DefaultIdentityService();
 
     TestAuthorizer(String testUser) {
       _adminUserStore.addUser(testUser, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
     }
 
     @Override
-    public String[] rolesFor(Request request, String name) {
-      List<RolePrincipal> rolePrincipals = _adminUserStore.getRolePrincipals(name);
-      if (rolePrincipals == null || rolePrincipals.isEmpty()) {
-        return null;
-      }
-      return rolePrincipals.stream().map(RolePrincipal::getName).toArray(String[]::new);
+    public UserIdentity getUserIdentity(Request request, String name) {
+      UserPrincipal user = _adminUserStore.getUserPrincipal(name);
+      List<RolePrincipal> roles = _adminUserStore.getRolePrincipals(name);
+      return _identityService.newUserIdentity(
+          createSubject(user, roles),
+          user,
+          roles.stream().
+              map(RolePrincipal::getName)
+              .toArray(String[]::new)
+      );
+    }
+
+    private Subject createSubject(UserPrincipal user, List<RolePrincipal> rolePrincipals) {
+      Subject subject = new Subject();
+      subject.getPrincipals().add(user);
+      subject.getPrincipals().addAll(rolePrincipals);
+      return subject;
     }
   }
 
@@ -89,7 +103,6 @@ public class TrustedProxyLoginServiceTest {
     expect(mockRequest.getMethod()).andReturn("GET").anyTimes();
     expect(mockRequest.getAttribute(anyString())).andReturn(null).anyTimes();
     IdentityService mockIdentityService = mock(IdentityService.class);
-    expect(_mockSpnegoLoginService.getIdentityService()).andReturn(mockIdentityService);
     expect(mockIdentityService.newUserIdentity(anyObject(), anyObject(), anyObject())).andReturn(serviceDelegate);
 
     replay(_mockSpnegoLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig, mockIdentityService);
@@ -232,8 +245,6 @@ public class TrustedProxyLoginServiceTest {
     expect(mockRequest.getMethod()).andReturn("GET").anyTimes();
     expect(mockRequest.getAttribute(anyString())).andReturn(null).anyTimes();
     IdentityService mockIdentityService = mock(IdentityService.class);
-    expect(_mockSpnegoLoginService.getIdentityService()).andReturn(mockIdentityService);
-    expect(mockIdentityService.newUserIdentity(anyObject(), anyObject(), anyObject())).andReturn(serviceDelegate);
     replay(_mockSpnegoLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig, mockIdentityService);
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
             userAuthorizer, false);

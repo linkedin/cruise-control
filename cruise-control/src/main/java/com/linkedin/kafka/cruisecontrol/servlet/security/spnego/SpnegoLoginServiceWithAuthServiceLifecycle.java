@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DummyLoginService;
-import com.linkedin.kafka.cruisecontrol.servlet.security.RoleProvider;
-import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreRoleProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.AuthorizationService;
+import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.apache.kafka.common.security.kerberos.KerberosName;
 import org.apache.kafka.common.security.kerberos.KerberosShortNamer;
 import org.eclipse.jetty.security.IdentityService;
@@ -36,11 +36,11 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * This class is purely needed to manage the {@link RoleProvider}.
- * For instance if the RoleProvider holds a {@link org.eclipse.jetty.security.PropertyUserStore} then it would load
+ * This class is purely needed in order to manage the {@link AuthorizationService}.
+ * For instance if the AuthorizationService holds a {@link org.eclipse.jetty.security.PropertyUserStore} then it would load
  * users from the store during the {@link PropertyUserStore#start()} method.
  *
- * @see UserStoreRoleProvider
+ * @see UserStoreAuthorizationService
  */
 public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCycle implements LoginService {
 
@@ -49,15 +49,15 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
   private static final String REQUEST_ATTR_ADDED_NEW_SESSION = SpnegoLoginServiceWithAuthServiceLifecycle.class.getName() + "#ADDED_NEW_SESSION";
   private final GSSManager _gssManager = GSSManager.getInstance();
   private final SPNEGOLoginService _spnegoLoginService;
-  private final RoleProvider _roleProvider;
+  private final AuthorizationService _authorizationService;
   private final KerberosShortNamer _kerberosShortNamer;
   private Subject _spnegoSubject;
   private GSSCredential _spnegoServiceCredential;
   private Constructor<?> _holderConstructor;
 
-  public SpnegoLoginServiceWithAuthServiceLifecycle(String realm, RoleProvider roleProvider, List<String> principalToLocalRules) {
+  public SpnegoLoginServiceWithAuthServiceLifecycle(String realm, AuthorizationService authorizationService, List<String> principalToLocalRules) {
     _spnegoLoginService = new SPNEGOLoginService(realm, new DummyLoginService());
-    _roleProvider = roleProvider;
+    _authorizationService = authorizationService;
     _kerberosShortNamer = principalToLocalRules == null || principalToLocalRules.isEmpty()
             ? null
             : KerberosShortNamer.fromUnparsedRules(realm, principalToLocalRules);
@@ -66,7 +66,7 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
   @Override
   protected void doStart() throws Exception {
     addBean(_spnegoLoginService);
-    addBean(_roleProvider);
+    addBean(_authorizationService);
     super.doStart();
     extractSpnegoContext();
   }
@@ -83,37 +83,18 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
 
     // authentication
     UserIdentity userIdentity = _spnegoLoginService.login(username, credentials, request, getOrCreateSession);
-    if (userIdentity == null) {
-      return null;
-    }
-    if (userIdentity instanceof RoleDelegateUserIdentity) {
-      return userIdentity;
-    }
+    SPNEGOUserPrincipal userPrincipal = (SPNEGOUserPrincipal) userIdentity.getUserPrincipal();
 
     // get full principal and create user principal shortname
     String fullPrincipal = getFullPrincipalFromGssContext(gssContext);
     cleanRequest(request);
+    LOG.debug("User {} logged in with full principal {}", userPrincipal.getName(), fullPrincipal);
     String userShortname = getSpnegoUserPrincipalShortname(fullPrincipal);
 
-    SPNEGOUserPrincipal orig;
-    if (userIdentity.getUserPrincipal() instanceof SPNEGOUserPrincipal) {
-      orig = (SPNEGOUserPrincipal) userIdentity.getUserPrincipal();
-    } else {
-      orig = null;
-    }
-
-    SPNEGOUserPrincipal finalPrincipal = new SPNEGOUserPrincipal(userShortname, orig != null ? orig.getEncodedToken() : null);
-
-    LOG.debug("User {} logged in with full principal {}", finalPrincipal.getName(), fullPrincipal);
-
     // do authorization and create UserIdentity
-    String[] roles = _roleProvider.rolesFor(request, userShortname);
-    if (roles == null) {
-      return new RoleDelegateUserIdentity(userIdentity.getSubject(), finalPrincipal, null);
-    }
-    IdentityService is = getIdentityService();
-    UserIdentity delegate = is.newUserIdentity(userIdentity.getSubject(), finalPrincipal, roles);
-    return new RoleDelegateUserIdentity(userIdentity.getSubject(), finalPrincipal, delegate);
+    userPrincipal = new SPNEGOUserPrincipal(userShortname, userPrincipal.getEncodedToken());
+    UserIdentity roleDelegate = _authorizationService.getUserIdentity(request, userShortname);
+    return new RoleDelegateUserIdentity(userIdentity.getSubject(), userPrincipal, roleDelegate);
   }
 
   @Override
@@ -165,7 +146,7 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
     }
   }
 
-  protected String getFullPrincipalFromGssContext(GSSContext gssContext) {
+  private String getFullPrincipalFromGssContext(GSSContext gssContext) {
     try {
       return gssContext.getSrcName().toString();
     } catch (GSSException e) {

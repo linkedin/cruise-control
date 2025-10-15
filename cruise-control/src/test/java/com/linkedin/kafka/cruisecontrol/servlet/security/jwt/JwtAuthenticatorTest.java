@@ -3,8 +3,9 @@
  */
 package com.linkedin.kafka.cruisecontrol.servlet.security.jwt;
 
+import com.linkedin.kafka.cruisecontrol.servlet.ExposedPropertyUserStore;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
-import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreRoleProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.easymock.EasyMock;
 import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.HttpFields;
@@ -16,7 +17,6 @@ import org.eclipse.jetty.security.AuthenticationState;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.DefaultIdentityService;
 import org.eclipse.jetty.security.ServerAuthException;
-import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.security.authentication.LoginAuthenticator;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
@@ -134,10 +134,10 @@ public class JwtAuthenticatorTest {
 
   @Test
   public void testSuccessfulLogin() throws Exception {
-    UserStore testUserStore = new UserStore();
+    ExposedPropertyUserStore testUserStore = new ExposedPropertyUserStore();
     testUserStore.addUser(TEST_USER, SecurityUtils.NO_CREDENTIAL, new String[]{USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
-    JwtLoginService loginService = new JwtLoginService(new UserStoreRoleProvider(testUserStore), tokenAndKeys.publicKey(), null);
+    JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
     Authenticator.Configuration configuration = mock(Authenticator.Configuration.class);
     expect(configuration.getLoginService()).andReturn(loginService);
@@ -173,10 +173,10 @@ public class JwtAuthenticatorTest {
 
   @Test
   public void testFailedLoginWithUserNotFound() throws Exception {
-    UserStore testUserStore = new UserStore();
+    ExposedPropertyUserStore testUserStore = new ExposedPropertyUserStore();
     testUserStore.addUser(TEST_USER_2, SecurityUtils.NO_CREDENTIAL, new String[] {USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
-    JwtLoginService loginService = new JwtLoginService(new UserStoreRoleProvider(testUserStore), tokenAndKeys.publicKey(), null);
+    JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
     Authenticator.Configuration configuration = mock(Authenticator.Configuration.class);
     expect(configuration.getLoginService()).andReturn(loginService);
@@ -209,11 +209,11 @@ public class JwtAuthenticatorTest {
 
   @Test
   public void testFailedLoginWithInvalidToken() throws Exception {
-    UserStore testUserStore = new UserStore();
+    ExposedPropertyUserStore testUserStore = new ExposedPropertyUserStore();
     testUserStore.addUser(TEST_USER_2, SecurityUtils.NO_CREDENTIAL, new String[] {USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     TokenGenerator.TokenAndKeys tokenAndKeys2 = TokenGenerator.generateToken(TEST_USER);
-    JwtLoginService loginService = new JwtLoginService(new UserStoreRoleProvider(testUserStore), tokenAndKeys.publicKey(), null);
+    JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
     Authenticator.Configuration configuration = mock(Authenticator.Configuration.class);
     expect(configuration.getLoginService()).andReturn(loginService);

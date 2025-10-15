@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
+import org.eclipse.jetty.security.UserIdentity;
 import org.eclipse.jetty.server.ConnectionMetaData;
 import org.eclipse.jetty.server.Request;
 import org.junit.Test;
@@ -27,7 +28,7 @@ public class TrustedProxyAuthorizationServiceTest {
 
   @Test
   public void testSuccessfulLoginWithIpFiltering() throws Exception {
-    TrustedProxyUserStoreRoleProvider srv = new TrustedProxyUserStoreRoleProvider(Collections.singletonList(AUTH_SERVICE_NAME), IP_FILTER);
+    TrustedProxyAuthorizationService srv = new TrustedProxyAuthorizationService(Collections.singletonList(AUTH_SERVICE_NAME), IP_FILTER);
     Request mockRequest = mock(Request.class);
     ConnectionMetaData mockConnectionMetaData = mock(ConnectionMetaData.class);
 
@@ -36,9 +37,9 @@ public class TrustedProxyAuthorizationServiceTest {
     replay(mockRequest, mockConnectionMetaData);
     srv.start();
     try {
-      String[] result = srv.rolesFor(mockRequest, AUTH_SERVICE_NAME);
+      UserIdentity result = srv.getUserIdentity(mockRequest, AUTH_SERVICE_NAME);
       assertNotNull(result);
-      assertEquals(new String[]{ROLE}, result);
+      assertEquals(AUTH_SERVICE_NAME, result.getUserPrincipal().getName());
       verify(mockRequest, mockConnectionMetaData);
     } finally {
       srv.stop();
@@ -47,7 +48,7 @@ public class TrustedProxyAuthorizationServiceTest {
 
   @Test
   public void testUnsuccessfulLoginWithIpFiltering() throws Exception {
-    TrustedProxyUserStoreRoleProvider srv = new TrustedProxyUserStoreRoleProvider(Collections.singletonList(AUTH_SERVICE_NAME), IP_FILTER);
+    TrustedProxyAuthorizationService srv = new TrustedProxyAuthorizationService(Collections.singletonList(AUTH_SERVICE_NAME), IP_FILTER);
     Request mockRequest = mock(Request.class);
     ConnectionMetaData mockConnectionMetaData = mock(ConnectionMetaData.class);
 
@@ -56,9 +57,9 @@ public class TrustedProxyAuthorizationServiceTest {
     replay(mockRequest, mockConnectionMetaData);
     srv.start();
     try {
-      String[] result = srv.rolesFor(mockRequest, AUTH_SERVICE_NAME);
+      UserIdentity result = srv.getUserIdentity(mockRequest, AUTH_SERVICE_NAME);
       assertNull(result);
-      verify(mockRequest, mockConnectionMetaData);
+      verify(mockRequest);
     } finally {
       srv.stop();
     }
@@ -66,14 +67,14 @@ public class TrustedProxyAuthorizationServiceTest {
 
   @Test
   public void testSuccessfulLoginWithoutIpFiltering() throws Exception {
-    TrustedProxyUserStoreRoleProvider srv = new TrustedProxyUserStoreRoleProvider(Collections.singletonList(AUTH_SERVICE_NAME), null);
+    TrustedProxyAuthorizationService srv = new TrustedProxyAuthorizationService(Collections.singletonList(AUTH_SERVICE_NAME), null);
     Request mockRequest = mock(Request.class);
     replay(mockRequest);
     srv.start();
     try {
-      String[] result = srv.rolesFor(mockRequest, AUTH_SERVICE_NAME);
+      UserIdentity result = srv.getUserIdentity(mockRequest, AUTH_SERVICE_NAME);
       assertNotNull(result);
-      assertEquals(new String[]{ROLE}, result);
+      assertEquals(AUTH_SERVICE_NAME, result.getUserPrincipal().getName());
       verify(mockRequest);
     } finally {
       srv.stop();

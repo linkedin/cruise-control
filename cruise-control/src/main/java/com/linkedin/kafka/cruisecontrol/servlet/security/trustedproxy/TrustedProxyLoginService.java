@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
-import com.linkedin.kafka.cruisecontrol.servlet.security.RoleProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.AuthorizationService;
 import com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoLoginServiceWithAuthServiceLifecycle;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.LoginService;
@@ -29,14 +29,15 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 /**
  * {@code TrustedProxyLoginService} is a special SPNEGO login service where we only allow a list of trusted services
- * to act on behalf of clients.
+ * to act on behalf of clients. The login service authenticates the trusted party but creates credentials for the client
+ * based on the {@link AuthorizationService}.
  */
 public class TrustedProxyLoginService extends ContainerLifeCycle implements LoginService {
 
   private static final Logger LOG = LoggerFactory.getLogger(TrustedProxyLoginService.class);
   public static final boolean READ_ONLY_SUBJECT = true;
-  // authorizes the end user passed in via the doAs header
-  private final RoleProvider _roleProvider;
+  // authorizes the end user that is passed in via the doAs header
+  private final AuthorizationService _endUserAuthorizer;
   // use encapsulation instead of inheritance as it's easier to test
   private final SpnegoLoginServiceWithAuthServiceLifecycle _delegateSpnegoLoginService;
   private final SpnegoLoginServiceWithAuthServiceLifecycle _fallbackSpnegoLoginService;
@@ -45,29 +46,29 @@ public class TrustedProxyLoginService extends ContainerLifeCycle implements Logi
 
   /**
    * Creates a new instance based on the kerberos realm, the list of trusted proxies, their allowed IP pattern and the
-   * {@link RoleProvider} that stores the end users.
+   * {@link AuthorizationService} that stores the end users.
    * @param realm is the kerberos realm of the spnego service principal that is used by Cruise Control
-   * @param roleProvider authorizes the user passed in via the doAs header
+   * @param userAuthorizer authorizes the user that is passed in via the doAs header
    * @param trustedProxies is a list of kerberos service shortnames that identifies the trusted proxies
    * @param trustedProxyIpPattern is a Java regex pattern that defines which IP addresses can be accepted by
    *                              Cruise Control as trusted proxies
    */
-  public TrustedProxyLoginService(String realm, RoleProvider roleProvider, List<String> trustedProxies,
+  public TrustedProxyLoginService(String realm, AuthorizationService userAuthorizer, List<String> trustedProxies,
                                   String trustedProxyIpPattern, boolean fallbackToSpnegoAllowed, List<String> principalToLocalRules) {
     _delegateSpnegoLoginService = new SpnegoLoginServiceWithAuthServiceLifecycle(
-        realm, new TrustedProxyUserStoreRoleProvider(trustedProxies, trustedProxyIpPattern), principalToLocalRules);
-    _fallbackSpnegoLoginService = new SpnegoLoginServiceWithAuthServiceLifecycle(realm, roleProvider, principalToLocalRules);
-    _roleProvider = roleProvider;
+        realm, new TrustedProxyAuthorizationService(trustedProxies, trustedProxyIpPattern), principalToLocalRules);
+    _fallbackSpnegoLoginService = new SpnegoLoginServiceWithAuthServiceLifecycle(realm, userAuthorizer, principalToLocalRules);
+    _endUserAuthorizer = userAuthorizer;
     _fallbackToSpnegoAllowed = fallbackToSpnegoAllowed;
   }
 
   // visible for testing
   TrustedProxyLoginService(SpnegoLoginServiceWithAuthServiceLifecycle delegateSpnegoLoginService,
                            SpnegoLoginServiceWithAuthServiceLifecycle fallbackSpnegoLoginService,
-                           RoleProvider roleProvider, boolean fallbackToSpnegoAllowed) {
+                           AuthorizationService userAuthorizer, boolean fallbackToSpnegoAllowed) {
     _delegateSpnegoLoginService = delegateSpnegoLoginService;
     _fallbackSpnegoLoginService = fallbackSpnegoLoginService;
-    _roleProvider = roleProvider;
+    _endUserAuthorizer = userAuthorizer;
     _fallbackToSpnegoAllowed = fallbackToSpnegoAllowed;
   }
 
@@ -109,13 +110,13 @@ public class TrustedProxyLoginService extends ContainerLifeCycle implements Logi
 
   @Override
   public UserIdentity login(String username, Object credentials, Request request, Function<Boolean, Session> getOrCreateSession) {
-      Fields reqParameters;
-      try {
-          reqParameters = Request.getParameters(request);
-      } catch (Exception e) {
-          throw new RuntimeException(e);
-      }
-      String doAsUser = reqParameters.getValue(DO_AS);
+    Fields reqParameters;
+    try {
+      reqParameters = Request.getParameters(request);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    String doAsUser = reqParameters.getValue(DO_AS);
     if (doAsUser == null && _fallbackToSpnegoAllowed) {
       RoleDelegateUserIdentity fallbackIdentity = (RoleDelegateUserIdentity) _fallbackSpnegoLoginService.login(username,
           credentials, request, getOrCreateSession);
@@ -131,8 +132,7 @@ public class TrustedProxyLoginService extends ContainerLifeCycle implements Logi
       LOG.info("Authorizing proxy user {} from {} service", doAsUser, servicePrincipal.getName());
       UserIdentity doAsIdentity = null;
       if (doAsUser != null && !doAsUser.isEmpty()) {
-        String[] roles = _roleProvider.rolesFor(request, doAsUser);
-        doAsIdentity = getIdentityService().newUserIdentity(serviceIdentity.getSubject(), servicePrincipal, roles);
+        doAsIdentity = _endUserAuthorizer.getUserIdentity(request, doAsUser);
       }
 
       Principal principal = new TrustedProxyPrincipal(doAsUser, servicePrincipal);
@@ -174,8 +174,8 @@ public class TrustedProxyLoginService extends ContainerLifeCycle implements Logi
 
   @Override
   protected void doStart() throws Exception {
-    if (_roleProvider instanceof LifeCycle) {
-      ((LifeCycle) _roleProvider).start();
+    if (_endUserAuthorizer instanceof LifeCycle) {
+      ((LifeCycle) _endUserAuthorizer).start();
     }
     _delegateSpnegoLoginService.start();
     _fallbackSpnegoLoginService.start();
@@ -187,8 +187,8 @@ public class TrustedProxyLoginService extends ContainerLifeCycle implements Logi
     super.doStop();
     _fallbackSpnegoLoginService.stop();
     _delegateSpnegoLoginService.stop();
-    if (_roleProvider instanceof LifeCycle) {
-      ((LifeCycle) _roleProvider).stop();
+    if (_endUserAuthorizer instanceof LifeCycle) {
+      ((LifeCycle) _endUserAuthorizer).stop();
     }
   }
 }

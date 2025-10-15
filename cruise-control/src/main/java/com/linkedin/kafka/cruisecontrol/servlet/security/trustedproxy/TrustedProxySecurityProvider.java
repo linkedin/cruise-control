@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * In trusted proxy authentication Cruise Control has a fronting proxy which authenticates clients and from which
- * Cruise Control accepts requests as authenticated ones. The authenticated user's ID is forwarded in the "doAs" HTTP
+ * Cruise Control accepts requests as authenticated ones. the authenticated user's ID is forwarded in the "doAs" HTTP
  * GET query parameter.
  */
 public class TrustedProxySecurityProvider extends SpnegoSecurityProvider {
@@ -45,7 +45,7 @@ public class TrustedProxySecurityProvider extends SpnegoSecurityProvider {
 
   @Override
   public LoginService loginService() {
-    TrustedProxyLoginService loginService = new TrustedProxyLoginService(_spnegoPrincipal.realm(), roleProvider(),
+    TrustedProxyLoginService loginService = new TrustedProxyLoginService(_spnegoPrincipal.realm(), authorizationService(),
             _trustedProxyServices, _trustedProxyServicesIpRegex, _fallbackToSpnegoAllowed, _spnegoPrincipalToLocalRules);
     loginService.setServiceName(_spnegoPrincipal.serviceName());
     loginService.setHostName(_spnegoPrincipal.hostName());

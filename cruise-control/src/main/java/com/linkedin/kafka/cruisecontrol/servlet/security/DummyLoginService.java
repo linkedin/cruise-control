@@ -45,8 +45,8 @@ public class DummyLoginService implements LoginService {
         // dummy implementation
     }
 
-    @Override 
-    public UserIdentity login(String u, Object c, Request req, Function<Boolean, Session> getOrCreateSession) { 
+    @Override
+    public UserIdentity login(String u, Object c, Request req, Function<Boolean, Session> getOrCreateSession) {
         return null;
     }
 

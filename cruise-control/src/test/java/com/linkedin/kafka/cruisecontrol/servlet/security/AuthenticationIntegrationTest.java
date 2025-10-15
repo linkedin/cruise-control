@@ -94,8 +94,11 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
     @Override
     public List<ConstraintMapping> constraintMappings() {
       ConstraintMapping mapping = new ConstraintMapping();
-      Constraint.Builder builder = new Constraint.Builder();
-      Constraint constraint = builder.roles(new String[] { ADMIN_ROLE }).name("BASIC").authorization(Constraint.Authorization.SPECIFIC_ROLE).build();
+      Constraint constraint = new Constraint.Builder()
+          .name(Authenticator.BASIC_AUTH)
+          .roles(ADMIN_ROLE)
+          .authorization(Constraint.Authorization.SPECIFIC_ROLE)
+          .build();
       mapping.setConstraint(constraint);
       mapping.setPathSpec(ANY_PATH);
 
