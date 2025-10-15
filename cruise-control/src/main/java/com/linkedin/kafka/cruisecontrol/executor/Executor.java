@@ -1606,7 +1606,8 @@ public class Executor {
 
     private void interBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
       Set<Integer> currentDeadBrokersWithReplicas = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
-      ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, _replicationThrottle, currentDeadBrokersWithReplicas);
+      ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, _replicationThrottle,
+          currentDeadBrokersWithReplicas);
       int numTotalPartitionMovements = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingInterBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
@@ -1627,9 +1628,14 @@ public class Executor {
               .filter(p -> existingTopics.contains(p.topic()))
               .collect(Collectors.toList());
           long numExistingTopicsToThrottle = proposalsForExistingTopics.stream().map(ExecutionProposal::topic).distinct().count();
-          LOG.info("User task {}: Applying bulk replication throttle of {} B/s to {} inter-broker movements "
+          LOG.info(
+              "User task {}: Applying bulk replication throttle of {} B/s to {} inter-broker movements "
                   + "({} pending before filtering) across {} topics.",
-            _uuid, _replicationThrottle, proposalsForExistingTopics.size(), pendingAtStart.size(), numExistingTopicsToThrottle);
+              _uuid,
+              _replicationThrottle,
+              proposalsForExistingTopics.size(),
+              pendingAtStart.size(),
+              numExistingTopicsToThrottle);
           throttleHelper.setThrottles(proposalsForExistingTopics);
         }
         int partitionsToMove = numTotalPartitionMovements;
@@ -1646,17 +1652,22 @@ public class Executor {
             result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToExecute);
           }
           // Wait indefinitely for partition movements to finish.
+          waitForInterBrokerReplicaTasksToFinish(result);
           partitionsToMove = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
           int numFinishedPartitionMovements = _executionTaskManager.numFinishedInterBrokerPartitionMovements();
           long finishedDataMovementInMB = _executionTaskManager.finishedInterBrokerDataMovementInMB();
           updatePartitionMovementMetrics(numFinishedPartitionMovements, finishedDataMovementInMB, System.currentTimeMillis() - startTime);
           LOG.info("User task {}: {}/{} ({}%) inter-broker partition movements completed. {}/{} ({}%) MB have been moved.",
-                   _uuid,
-                   numFinishedPartitionMovements, numTotalPartitionMovements,
-                   String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
-                   finishedDataMovementInMB, totalDataToMoveInMB,
-                   totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE
-                                                                          / totalDataToMoveInMB));
+              _uuid,
+              numFinishedPartitionMovements, numTotalPartitionMovements,
+              String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
+              finishedDataMovementInMB, totalDataToMoveInMB,
+              totalDataToMoveInMB == 0 ? 100
+                  : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE / totalDataToMoveInMB));
+          List<ExecutionTask> inProgressTasks = tasksToExecute.stream()
+              .filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS)
+              .collect(Collectors.toList());
+          inProgressTasks.addAll(inExecutionTasks());
         }
       } finally {
         // Ensure throttles are cleared even if an exception occurs during inter-broker movements.
