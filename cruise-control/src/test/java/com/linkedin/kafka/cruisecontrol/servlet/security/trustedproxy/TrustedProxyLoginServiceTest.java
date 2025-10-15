@@ -5,13 +5,11 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
-import com.linkedin.kafka.cruisecontrol.servlet.security.RoleProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
-import com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoLoginServiceWithAuthServiceLifecycle;
+import com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoLoginService;
 import org.eclipse.jetty.http.HttpURI;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.RoleDelegateUserIdentity;
-import org.eclipse.jetty.security.RolePrincipal;
 import org.eclipse.jetty.security.SPNEGOUserPrincipal;
 import org.eclipse.jetty.security.UserIdentity;
 import org.eclipse.jetty.security.UserStore;
@@ -22,7 +20,6 @@ import org.eclipse.jetty.server.Request;
 import org.junit.Test;
 import javax.security.auth.Subject;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DO_AS;
@@ -43,27 +40,10 @@ public class TrustedProxyLoginServiceTest {
   public static final String TEST_SERVICE_USER = "testServiceUser";
   public static final String ENCODED_TOKEN = "encoded_token";
   public static final String TEST_USER = "testUser";
+  private final UserStore _adminUserStore = new UserStore();
 
-  private static class TestAuthorizer implements RoleProvider {
-
-    private final UserStore _adminUserStore = new UserStore();
-
-    TestAuthorizer(String testUser) {
-      _adminUserStore.addUser(testUser, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
-    }
-
-    @Override
-    public String[] rolesFor(Request request, String name) {
-      List<RolePrincipal> rolePrincipals = _adminUserStore.getRolePrincipals(name);
-      if (rolePrincipals == null || rolePrincipals.isEmpty()) {
-        return null;
-      }
-      return rolePrincipals.stream().map(RolePrincipal::getName).toArray(String[]::new);
-    }
-  }
-
-  private final SpnegoLoginServiceWithAuthServiceLifecycle _mockSpnegoLoginService = mock(SpnegoLoginServiceWithAuthServiceLifecycle.class);
-  private final SpnegoLoginServiceWithAuthServiceLifecycle _mockFallbackLoginService = mock(SpnegoLoginServiceWithAuthServiceLifecycle.class);
+  private final SpnegoLoginService _mockSpnegoLoginService = mock(SpnegoLoginService.class);
+  private final SpnegoLoginService _mockFallbackLoginService = mock(SpnegoLoginService.class);
 
   @Test
   public void testSuccessfulAuthentication() {
@@ -73,7 +53,7 @@ public class TrustedProxyLoginServiceTest {
     RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
     expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
-    TestAuthorizer userAuthorizer = new TestAuthorizer(TEST_USER);
+    addTestUser(TEST_USER);
 
     Request mockRequest = mock(Request.class);
     Context mockContext = mock(Context.class);
@@ -89,13 +69,12 @@ public class TrustedProxyLoginServiceTest {
     expect(mockRequest.getMethod()).andReturn("GET").anyTimes();
     expect(mockRequest.getAttribute(anyString())).andReturn(null).anyTimes();
     IdentityService mockIdentityService = mock(IdentityService.class);
-    expect(_mockSpnegoLoginService.getIdentityService()).andReturn(mockIdentityService);
     expect(mockIdentityService.newUserIdentity(anyObject(), anyObject(), anyObject())).andReturn(serviceDelegate);
 
     replay(_mockSpnegoLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig, mockIdentityService);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
-            userAuthorizer, false);
+        _adminUserStore, false);
     UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest, null);
     assertNotNull(doAsIdentity);
     assertNotNull(doAsIdentity.getUserPrincipal());
@@ -112,7 +91,7 @@ public class TrustedProxyLoginServiceTest {
     RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
     expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
-    TestAuthorizer userAuthorizer = new TestAuthorizer(TEST_USER);
+    addTestUser(TEST_USER);
 
     Request mockRequest = mock(Request.class);
     Context mockContext = mock(Context.class);
@@ -130,7 +109,7 @@ public class TrustedProxyLoginServiceTest {
     replay(_mockSpnegoLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
-            userAuthorizer, false);
+            _adminUserStore, false);
     UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest, null);
     assertNotNull(doAsIdentity);
     assertNotNull(doAsIdentity.getUserPrincipal());
@@ -146,7 +125,7 @@ public class TrustedProxyLoginServiceTest {
     RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, null);
     expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
-    TestAuthorizer userAuthorizer = new TestAuthorizer(TEST_USER);
+    addTestUser(TEST_USER);
 
     Request mockRequest = mock(Request.class);
     Context mockContext = mock(Context.class);
@@ -167,7 +146,7 @@ public class TrustedProxyLoginServiceTest {
     replay(_mockSpnegoLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig, mockIdentityService);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
-            userAuthorizer, false);
+            _adminUserStore, false);
     UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest, null);
     assertNotNull(doAsIdentity);
     assertFalse(((RoleDelegateUserIdentity) doAsIdentity).isEstablished());
@@ -181,7 +160,7 @@ public class TrustedProxyLoginServiceTest {
     RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
     expect(_mockFallbackLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
-    TestAuthorizer userAuthorizer = new TestAuthorizer(TEST_USER);
+    addTestUser(TEST_USER);
 
     Request mockRequest = mock(Request.class);
     Context mockContext = mock(Context.class);
@@ -199,7 +178,7 @@ public class TrustedProxyLoginServiceTest {
     replay(_mockSpnegoLoginService, _mockFallbackLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
-            userAuthorizer, true);
+            _adminUserStore, true);
     UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest, null);
     assertNotNull(doAsIdentity);
     assertNotNull(doAsIdentity.getUserPrincipal());
@@ -217,7 +196,7 @@ public class TrustedProxyLoginServiceTest {
     RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
     expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
-    TestAuthorizer userAuthorizer = new TestAuthorizer(username);
+    addTestUser(username);
     Request mockRequest = mock(Request.class);
     Context mockContext = mock(Context.class);
     HttpURI uri = HttpURI.from("http://cruisecontrol.mycompany.com/somePath?" + DO_AS + "=" + username);
@@ -232,11 +211,9 @@ public class TrustedProxyLoginServiceTest {
     expect(mockRequest.getMethod()).andReturn("GET").anyTimes();
     expect(mockRequest.getAttribute(anyString())).andReturn(null).anyTimes();
     IdentityService mockIdentityService = mock(IdentityService.class);
-    expect(_mockSpnegoLoginService.getIdentityService()).andReturn(mockIdentityService);
-    expect(mockIdentityService.newUserIdentity(anyObject(), anyObject(), anyObject())).andReturn(serviceDelegate);
     replay(_mockSpnegoLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig, mockIdentityService);
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
-            userAuthorizer, false);
+            _adminUserStore, false);
 
     UserIdentity doAsIdentity = trustedProxyLoginService.login(proxy, ENCODED_TOKEN, mockRequest, null);
 
@@ -258,7 +235,7 @@ public class TrustedProxyLoginServiceTest {
     RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
     expect(_mockFallbackLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
-    TestAuthorizer userAuthorizer = new TestAuthorizer(username);
+    addTestUser(username);
     Request mockRequest = mock(Request.class);
     Context mockContext = mock(Context.class);
     HttpURI uri = HttpURI.from("http://cruisecontrol.mycompany.com/somePath");
@@ -274,7 +251,7 @@ public class TrustedProxyLoginServiceTest {
     expect(mockRequest.getAttribute(anyString())).andReturn(null).anyTimes();
     replay(_mockSpnegoLoginService, _mockFallbackLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig);
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
-            userAuthorizer, true);
+            _adminUserStore, true);
 
     UserIdentity doAsIdentity = trustedProxyLoginService.login(principal, ENCODED_TOKEN, mockRequest, null);
 
@@ -284,6 +261,10 @@ public class TrustedProxyLoginServiceTest {
     assertEquals(servicePrincipal.getName(), doAsPrincipal.getName());
     assertTrue(((RoleDelegateUserIdentity) doAsIdentity).isEstablished());
     verify(_mockSpnegoLoginService, _mockFallbackLoginService, mockRequest, mockContext, mockConnectionMetaData, mockConfig);
+  }
+
+  private void addTestUser(String testUser) {
+    _adminUserStore.addUser(testUser, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
   }
 
 }

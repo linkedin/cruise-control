@@ -22,6 +22,8 @@ import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import jakarta.servlet.ServletException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
@@ -120,12 +122,17 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
     protected void setupWebUi(ServletContextHandler contextHandler) {
         // Placeholder for any static content
         String webuiDir = _config.getString(WebServerConfig.WEBSERVER_UI_DISKPATH_CONFIG);
-        String webuiPathPrefix = _config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
-        DefaultServlet defaultServlet = new DefaultServlet();
-        ServletHolder holderWebapp = new ServletHolder("default", defaultServlet);
-        // holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
-        holderWebapp.setInitParameter("baseResource", webuiDir);
-        contextHandler.addServlet(holderWebapp, webuiPathPrefix);
+        Path path = Path.of(webuiDir);
+        if (Files.isDirectory(path) && Files.isReadable(path)) {
+            String webUiPathPrefix = _config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
+            DefaultServlet defaultServlet = new DefaultServlet();
+            ServletHolder holderWebapp = new ServletHolder("default", defaultServlet);
+            // holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
+            contextHandler.setBaseResourceAsString(webuiDir);
+            contextHandler.addServlet(holderWebapp, webUiPathPrefix);
+        } else {
+            LOG.warn("WebUI directory not found or unreadable: {} UI disabled", webuiDir);
+        }
     }
 
     protected ServletContextHandler createContextHandler() {

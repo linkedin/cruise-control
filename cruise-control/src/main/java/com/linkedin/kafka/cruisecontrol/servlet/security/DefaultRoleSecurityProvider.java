@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.eclipse.jetty.ee10.servlet.security.ConstraintMapping;
+import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.Constraint;
 
 
@@ -65,8 +66,11 @@ public abstract class DefaultRoleSecurityProvider implements SecurityProvider {
   }
 
   private ConstraintMapping mapping(CruiseControlEndPoint endpoint, String... roles) {
-    Constraint.Builder builder = new Constraint.Builder();
-    Constraint constraint = builder.roles(roles).name("BASIC").authorization(Constraint.Authorization.SPECIFIC_ROLE).build();
+    Constraint constraint = new Constraint.Builder()
+        .name(Authenticator.BASIC_AUTH)
+        .roles(roles)
+        .authorization(Constraint.Authorization.SPECIFIC_ROLE)
+        .build();
     ConstraintMapping mapping = new ConstraintMapping();
     mapping.setPathSpec(_webServerApiUrlPrefix.replace("*", endpoint.name().toLowerCase()));
     mapping.setConstraint(constraint);

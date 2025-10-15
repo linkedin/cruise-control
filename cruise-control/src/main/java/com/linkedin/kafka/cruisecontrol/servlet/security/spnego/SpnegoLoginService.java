@@ -5,20 +5,23 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DummyLoginService;
-import com.linkedin.kafka.cruisecontrol.servlet.security.RoleProvider;
-import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreRoleProvider;
 import org.apache.kafka.common.security.kerberos.KerberosName;
 import org.apache.kafka.common.security.kerberos.KerberosShortNamer;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.security.PropertyUserStore;
 import org.eclipse.jetty.security.RoleDelegateUserIdentity;
+import org.eclipse.jetty.security.RolePrincipal;
 import org.eclipse.jetty.security.SPNEGOLoginService;
 import org.eclipse.jetty.security.SPNEGOUserPrincipal;
 import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.security.UserPrincipal;
+import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Session;
 import org.eclipse.jetty.util.component.ContainerLifeCycle;
+import org.eclipse.jetty.util.resource.PathResourceFactory;
+import org.eclipse.jetty.util.resource.Resource;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
@@ -36,37 +39,38 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * This class is purely needed to manage the {@link RoleProvider}.
- * For instance if the RoleProvider holds a {@link org.eclipse.jetty.security.PropertyUserStore} then it would load
- * users from the store during the {@link PropertyUserStore#start()} method.
- *
- * @see UserStoreRoleProvider
+ * This class consolidates SPNEGO authentication and authorization logic within the LoginService.
+ * It manages the {@link PropertyUserStore} directly.
  */
-public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCycle implements LoginService {
+public class SpnegoLoginService extends ContainerLifeCycle implements LoginService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpnegoLoginServiceWithAuthServiceLifecycle.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SpnegoLoginService.class);
   private static final String GSS_HOLDER_CLASS_NAME = "org.eclipse.jetty.security.SPNEGOLoginService$GSSContextHolder";
-  private static final String REQUEST_ATTR_ADDED_NEW_SESSION = SpnegoLoginServiceWithAuthServiceLifecycle.class.getName() + "#ADDED_NEW_SESSION";
+  private static final String REQUEST_ATTR_ADDED_NEW_SESSION = SpnegoLoginService.class.getName() + "#ADDED_NEW_SESSION";
   private final GSSManager _gssManager = GSSManager.getInstance();
   private final SPNEGOLoginService _spnegoLoginService;
-  private final RoleProvider _roleProvider;
+  private final UserStore _userStore;
   private final KerberosShortNamer _kerberosShortNamer;
   private Subject _spnegoSubject;
   private GSSCredential _spnegoServiceCredential;
   private Constructor<?> _holderConstructor;
 
-  public SpnegoLoginServiceWithAuthServiceLifecycle(String realm, RoleProvider roleProvider, List<String> principalToLocalRules) {
-    _spnegoLoginService = new SPNEGOLoginService(realm, new DummyLoginService());
-    _roleProvider = roleProvider;
-    _kerberosShortNamer = principalToLocalRules == null || principalToLocalRules.isEmpty()
-            ? null
-            : KerberosShortNamer.fromUnparsedRules(realm, principalToLocalRules);
+  public SpnegoLoginService(String realm, String privilegesFilePath, List<String> principalToLocalRules) {
+    this(realm, createUserStore(privilegesFilePath), principalToLocalRules);
   }
+
+  public SpnegoLoginService(String realm, UserStore userStore, List<String> principalToLocalRules) {
+   _spnegoLoginService = new SPNEGOLoginService(realm, new DummyLoginService());
+   _userStore = userStore;
+   _kerberosShortNamer = principalToLocalRules == null || principalToLocalRules.isEmpty()
+     ? null
+     : KerberosShortNamer.fromUnparsedRules(realm, principalToLocalRules);
+   }
 
   @Override
   protected void doStart() throws Exception {
     addBean(_spnegoLoginService);
-    addBean(_roleProvider);
+    addBean(_userStore);
     super.doStart();
     extractSpnegoContext();
   }
@@ -83,37 +87,18 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
 
     // authentication
     UserIdentity userIdentity = _spnegoLoginService.login(username, credentials, request, getOrCreateSession);
-    if (userIdentity == null) {
-      return null;
-    }
-    if (userIdentity instanceof RoleDelegateUserIdentity) {
-      return userIdentity;
-    }
+    SPNEGOUserPrincipal userPrincipal = (SPNEGOUserPrincipal) userIdentity.getUserPrincipal();
 
     // get full principal and create user principal shortname
     String fullPrincipal = getFullPrincipalFromGssContext(gssContext);
     cleanRequest(request);
+    LOG.debug("User {} logged in with full principal {}", userPrincipal.getName(), fullPrincipal);
     String userShortname = getSpnegoUserPrincipalShortname(fullPrincipal);
 
-    SPNEGOUserPrincipal orig;
-    if (userIdentity.getUserPrincipal() instanceof SPNEGOUserPrincipal) {
-      orig = (SPNEGOUserPrincipal) userIdentity.getUserPrincipal();
-    } else {
-      orig = null;
-    }
-
-    SPNEGOUserPrincipal finalPrincipal = new SPNEGOUserPrincipal(userShortname, orig != null ? orig.getEncodedToken() : null);
-
-    LOG.debug("User {} logged in with full principal {}", finalPrincipal.getName(), fullPrincipal);
-
     // do authorization and create UserIdentity
-    String[] roles = _roleProvider.rolesFor(request, userShortname);
-    if (roles == null) {
-      return new RoleDelegateUserIdentity(userIdentity.getSubject(), finalPrincipal, null);
-    }
-    IdentityService is = getIdentityService();
-    UserIdentity delegate = is.newUserIdentity(userIdentity.getSubject(), finalPrincipal, roles);
-    return new RoleDelegateUserIdentity(userIdentity.getSubject(), finalPrincipal, delegate);
+    userPrincipal = new SPNEGOUserPrincipal(userShortname, userPrincipal.getEncodedToken());
+    UserIdentity roleDelegate = getUserIdentity(userShortname);
+    return new RoleDelegateUserIdentity(userIdentity.getSubject(), userPrincipal, roleDelegate);
   }
 
   @Override
@@ -147,6 +132,16 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
   public void setKeyTabPath(Path keyTabFile) {
     _spnegoLoginService.setKeyTabPath(keyTabFile);
   }
+  
+  private UserIdentity getUserIdentity(String name) {
+    // Apply SPNEGO-specific name processing
+    int hostSeparator = name.indexOf('/');
+    String shortName = hostSeparator > 0 ? name.substring(0, hostSeparator) : name;
+    int realmSeparator = shortName.indexOf('@');
+    shortName = realmSeparator > 0 ? shortName.substring(0, realmSeparator) : shortName;
+
+    return getUserIdentityFromIdentityService(shortName);
+  }
 
   private String getSpnegoUserPrincipalShortname(String fullPrincipal) {
     PrincipalName userPrincipalName = PrincipalValidator.parsePrincipal("", fullPrincipal);
@@ -165,7 +160,7 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
     }
   }
 
-  protected String getFullPrincipalFromGssContext(GSSContext gssContext) {
+  private String getFullPrincipalFromGssContext(GSSContext gssContext) {
     try {
       return gssContext.getSrcName().toString();
     } catch (GSSException e) {
@@ -239,6 +234,34 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
         throw new RuntimeException(e);
       }
     };
+  }
+
+  private static PropertyUserStore createUserStore(String privilegesFilePath) {
+    PropertyUserStore userStore = new PropertyUserStore();
+    Resource res = new PathResourceFactory().newResource(Path.of(privilegesFilePath));
+    userStore.setConfig(res);
+    return userStore;
+  }
+
+  // Visible for testing
+  UserIdentity getUserIdentityFromIdentityService(String userName) {
+    UserPrincipal user = _userStore.getUserPrincipal(userName);
+    List<RolePrincipal> roles = _userStore.getRolePrincipals(userName);
+    if (user == null) {
+      return null;
+    }
+    return getIdentityService().newUserIdentity(
+      createSubject(user, roles),
+      user,
+      roles.stream().map(RolePrincipal::getName).toArray(String[]::new)
+    );
+  }
+
+  private Subject createSubject(UserPrincipal user, List<RolePrincipal> rolePrincipals) {
+    Subject subject = new Subject();
+    subject.getPrincipals().add(user);
+    subject.getPrincipals().addAll(rolePrincipals);
+    return subject;
   }
 
 }

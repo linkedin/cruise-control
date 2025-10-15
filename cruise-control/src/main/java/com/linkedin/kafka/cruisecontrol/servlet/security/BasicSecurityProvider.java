@@ -10,7 +10,6 @@ import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.HashLoginService;
 import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.security.authentication.BasicAuthenticator;
-import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.resource.ResourceFactory;
 
@@ -30,7 +29,7 @@ public class BasicSecurityProvider extends DefaultRoleSecurityProvider {
 
   @Override
   public LoginService loginService() {
-    Resource resource = ResourceFactory.of(new ResourceHandler()).newResource(_userCredentialsFile);
+    Resource resource = ResourceFactory.root().newResource(_userCredentialsFile);
     return new HashLoginService("DefaultLoginService", resource);
   }
 

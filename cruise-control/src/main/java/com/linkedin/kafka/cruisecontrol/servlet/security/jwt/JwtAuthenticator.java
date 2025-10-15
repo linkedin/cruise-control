@@ -11,13 +11,12 @@ import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.http.HttpURI;
 import org.eclipse.jetty.security.AuthenticationState;
-import org.eclipse.jetty.security.ServerAuthException;
 import org.eclipse.jetty.security.UserIdentity;
 import org.eclipse.jetty.security.authentication.LoginAuthenticator;
+import org.eclipse.jetty.security.internal.DeferredAuthenticationState;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
-import org.eclipse.jetty.util.URIUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.text.ParseException;
@@ -74,7 +73,10 @@ public class JwtAuthenticator extends LoginAuthenticator {
   public JwtAuthenticator(String authenticationProviderUrl, String cookieName) {
     _cookieName = cookieName;
     Function<String, Function<Request, String>> urlGen =
-        url -> req -> url.replace(REDIRECT_URL, getRequestURL(req) + getOriginalQueryString(req));
+        url -> req -> {
+          HttpURI httpUri = HttpURI.build(req.getHttpURI()).query(null);
+          return url.replace(REDIRECT_URL, httpUri.asString() + getOriginalQueryString(req));
+        };
     _authenticationProviderUrlGenerator = urlGen.apply(authenticationProviderUrl);
   }
 
@@ -84,13 +86,13 @@ public class JwtAuthenticator extends LoginAuthenticator {
   }
 
   @Override
-  public AuthenticationState validateRequest(Request request, Response response, Callback callback) throws ServerAuthException {
+  public AuthenticationState validateRequest(Request request, Response response, Callback callback) {
     JWT_LOGGER.trace("Authentication request received for " + request.toString());
 
     String serializedJWT;
     // we'll skip the authentication for CORS preflight requests
     if (HttpMethod.OPTIONS.name().equalsIgnoreCase(request.getMethod())) {
-      return null;
+      return new DeferredAuthenticationState(this);
     }
     serializedJWT = getJwtFromBearerAuthorization(request);
     if (serializedJWT == null) {
@@ -150,22 +152,5 @@ public class JwtAuthenticator extends LoginAuthenticator {
   private String getOriginalQueryString(Request req) {
     String originalQueryString = req.getHttpURI().getQuery();
     return (originalQueryString == null) ? "" : "?" + originalQueryString;
-  }
-
-  /**
-   * Get the full request URL including scheme, host, port and path but excluding the query string.
-   * 
-   * @param req is the request to process
-   * @return the full request URL
-   */
-  public String getRequestURL(Request req) {
-    final StringBuilder url = new StringBuilder();
-    HttpURI uri = req.getHttpURI();
-    URIUtil.appendSchemeHostPort(url, uri.getScheme(), Request.getServerName(req), Request.getServerPort(req));
-    String path = uri.getPath();
-    if (path != null) {
-      url.append(path);
-    }
-    return url.toString();
   }
 }

@@ -4,13 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 
-import com.linkedin.kafka.cruisecontrol.servlet.security.RoleProvider;
-import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreRoleProvider;
 import org.apache.kafka.common.security.kerberos.KerberosShortNamer;
 import org.eclipse.jetty.security.IdentityService;
+import org.eclipse.jetty.security.RolePrincipal;
 import org.eclipse.jetty.security.SPNEGOLoginService;
 import org.eclipse.jetty.security.SPNEGOUserPrincipal;
 import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.security.UserPrincipal;
+import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Session;
 import org.ietf.jgss.GSSContext;
@@ -41,25 +42,33 @@ import static org.powermock.api.support.membermodification.MemberMatcher.method;
 import static org.powermock.api.support.membermodification.MemberModifier.stub;
 
 /**
- * Unit tests for {@link SpnegoLoginServiceWithAuthServiceLifecycle}
+ * Unit tests for {@link SpnegoLoginService}
  */
 @RunWith(PowerMockRunner.class)
-@PowerMockIgnore({"javax.management.*", "org.ietf.jgss.GSSManager"})
-@PrepareForTest(SpnegoLoginServiceWithAuthServiceLifecycle.class)
-public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
+@PowerMockIgnore({
+    "javax.management.*",
+    "org.ietf.jgss.*",
+    "javax.security.*", 
+    "sun.security.*",
+    "java.util.stream.*"})
+@PrepareForTest(SpnegoLoginService.class)
+public class SpnegoLoginServiceTest {
     public static final String USERNAME = "user1";
     private static final String REALM = "TEST_REALM";
     private static final String TOKEN = "TEST_TOKEN";
     private static final String ROLE = "ADMIN";
     private static final Subject SUBJECT = new Subject();
     private static final List<String> ATL_RULES = Collections.singletonList("RULE:[1:$1@$0](.*@.*)s/@.*/foo/");
-    private final RoleProvider _mockRoleProvider = mock(UserStoreRoleProvider.class);
+    private final UserStore _mockUserStore = mock(UserStore.class);
     private final SPNEGOLoginService _mockLoginService = mock(SPNEGOLoginService.class);
     private final Request _mockRequest = mock(Request.class);
     private final UserIdentity _mockAuthIdentity = mock(UserIdentity.class);
+    private final UserIdentity _mockRoleIdentity = mock(UserIdentity.class);
     private final Function<Boolean, Session> _mockGetOrCreateSession = mock(Function.class);
     private final IdentityService _mockIdentityService = mock(IdentityService.class);
     private final GSSContext _mockGSSContext = mock(GSSContext.class);
+    private final UserPrincipal _mockUserPrincipal = mock(UserPrincipal.class);
+    private final RolePrincipal _mockRolePrincipal = mock(RolePrincipal.class);
 
     /**
      * Init the unit test.
@@ -72,7 +81,7 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
 
     @Test
     public void testExtractSpnegoContext() throws ReflectiveOperationException {
-        SpnegoLoginServiceWithAuthServiceLifecycle service = partialMockBuilder(SpnegoLoginServiceWithAuthServiceLifecycle.class).createMock();
+        SpnegoLoginService service = partialMockBuilder(SpnegoLoginService.class).createMock();
         Whitebox.setInternalState(service, "_spnegoLoginService", _mockLoginService);
         Class<?> contextClass = Class.forName("org.eclipse.jetty.security.SPNEGOLoginService$SPNEGOContext");
         Constructor<?> contextCtor = contextClass.getDeclaredConstructor();
@@ -88,8 +97,8 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
 
     @Test
     public void testLoginWithoutKerberosRules() {
-        SpnegoLoginServiceWithAuthServiceLifecycle service = createAuthServiceWithMocking(new SPNEGOUserPrincipal(USERNAME, TOKEN));
-        replay(_mockLoginService, _mockRoleProvider, _mockAuthIdentity, _mockIdentityService);
+        SpnegoLoginService service = createAuthServiceWithMocking(new SPNEGOUserPrincipal(USERNAME, TOKEN));
+        replay(_mockLoginService, _mockUserStore, _mockAuthIdentity, _mockIdentityService, _mockUserPrincipal, _mockRolePrincipal);
 
         UserIdentity userIdentity = service.login(USERNAME, new Object(), _mockRequest, _mockGetOrCreateSession);
 
@@ -101,37 +110,29 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
         String principalName = "user1@realm";
         String usernameReplaced = USERNAME + "foo";
         SPNEGOUserPrincipal principal = new SPNEGOUserPrincipal(principalName, TOKEN);
-        SpnegoLoginServiceWithAuthServiceLifecycle service = createAuthServiceWithMocking(principalName, usernameReplaced, principal);
+        SpnegoLoginService service = createAuthServiceWithMocking(principalName, usernameReplaced, principal);
         Whitebox.setInternalState(service, "_kerberosShortNamer", KerberosShortNamer.fromUnparsedRules(REALM, ATL_RULES));
-        replay(_mockLoginService, _mockRoleProvider, _mockAuthIdentity, _mockIdentityService);
+        replay(_mockLoginService, _mockUserStore, _mockAuthIdentity, _mockIdentityService, _mockUserPrincipal, _mockRolePrincipal);
 
         UserIdentity userIdentity = service.login(principalName, new Object(), _mockRequest, _mockGetOrCreateSession);
 
         assertUserIdentity(usernameReplaced, userIdentity);
     }
 
-    private SpnegoLoginServiceWithAuthServiceLifecycle createAuthServiceWithMocking(SPNEGOUserPrincipal principal) {
+    private SpnegoLoginService createAuthServiceWithMocking(SPNEGOUserPrincipal principal) {
         return createAuthServiceWithMocking(USERNAME, USERNAME, principal);
     }
 
-    private SpnegoLoginServiceWithAuthServiceLifecycle createAuthServiceWithMocking(String name, String finalName, SPNEGOUserPrincipal principal) {
-        SpnegoLoginServiceWithAuthServiceLifecycle service = new SpnegoLoginServiceWithAuthServiceLifecycle(REALM, _mockRoleProvider, null);
-        stub(method(SpnegoLoginServiceWithAuthServiceLifecycle.class, "addContext", Request.class)).toReturn(_mockGSSContext);
-        stub(method(SpnegoLoginServiceWithAuthServiceLifecycle.class, "getFullPrincipalFromGssContext", GSSContext.class)).toReturn(name);
+    private SpnegoLoginService createAuthServiceWithMocking(String name, String finalName, SPNEGOUserPrincipal principal) {
+        SpnegoLoginService service = new SpnegoLoginService(REALM, _mockUserStore, null);
+        stub(method(SpnegoLoginService.class, "addContext", Request.class)).toReturn(_mockGSSContext);
+        stub(method(SpnegoLoginService.class, "getFullPrincipalFromGssContext", GSSContext.class)).toReturn(name);
+        stub(method(SpnegoLoginService.class, "getUserIdentityFromIdentityService", String.class)).toReturn(_mockRoleIdentity);
 
+        Whitebox.setInternalState(service, "_userStore", _mockUserStore);
         Whitebox.setInternalState(service, "_spnegoLoginService", _mockLoginService);
 
-        expect(_mockAuthIdentity.getUserPrincipal()).andReturn(principal).anyTimes();
-        expect(_mockRoleProvider.rolesFor(anyObject(), anyString())).andReturn(new String[]{ROLE}).anyTimes();
-        expect(_mockLoginService.getIdentityService()).andReturn(_mockIdentityService).anyTimes();
-        expect(_mockIdentityService.newUserIdentity(anyObject(), anyObject(), anyObject())).andReturn(
-            new org.eclipse.jetty.security.DefaultIdentityService()
-                .newUserIdentity(
-                    SUBJECT,
-                    new SPNEGOUserPrincipal(finalName, principal.getEncodedToken()),
-                    new String[]{ROLE}
-                )
-        );
+        expect(_mockAuthIdentity.getUserPrincipal()).andReturn(principal);
 
         return service;
     }
@@ -140,7 +141,7 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
         assertEquals(username, userIdentity.getUserPrincipal().getName());
         assertEquals(SUBJECT, userIdentity.getSubject());
         userIdentity.isUserInRole(ROLE);
-        verify(_mockLoginService, _mockRoleProvider, _mockAuthIdentity, _mockIdentityService);
+        verify(_mockLoginService, _mockUserStore, _mockAuthIdentity, _mockIdentityService, _mockUserPrincipal, _mockRolePrincipal);
     }
 
 }

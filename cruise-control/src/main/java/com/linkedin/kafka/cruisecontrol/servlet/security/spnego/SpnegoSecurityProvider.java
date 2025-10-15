@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
-import com.linkedin.kafka.cruisecontrol.servlet.security.RoleProvider;
 import org.apache.kafka.common.security.kerberos.KerberosName;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.LoginService;
@@ -36,8 +35,8 @@ public class SpnegoSecurityProvider extends DefaultRoleSecurityProvider {
 
   @Override
   public LoginService loginService() {
-    SpnegoLoginServiceWithAuthServiceLifecycle loginService = new SpnegoLoginServiceWithAuthServiceLifecycle(
-            _spnegoPrincipal.realm(), roleProvider(), _spnegoPrincipalToLocalRules);
+    SpnegoLoginService loginService = new SpnegoLoginService(
+            _spnegoPrincipal.realm(), _privilegesFilePath, _spnegoPrincipalToLocalRules);
     loginService.setServiceName(_spnegoPrincipal.serviceName());
     loginService.setHostName(_spnegoPrincipal.hostName());
     loginService.setKeyTabPath(Paths.get(_keyTabPath));
@@ -47,9 +46,5 @@ public class SpnegoSecurityProvider extends DefaultRoleSecurityProvider {
   @Override
   public Authenticator authenticator() {
     return new SPNEGOAuthenticator();
-  }
-
-  public RoleProvider roleProvider() {
-    return new SpnegoUserStoreRoleProvider(_privilegesFilePath);
   }
 }
