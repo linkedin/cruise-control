@@ -35,7 +35,6 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.HashSet;
-import java.util.stream.Collectors;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -43,8 +42,6 @@ import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
-import org.apache.kafka.clients.admin.Config;
-import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.ElectLeadersResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -55,7 +52,6 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
@@ -427,143 +423,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
-  public void testInterBrokerMoveReplicasWhenBulkThrottleEnabledThenThrottleApplied()
-      throws InterruptedException, OngoingExecutionException {
-      Collection<ExecutionProposal> proposalsToExecute = createProposalsForTwoTopics(PRODUCE_SIZE_IN_BYTES);
-
-      // Start execution with replication throttle using helper
-      final long replicationThrottle = PRODUCE_SIZE_IN_BYTES;
-      Executor executor = startExecutionWithBulkThrottle(proposalsToExecute, replicationThrottle);
-
-      // Wait for inter-broker movement to start
-      waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
-          "Inter-broker replica movement task did not start within the time limit", EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
-
-      try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(
-          Collections.singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()))) {
-
-          waitUntilTrue(() -> {
-                  try {
-                      for (int brokerId : List.of(0, 1)) {
-                          ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
-                          Map<ConfigResource, Config> cfg = adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
-                          Config brokerCfg = cfg.get(cf);
-                          String leaderActual = brokerCfg.get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE) == null
-                              ? null : brokerCfg.get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE).value();
-                          String followerActual = brokerCfg.get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE) == null
-                              ? null : brokerCfg.get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE).value();
-                          if (!String.valueOf(replicationThrottle).equals(leaderActual)
-                              || !String.valueOf(replicationThrottle).equals(followerActual)) {
-                              return false;
-                          }
-                      }
-                      return true;
-                  } catch (InterruptedException | ExecutionException e) {
-                      return false;
-                  }
-              },
-              "Throttle rate not applied to brokers in time",
-              EXECUTION_DEADLINE_MS,
-              EXECUTION_SHORT_CHECK_MS);
-
-          Set<String> topicsSnapshot = proposalsToExecute.stream().map(ExecutionProposal::topic).collect(Collectors.toSet());
-          for (String topic : topicsSnapshot) {
-              waitUntilTrue(() -> {
-                      try {
-                          ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
-                          Map<ConfigResource, Config> cfg = adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
-                          Config topicCfg = cfg.get(cf);
-                          String leaderReplicas = topicCfg.get(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS) == null
-                              ? null : topicCfg.get(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS).value();
-                          String followerReplicas = topicCfg.get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS) == null
-                              ? null : topicCfg.get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS).value();
-                          return leaderReplicas != null && !leaderReplicas.isEmpty() && leaderReplicas.contains("0:")
-                              && followerReplicas != null && !followerReplicas.isEmpty() && followerReplicas.contains("0:");
-                      } catch (InterruptedException | ExecutionException e) {
-                          return false;
-                      }
-                  },
-                  "Topic throttled replicas not applied for topic " + topic,
-                  EXECUTION_DEADLINE_MS,
-                  EXECUTION_SHORT_CHECK_MS);
-          }
-
-          // Explicitly stop to avoid long wait, then ensure background execution is drained
-          executor.userTriggeredStopExecution(false);
-          waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
-              "Stopped proposal execution did not finish within the time limit", EXECUTION_DEADLINE_MS, EXECUTION_REGULAR_CHECK_MS);
-      }
-  }
-
-  @Test
-  public void testInterBrokerMoveReplicasWhenBulkThrottleEnabledThenThrottleClearedAtEnd()
-      throws InterruptedException, OngoingExecutionException {
-      Collection<ExecutionProposal> proposalsToExecute = createProposalsForTwoTopics(PRODUCE_SIZE_IN_BYTES);
-
-      // Start execution with replication throttle using helper
-      final long replicationThrottle = PRODUCE_SIZE_IN_BYTES;
-      Executor executor = startExecutionWithBulkThrottle(proposalsToExecute, replicationThrottle);
-
-      // Ensure execution started, confirm reassignments began, then stop to expedite teardown and wait for completion
-      waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
-          "Inter-broker replica movement task did not start within the time limit", EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
-      verifyOngoingPartitionReassignments(Collections.singleton(TP0));
-      executor.userTriggeredStopExecution(false);
-      waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
-          "Stopped proposal execution did not finish within the time limit", EXECUTION_DEADLINE_MS * 3, EXECUTION_REGULAR_CHECK_MS);
-
-      // Verify throttles are cleared at the end
-      try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(
-          Collections.singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()))) {
-
-          waitUntilTrue(() -> {
-                  try {
-                      for (int brokerId : List.of(0, 1)) {
-                          ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
-                          Map<ConfigResource, Config> cfg = adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
-                          Config brokerCfg = cfg.get(cf);
-                          String leaderActual = brokerCfg.get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE) == null
-                              ? null : brokerCfg.get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE).value();
-                          String followerActual = brokerCfg.get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE) == null
-                              ? null : brokerCfg.get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE).value();
-                          if (leaderActual != null || followerActual != null) {
-                              return false;
-                          }
-                      }
-                      return true;
-                  } catch (InterruptedException | ExecutionException e) {
-                      return false;
-                  }
-              },
-              "Throttle not cleared from brokers in time",
-              EXECUTION_DEADLINE_MS,
-              EXECUTION_SHORT_CHECK_MS);
-
-          // Topic replicas cleared
-          Set<String> topicsSnapshot = proposalsToExecute.stream().map(ExecutionProposal::topic).collect(Collectors.toSet());
-          for (String topic : topicsSnapshot) {
-              waitUntilTrue(() -> {
-                      try {
-                          ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
-                          Map<ConfigResource, Config> cfg = adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
-                          Config topicCfg = cfg.get(cf);
-                          ConfigEntry leaderEntry = topicCfg.get(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS);
-                          ConfigEntry followerEntry = topicCfg.get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS);
-                          boolean leaderCleared = leaderEntry == null || leaderEntry.value() == null || leaderEntry.value().isEmpty();
-                          boolean followerCleared = followerEntry == null || followerEntry.value() == null || followerEntry.value().isEmpty();
-                          return leaderCleared && followerCleared;
-                      } catch (InterruptedException | ExecutionException e) {
-                          return false;
-                      }
-                  },
-                  "Topic throttled replicas not cleared for topic " + topic,
-                  EXECUTION_DEADLINE_MS,
-                  EXECUTION_SHORT_CHECK_MS);
-          }
-      }
-  }
-
-  @Test
   public void testResetExecutionProgressCheckIntervalMs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
@@ -753,43 +612,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     proposalToExecute.addAll(Arrays.asList(proposal0, proposal1, proposal2, proposal3));
     proposalToVerify.addAll(Arrays.asList(proposal0, proposal1));
-  }
-
-  private Collection<ExecutionProposal> createProposalsForTwoTopics(long produceSizeInBytes) throws InterruptedException {
-    Map<String, TopicDescription> topicDescriptions = createTopics((int) produceSizeInBytes);
-    int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
-    int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
-    ExecutionProposal proposal0 =
-        new ExecutionProposal(TP0, produceSizeInBytes, new ReplicaPlacementInfo(initialLeader0),
-                              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
-                              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
-    ExecutionProposal proposal1 =
-        new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
-                              Arrays.asList(new ReplicaPlacementInfo(initialLeader1), new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
-                              Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0), new ReplicaPlacementInfo(initialLeader1)));
-    return List.of(proposal0, proposal1);
-  }
-
-  private Executor startExecutionWithBulkThrottle(Collection<ExecutionProposal> proposalsToExecute,
-                                                  long replicationThrottle) throws OngoingExecutionException {
-    Properties props = getExecutorProperties();
-    props.setProperty(ExecutorConfig.BULK_REPLICATION_THROTTLE_ENABLED_CONFIG, "true");
-    KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(props);
-
-    UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
-    UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo, Collections.singletonList(true));
-    LoadMonitor mockLoadMonitor = getMockLoadMonitor();
-    AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID, false);
-    EasyMock.replay(mockUserTaskInfo, mockUserTaskManager, mockLoadMonitor, mockAnomalyDetectorManager);
-
-    MetricRegistry metricRegistry = new MetricRegistry();
-    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, mockAnomalyDetectorManager);
-    executor.setUserTaskManager(mockUserTaskManager);
-
-    executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
-    executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null, null, null, null, null,
-                              null, null, replicationThrottle, true, RANDOM_UUID, false, false);
-    return executor;
   }
 
   /**

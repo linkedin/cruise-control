@@ -1607,14 +1607,13 @@ public class Executor {
     private void interBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
       Set<Integer> currentDeadBrokersWithReplicas = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
       ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, _replicationThrottle, currentDeadBrokersWithReplicas);
-      final boolean bulkThrottleEnabled = _config.getBoolean(ExecutorConfig.BULK_REPLICATION_THROTTLE_ENABLED_CONFIG);
       int numTotalPartitionMovements = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingInterBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
       LOG.info("User task {}: Starting {} inter-broker partition movements.", _uuid, numTotalPartitionMovements);
       try {
-        // If bulk throttle is enabled, set throttles once for all pending inter-broker tasks before entering the loop.
-        if (bulkThrottleEnabled && _replicationThrottle != null && numTotalPartitionMovements > 0) {
+        // Set throttles once for all pending inter-broker tasks before entering the loop.
+        if (_replicationThrottle != null && numTotalPartitionMovements > 0) {
           ExecutionTasksSummary summaryAtStart = _executionTaskManager.getExecutionTasksSummary(
               Collections.singleton(INTER_BROKER_REPLICA_ACTION));
           Map<ExecutionTaskState, Set<ExecutionTask>> interBrokerTasksByState = summaryAtStart.filteredTasksByState()
@@ -1642,15 +1641,11 @@ public class Executor {
 
           AlterPartitionReassignmentsResult result = null;
           if (!tasksToExecute.isEmpty()) {
-            if (!bulkThrottleEnabled) {
-              throttleHelper.setThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()));
-            }
             // Execute the tasks.
             _executionTaskManager.markTasksInProgress(tasksToExecute);
             result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToExecute);
           }
           // Wait indefinitely for partition movements to finish.
-          List<ExecutionTask> completedTasks = waitForInterBrokerReplicaTasksToFinish(result);
           partitionsToMove = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
           int numFinishedPartitionMovements = _executionTaskManager.numFinishedInterBrokerPartitionMovements();
           long finishedDataMovementInMB = _executionTaskManager.finishedInterBrokerDataMovementInMB();
@@ -1662,17 +1657,10 @@ public class Executor {
                    finishedDataMovementInMB, totalDataToMoveInMB,
                    totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE
                                                                           / totalDataToMoveInMB));
-          List<ExecutionTask> inProgressTasks = tasksToExecute.stream()
-              .filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS)
-              .collect(Collectors.toList());
-          inProgressTasks.addAll(inExecutionTasks());
-          if (!bulkThrottleEnabled) {
-            throttleHelper.clearThrottles(completedTasks, inProgressTasks);
-          }
         }
       } finally {
-        // Ensure bulk throttles are cleared even if an exception occurs during inter-broker movements.
-        if (bulkThrottleEnabled && _replicationThrottle != null) {
+        // Ensure throttles are cleared even if an exception occurs during inter-broker movements.
+        if (_replicationThrottle != null) {
           try {
             ExecutionTasksSummary summaryAtEnd = _executionTaskManager.getExecutionTasksSummary(
                 Collections.singleton(INTER_BROKER_REPLICA_ACTION));
