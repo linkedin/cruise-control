@@ -610,7 +610,6 @@ public final class ExecutorConfig {
   public static final String AUTO_STOP_EXTERNAL_AGENT_DOC = "When starting a new proposal execution while external agent is reassigning partitions,"
       + " automatically stop the external agent and start the execution."
       + " Set to false to keep the external agent reassignment and skip starting the execution.";
-
   private ExecutorConfig() {
   }
 
