@@ -245,8 +245,8 @@ public class AnomalyDetectorManager {
    * Start each anomaly detector.
    */
   public void startDetection() {
-    scheduleDetectorAtFixedRate(GOAL_VIOLATION, _goalViolationDetector);
     scheduleDetectorAtFixedRate(INTRA_BROKER_GOAL_VIOLATION, _intraBrokerGoalViolationDetector);
+    scheduleDetectorAtFixedRate(GOAL_VIOLATION, _goalViolationDetector);
     scheduleDetectorAtFixedRate(METRIC_ANOMALY, _metricAnomalyDetector);
     scheduleDetectorAtFixedRate(TOPIC_ANOMALY, _topicAnomalyDetector);
     scheduleDetectorAtFixedRate(DISK_FAILURE, _diskFailureDetector);
