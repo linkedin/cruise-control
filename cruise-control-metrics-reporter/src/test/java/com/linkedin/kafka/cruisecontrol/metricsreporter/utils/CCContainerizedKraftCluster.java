@@ -74,6 +74,7 @@ public class CCContainerizedKraftCluster implements Startable {
 
   private final List<KafkaContainer> _brokers;
   private final String _bootstrapServers;
+  private final List<String> _brokerAddressList;
 
   public CCContainerizedKraftCluster(int numOfBrokers, List<Map<Object, Object>> brokerConfigs, Properties adminClientProps) {
     if (numOfBrokers <= 0) {
@@ -88,7 +89,8 @@ public class CCContainerizedKraftCluster implements Startable {
       INTERNAL_LISTENER_NAME + "://0.0.0.0:" + CONTAINER_INTERNAL_LISTENER_PORT,
       EXTERNAL_LISTENER_NAME + "://0.0.0.0:" + CONTAINER_EXTERNAL_LISTENER_PORT
     );
-    this._bootstrapServers = generateBootstrapServersList(numOfBrokers, containerHostPorts);
+    this._brokerAddressList = generateServerAddressList(numOfBrokers, containerHostPorts);
+    this._bootstrapServers = String.join(",", _brokerAddressList);
 
     /*
      * Ideally, we would construct the admin client properties directly in this constructor. However, due to the current
@@ -171,10 +173,10 @@ public class CCContainerizedKraftCluster implements Startable {
       .collect(Collectors.toList());
   }
 
-  private String generateBootstrapServersList(int numOfBrokers, List<Integer> containerHostPorts) {
+  private List<String> generateServerAddressList(int numOfBrokers, List<Integer> containerHostPorts) {
     return IntStream.range(0, numOfBrokers)
       .mapToObj(i -> String.format("%s:%s", CONTAINER_HOST, containerHostPorts.get(i)))
-      .collect(Collectors.joining(","));
+      .collect(Collectors.toList());
   }
 
   private void copyCertToContainer(KafkaContainer container, Map<Object, Object> config, String key) {
@@ -185,14 +187,19 @@ public class CCContainerizedKraftCluster implements Startable {
   }
 
   private void setupContainerResources(KafkaContainer kafkaContainer, Map<Object, Object> brokerConfig) {
-    Path libsDir = Paths.get("build", "libs").toAbsolutePath().normalize();
+    Path projectRoot = Paths.get("").toAbsolutePath().normalize();
+
+    Path metricsReporterJarPath = projectRoot
+      .resolveSibling("cruise-control-metrics-reporter")
+      .resolve("build")
+      .resolve("libs");
 
     try {
-      Path jarPath = Files.list(libsDir)
+      Path jarPath = Files.list(metricsReporterJarPath)
         .filter(path -> path.getFileName().toString().startsWith("cruise-control-metrics-reporter"))
         .filter(path -> path.getFileName().toString().endsWith(".jar"))
         .findFirst()
-        .orElseThrow(() -> new IllegalStateException("Cruise Control Metrics Reporter jar not found in: " + libsDir));
+        .orElseThrow(() -> new IllegalStateException("Cruise Control Metrics Reporter jar not found in: " + metricsReporterJarPath));
 
       kafkaContainer.withCopyToContainer(
         MountableFile.forHostPath(jarPath.toString(), 0755),
@@ -256,6 +263,15 @@ public class CCContainerizedKraftCluster implements Startable {
    */
   public String getExternalBootstrapAddress() {
     return _bootstrapServers;
+  }
+
+  /**
+   * Returns the list of broker addresses.
+   *
+   * @return a list of broker address strings.
+   */
+  public List<String> getBrokerAddressList() {
+    return _brokerAddressList;
   }
 
   @Override
