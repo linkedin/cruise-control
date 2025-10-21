@@ -8,7 +8,7 @@ plugins {
   id "idea"
   id "jacoco" // Java Code Coverage plugin
   id "com.github.ben-manes.versions" version "0.42.0"
-  id "com.github.spotbugs" version "6.0.6" apply false
+  id "com.github.spotbugs" version "6.0.25" apply false
   id "checkstyle"
   id "org.openapi.generator" version "5.3.0"
 }
@@ -45,6 +45,18 @@ project.ext {
   buildVersionFileName = "cruise-control-version.properties"
   commitId = project.hasProperty('commitId') ? commitId : null
   scalaBinaryVersion = getScalaBinaryVersion(scalaVersion)
+
+  defaultTestJvmArgs = []
+  // "JEP 403: Strongly Encapsulate JDK Internals" causes some tests to fail when they try
+  // to access internals (often via mocking libraries). We use `--add-opens` as a workaround
+  if (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_16))
+    defaultTestJvmArgs.addAll(
+        "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.time=ALL-UNNAMED",
+        "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED"
+    )
 }
 
 allprojects {
@@ -83,8 +95,8 @@ subprojects {
   apply plugin: "com.github.spotbugs"
   apply plugin: 'jacoco'
 
-  // This project requires Java 11
-  sourceCompatibility = JavaVersion.VERSION_11
+  // This project requires Java 17
+  sourceCompatibility = JavaVersion.VERSION_17
 
   task sourcesJar(type: Jar, dependsOn: classes) {
     archiveClassifier.set("sources")
@@ -104,7 +116,7 @@ subprojects {
   }
 
   spotbugs {
-    toolVersion = '4.7.1'
+    toolVersion = '4.8.6'
     excludeFilter = file("$rootDir/gradle/findbugs-exclude.xml")
     ignoreFailures = false
     jvmArgs = [ '-Xms512m' ]
@@ -137,6 +149,8 @@ subprojects {
   }
 
   test {
+    jvmArgs += defaultTestJvmArgs
+
     useJUnit {}
     testLogging {
       events "passed", "failed", "skipped"
@@ -175,7 +189,7 @@ project(':cruise-control-core') {
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
     implementation 'org.apache.commons:commons-math3:3.6.1'
     api "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
-    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation 'com.github.spotbugs:spotbugs-annotations:4.8.6'
 
     api "io.vertx:vertx-core:${vertxVersion}"
     api "io.vertx:vertx-web:${vertxVersion}"
@@ -275,7 +289,6 @@ project(':cruise-control') {
     api project(':cruise-control-core')
     implementation "org.slf4j:slf4j-api:1.7.36"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
-    implementation "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     implementation "io.netty:netty-handler:${nettyVersion}"
     implementation "io.netty:netty-transport-native-epoll:${nettyVersion}"
     api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
@@ -307,11 +320,17 @@ project(':cruise-control') {
     api 'org.json:json:20231013'
     api 'org.xerial.snappy:snappy-java:1.1.10.5'
 
+    constraints {
+      implementation("commons-beanutils:commons-beanutils:1.11.0") {
+        because("version 1.9.4 pulled from kafa 3.9.1 has CVE-2025-48734 in it, which is fixed in 1.11.0")
+      }
+    }
+
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
     testImplementation "org.scala-lang:scala-library:$scalaVersion"
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.easymock:easymock:4.3'
+    testImplementation 'org.easymock:easymock:5.5.0'
     testImplementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation 'commons-io:commons-io:2.11.0'
@@ -461,9 +480,11 @@ project(':cruise-control-metrics-reporter') {
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-server-common:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-group-coordinator:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-metadata:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-raft:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-storage:$kafkaVersion"
     testImplementation 'commons-io:commons-io:2.11.0'
-    testImplementation "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
+    testImplementation "org.testcontainers:kafka:1.21.3"
     testOutput sourceSets.test.output
   }
 

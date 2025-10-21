@@ -14,7 +14,7 @@ import java.util.StringJoiner;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 
 
-public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperTestHarness {
+public abstract class CCKafkaIntegrationTestHarness extends CCAbstractKRaftTestHarness {
   protected Map<Integer, CCEmbeddedBroker> _brokers = null;
   protected String _bootstrapUrl;
 
@@ -91,7 +91,10 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperT
 
   protected Map<Object, Object> createBrokerConfig(int brokerId) {
     CCEmbeddedBrokerBuilder builder = new CCEmbeddedBrokerBuilder();
-    builder.zkConnect(zookeeper());
+    if (_controller != null) {
+      builder.kraftConnect(kraftController());
+      builder.clusterId(kraftController());
+    }
     builder.nodeId(brokerId);
     builder.enable(securityProtocol());
     if (securityProtocol() == SecurityProtocol.SSL) {

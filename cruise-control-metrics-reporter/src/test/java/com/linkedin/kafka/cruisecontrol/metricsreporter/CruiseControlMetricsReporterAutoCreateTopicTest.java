@@ -5,8 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKraftCluster;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.KafkaServerConfigs;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
@@ -16,10 +17,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
-import org.apache.kafka.network.SocketServerConfigs;
-import org.apache.kafka.server.config.ReplicationConfigs;
-import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,13 +30,19 @@ import static org.junit.Assert.assertEquals;
 public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClientsIntegrationTestHarness {
     protected static final String TOPIC = "CruiseControlMetricsReporterTest";
     protected static final String TEST_TOPIC = "TestTopic";
+    private CCContainerizedKraftCluster _cluster;
 
     /**
      * Setup the unit test.
      */
     @Before
     public void setUp() {
-        super.setUp();
+        Properties adminClientProps = new Properties();
+        setSecurityConfigs(adminClientProps, "admin");
+
+        _cluster = new CCContainerizedKraftCluster(2, buildBrokerConfigs(), adminClientProps);
+        _cluster.start();
+        _bootstrapUrl = _cluster.getExternalBootstrapAddress();
 
         // creating the "TestTopic" explicitly because the topic auto-creation is disabled on the broker
         Properties adminProps = new Properties();
@@ -73,19 +76,26 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         assertEquals(0, producerFailed.get());
     }
 
+    /**
+     * Tear down the unit test.
+     */
     @After
     public void tearDown() {
-        super.tearDown();
+        if (_cluster != null) {
+            _cluster.close();
+        }
     }
 
     @Override
     public Properties overridingProps() {
         Properties props = new Properties();
-        int port = CCKafkaTestUtils.findLocalPort();
         props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
-        props.setProperty(SocketServerConfigs.LISTENERS_CONFIG, "PLAINTEXT://127.0.0.1:" + port);
         props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
-                "127.0.0.1:" + port);
+          "127.0.0.1:" + CCContainerizedKraftCluster.CONTAINER_INTERNAL_LISTENER_PORT);
+        props.put("listener.security.protocol.map", String.join(",",
+          CCContainerizedKraftCluster.CONTROLLER_LISTENER_NAME + ":PLAINTEXT",
+          CCContainerizedKraftCluster.INTERNAL_LISTENER_NAME + ":PLAINTEXT",
+          CCContainerizedKraftCluster.EXTERNAL_LISTENER_NAME + ":PLAINTEXT"));
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
         // configure metrics topic auto-creation by the metrics reporter
@@ -95,11 +105,10 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG, "1");
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
         // disable topic auto-creation to leave the metrics reporter to create the metrics topic
-        props.setProperty(ServerLogConfigs.AUTO_CREATE_TOPICS_ENABLE_CONFIG, "false");
-        props.setProperty(ServerLogConfigs.LOG_FLUSH_INTERVAL_MESSAGES_CONFIG, "1");
-        props.setProperty(GroupCoordinatorConfig.OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
-        props.setProperty(ReplicationConfigs.DEFAULT_REPLICATION_FACTOR_CONFIG, "2");
-        props.setProperty(ServerLogConfigs.NUM_PARTITIONS_CONFIG, "2");
+        props.setProperty(KafkaServerConfigs.AUTO_CREATE_TOPICS_ENABLE_CONFIG, "false");
+        props.setProperty(KafkaServerConfigs.OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
+        props.setProperty(KafkaServerConfigs.DEFAULT_REPLICATION_FACTOR_CONFIG, "2");
+        props.setProperty(KafkaServerConfigs.NUM_PARTITIONS_CONFIG, "2");
         return props;
     }
 

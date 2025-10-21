@@ -165,7 +165,7 @@ public class AnomalyDetectorManagerTest {
     PriorityBlockingQueue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE,
                                                                            anomalyComparator());
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
-    AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(ZKBrokerFailureDetector.class);
+    AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(KafkaBrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector = EasyMock.createNiceMock(IntraBrokerGoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
@@ -267,7 +267,7 @@ public class AnomalyDetectorManagerTest {
     PriorityBlockingQueue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE,
                                                                            anomalyComparator());
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
-    AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(ZKBrokerFailureDetector.class);
+    AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(KafkaBrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector = EasyMock.createNiceMock(IntraBrokerGoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
@@ -580,7 +580,7 @@ public class AnomalyDetectorManagerTest {
     PriorityBlockingQueue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE,
                                                                            anomalyComparator());
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
-    AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(ZKBrokerFailureDetector.class);
+    AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(KafkaBrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector = EasyMock.createNiceMock(IntraBrokerGoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
@@ -647,7 +647,7 @@ public class AnomalyDetectorManagerTest {
     PriorityBlockingQueue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE,
                                                                            anomalyComparator());
     AnomalyNotifier mockAnomalyNotifier = EasyMock.createNiceMock(AnomalyNotifier.class);
-    AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(ZKBrokerFailureDetector.class);
+    AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(KafkaBrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
     IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector = EasyMock.createNiceMock(IntraBrokerGoalViolationDetector.class);

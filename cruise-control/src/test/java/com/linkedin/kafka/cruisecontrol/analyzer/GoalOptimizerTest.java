@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -22,7 +21,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
@@ -97,7 +96,6 @@ public class GoalOptimizerTest {
   private GoalOptimizer createGoalOptimizer(Properties overrideProps) {
     Properties props = new Properties();
     props.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers");
-    props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234");
     props.setProperty(AnalyzerConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG, "0");
     props.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
     String brokerSetsDataFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
@@ -106,7 +104,7 @@ public class GoalOptimizerTest {
     props.putAll(overrideProps);
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
 
-    return new GoalOptimizer(config, EasyMock.mock(LoadMonitor.class), new SystemTime(), new MetricRegistry(),
+    return new GoalOptimizer(config, EasyMock.mock(LoadMonitor.class), Time.SYSTEM, new MetricRegistry(),
                              EasyMock.mock(Executor.class), EasyMock.mock(AdminClient.class));
   }
 }

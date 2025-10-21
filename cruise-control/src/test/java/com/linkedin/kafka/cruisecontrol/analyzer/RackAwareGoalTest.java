@@ -29,7 +29,7 @@ import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -112,7 +112,7 @@ public class RackAwareGoalTest {
     _goalToTest.configure(kafkaCruiseControlConfig.mergedConfigValues());
     GoalOptimizer goalOptimizer = new GoalOptimizer(kafkaCruiseControlConfig,
                                                     null,
-                                                    new SystemTime(),
+                                                    Time.SYSTEM,
                                                     new MetricRegistry(),
                                                     EasyMock.mock(Executor.class),
                                                     EasyMock.mock(AdminClient.class));
@@ -176,7 +176,7 @@ public class RackAwareGoalTest {
     _goalToTest.configure(kafkaCruiseControlConfig.mergedConfigValues());
     GoalOptimizer goalOptimizer = new GoalOptimizer(kafkaCruiseControlConfig,
                                                     null,
-                                                    new SystemTime(),
+                                                    Time.SYSTEM,
                                                     new MetricRegistry(),
                                                     EasyMock.mock(Executor.class),
                                                     EasyMock.mock(AdminClient.class));

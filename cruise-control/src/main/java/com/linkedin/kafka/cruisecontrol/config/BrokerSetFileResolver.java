@@ -84,8 +84,10 @@ public class BrokerSetFileResolver implements BrokerSetResolver {
       final BrokerSets brokerSets = gson.fromJson(reader, BrokerSets.class);
       final Set<BrokerSet> brokerSetSet = brokerSets.brokerSets;
       final Map<String, Set<Integer>> brokerIdsByBrokerSetId = new HashMap<>();
-      for (BrokerSet brokerSet : brokerSetSet) {
-        brokerIdsByBrokerSetId.put(brokerSet.brokerSetId, brokerSet.brokerIds);
+      if (brokerSetSet != null) {
+        for (BrokerSet brokerSet : brokerSetSet) {
+          brokerIdsByBrokerSetId.put(brokerSet.brokerSetId, brokerSet.brokerIds);
+        }
       }
       return brokerIdsByBrokerSetId;
     }

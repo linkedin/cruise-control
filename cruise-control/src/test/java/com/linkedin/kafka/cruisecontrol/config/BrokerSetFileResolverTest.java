@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
 import java.util.Map;
@@ -35,7 +34,7 @@ public class BrokerSetFileResolverTest {
     BrokerSetResolver brokerSetResolver = new BrokerSetFileResolver();
     String fileName = Objects.requireNonNull(clazz.getClassLoader().getResource(configFileName)).getFile();
     Map<String, Object> configs =
-        Map.of(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers", ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234",
+        Map.of(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers",
                AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, fileName,
                BrokerSetFileResolver.BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG, new NoOpBrokerSetAssignmentPolicy());
     brokerSetResolver.configure(configs);
@@ -69,7 +68,7 @@ public class BrokerSetFileResolverTest {
     BrokerSetResolver brokerSetResolver = new BrokerSetFileResolver();
     String fileName = "testBrokerSetz.json";
     Map<String, Object> configs =
-        Map.of(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers", ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234",
+        Map.of(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers",
                AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, fileName,
                BrokerSetFileResolver.BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG, new NoOpBrokerSetAssignmentPolicy());
     brokerSetResolver.configure(configs);

@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java-ver: [11]
+        java-ver: [17]
         java-dist: ['microsoft', 'temurin']
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java-ver: [11]
+        java-ver: [17]
         java-dist: ['microsoft', 'temurin']
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java-ver: [11]
+        java-ver: [17]
         java-dist: ['temurin']
         hw_platform: ['s390x']
     runs-on: ubuntu-latest
@@ -78,4 +78,4 @@ jobs:
             --name qemu-cross-${{ matrix.hw_platform }} \
             --mount type=bind,source=${PWD},target=/workspace \
             --workdir /workspace \
-            ${{matrix.hw_platform}}/eclipse-temurin:11-jdk /bin/sh -c "uname -a; ./gradlew --no-daemon -PmaxParallelForks=1 build"
+            ${{matrix.hw_platform}}/eclipse-temurin:${{matrix.java-ver}}-jdk /bin/sh -c "uname -a; ./gradlew --no-daemon -PmaxParallelForks=1 build"

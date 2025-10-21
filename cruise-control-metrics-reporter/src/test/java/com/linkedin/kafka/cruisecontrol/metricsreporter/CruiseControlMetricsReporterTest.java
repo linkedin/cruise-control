@@ -7,20 +7,23 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKraftCluster;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -33,19 +36,19 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
-import org.apache.kafka.network.SocketServerConfigs;
-import org.apache.kafka.server.config.ReplicationConfigs;
-import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.testcontainers.kafka.KafkaContainer;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_HOST;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_PORT;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.getTopicDescription;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
@@ -53,15 +56,25 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
+  private static final int NUM_OF_BROKERS = 2;
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
-  private static final String HOST = "127.0.0.1";
+  protected static final String HOST = "127.0.0.1";
+  protected CCContainerizedKraftCluster _cluster;
+  protected List<Map<Object, Object>> _brokerConfigs;
 
   /**
    * Setup the unit test.
    */
   @Before
   public void setUp() {
-    super.setUp();
+    Properties adminClientProps = new Properties();
+    setSecurityConfigs(adminClientProps, "admin");
+
+    _brokerConfigs = buildBrokerConfigs();
+    _cluster = new CCContainerizedKraftCluster(NUM_OF_BROKERS, _brokerConfigs, adminClientProps);
+    _cluster.start();
+    _bootstrapUrl = _cluster.getExternalBootstrapAddress();
+
     Properties props = new Properties();
     props.setProperty(ProducerConfig.ACKS_CONFIG, "-1");
     AtomicInteger failed = new AtomicInteger(0);
@@ -80,23 +93,31 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     assertEquals(0, failed.get());
   }
 
+  /**
+   * Tear down the unit test.
+   */
   @After
   public void tearDown() {
-    super.tearDown();
+    if (_cluster != null) {
+      _cluster.close();
+    }
   }
 
   @Override
   public Properties overridingProps() {
     Properties props = new Properties();
-    int port = CCKafkaTestUtils.findLocalPort();
     props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
-    props.setProperty(SocketServerConfigs.LISTENERS_CONFIG, "PLAINTEXT://" + HOST + ":" + port);
-    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG), HOST + ":" + port);
-    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
-    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
-    props.setProperty(ServerLogConfigs.LOG_FLUSH_INTERVAL_MESSAGES_CONFIG, "1");
-    props.setProperty(GroupCoordinatorConfig.OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
-    props.setProperty(ReplicationConfigs.DEFAULT_REPLICATION_FACTOR_CONFIG, "2");
+    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
+      HOST + ":" + CCContainerizedKraftCluster.CONTAINER_INTERNAL_LISTENER_PORT);
+    props.put("listener.security.protocol.map", String.join(",",
+      CCContainerizedKraftCluster.CONTROLLER_LISTENER_NAME + ":PLAINTEXT",
+      CCContainerizedKraftCluster.INTERNAL_LISTENER_NAME + ":PLAINTEXT",
+      CCContainerizedKraftCluster.EXTERNAL_LISTENER_NAME + ":PLAINTEXT"));
+    props.setProperty(CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
+    props.setProperty(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
+    props.setProperty("log.flush.interval.messages", "1");
+    props.setProperty("offsets.topic.replication.factor", "1");
+    props.setProperty("default.replication.factor", "2");
     return props;
   }
 
@@ -185,58 +206,81 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     assertEquals("Expected " + expectedMetricTypes + ", but saw " + metricTypes, expectedMetricTypes, metricTypes);
   }
 
+  private TopicDescription waitForTopicMetadata(Admin adminClient,
+                                                Duration timeout,
+                                                Predicate<TopicDescription> condition)
+    throws InterruptedException, TimeoutException {
+
+    long deadline = System.currentTimeMillis() + timeout.toMillis();
+
+    while (System.currentTimeMillis() < deadline) {
+      try {
+        TopicDescription topicDescription = getTopicDescription((AdminClient) adminClient, TOPIC);
+
+        if (condition.test(topicDescription)) {
+          return topicDescription;
+        }
+      } catch (KafkaTopicDescriptionException e) {
+        if (!(e.getCause() instanceof UnknownTopicOrPartitionException)) {
+          throw new RuntimeException("Failed to describe topic: " + TOPIC, e);
+        }
+        // else ignore and retry
+      }
+
+      Thread.sleep(500);
+    }
+
+    throw new TimeoutException("Timeout waiting for topic metadata condition to be met: " + TOPIC);
+  }
+
   @Test
-  public void testUpdatingMetricsTopicConfig() throws InterruptedException {
+  public void testUpdatingMetricsTopicConfig() throws InterruptedException, TimeoutException {
     Properties props = new Properties();
     setSecurityConfigs(props, "admin");
-    props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    AdminClient adminClient = AdminClient.create(props);
+    props.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
+    Admin adminClient = Admin.create(props);
 
-    // For compatibility with Kafka 4.0 and beyond we must use new API methods.
-    TopicDescription topicDescription;
-    try {
-      topicDescription = getTopicDescription(adminClient, TOPIC);
-    } catch (KafkaTopicDescriptionException e) {
-      throw new RuntimeException(e);
-    }
+    TopicDescription topicDescription = waitForTopicMetadata(adminClient, Duration.ofSeconds(30), td -> true);
     assertEquals(1, topicDescription.partitions().size());
+
+    KafkaContainer broker = _cluster.getBrokers().get(0);
+
     // Shutdown broker
-    _brokers.get(0).shutdown();
+    broker.stop();
+
     // Change broker config
-    Map<Object, Object> brokerConfig = buildBrokerConfigs().get(0);
+    Map<Object, Object> brokerConfig = _brokerConfigs.get(0);
     brokerConfig.put(CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG, "true");
     brokerConfig.put(CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG, "2");
     brokerConfig.put(CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
-    CCEmbeddedBroker broker = new CCEmbeddedBroker(brokerConfig);
-    // Restart broker
-    broker.startup();
-    // Wait for broker to boot up
-    Thread.sleep(5000);
 
-    // Check whether the topic config is updated
-    try {
-      topicDescription = getTopicDescription(adminClient, TOPIC);
-    } catch (KafkaTopicDescriptionException e) {
-      throw new RuntimeException(e);
-    }
-    assertEquals(2, topicDescription.partitions().size());
+    _cluster.overrideBrokerConfig(broker, brokerConfig);
+
+    // Restart broker
+    broker.start();
+
+    // Wait for topic metadata configuration change to propagate
+    int oldPartitionCount = topicDescription.partitions().size();
+    TopicDescription newTopicDescription = waitForTopicMetadata(adminClient, Duration.ofSeconds(30),
+      td -> td.partitions().size() != oldPartitionCount);
+
+    assertEquals(2, newTopicDescription.partitions().size());
   }
 
   @Test
   public void testGetKafkaBootstrapServersConfigure() {
     // Test with a "listeners" config with a host
     Map<Object, Object> brokerConfig = buildBrokerConfigs().get(0);
-    Map<String, Object> listenersMap = Collections.singletonMap(
-            SocketServerConfigs.LISTENERS_CONFIG, brokerConfig.get(SocketServerConfigs.LISTENERS_CONFIG));
+    Map<String, Object> listenersMap = Collections.singletonMap("listeners", brokerConfig.get("listeners"));
     String bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
     String urlParse = "\\[?([0-9a-zA-Z\\-%._:]*)]?:(-?[0-9]+)";
     Pattern urlParsePattern = Pattern.compile(urlParse);
     assertTrue(urlParsePattern.matcher(bootstrapServers).matches());
-    assertEquals(HOST, bootstrapServers.split(":")[0]);
+    assertEquals("localhost", bootstrapServers.split(":")[0]);
 
     // Test with a "listeners" config without a host in the first listener.
     String listeners = "SSL://:1234,PLAINTEXT://myhost:4321";
-    listenersMap = Collections.singletonMap(SocketServerConfigs.LISTENERS_CONFIG, listeners);
+    listenersMap = Collections.singletonMap("listeners", listeners);
     bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
     assertTrue(urlParsePattern.matcher(bootstrapServers).matches());
     assertEquals(DEFAULT_BOOTSTRAP_SERVERS_HOST, bootstrapServers.split(":")[0]);
@@ -244,7 +288,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
 
     // Test with "listeners" and "port" config together.
     listenersMap = new HashMap<>();
-    listenersMap.put(SocketServerConfigs.LISTENERS_CONFIG, listeners);
+    listenersMap.put("listeners", listeners);
     listenersMap.put("port", "43");
     bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
     assertTrue(urlParsePattern.matcher(bootstrapServers).matches());
