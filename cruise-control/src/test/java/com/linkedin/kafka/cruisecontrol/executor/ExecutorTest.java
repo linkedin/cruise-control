@@ -15,8 +15,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKraftCluster;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -70,8 +68,6 @@ import org.junit.Test;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
 import static org.easymock.EasyMock.*;
 import static org.junit.Assert.*;
@@ -130,15 +126,10 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Override
   public Properties overridingProps() {
     Properties props = new Properties();
-    props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
-    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
-      "127.0.0.1:" + CCContainerizedKraftCluster.CONTAINER_INTERNAL_LISTENER_PORT);
     props.put("listener.security.protocol.map", String.join(",",
       CCContainerizedKraftCluster.CONTROLLER_LISTENER_NAME + ":PLAINTEXT",
       CCContainerizedKraftCluster.INTERNAL_LISTENER_NAME + ":PLAINTEXT",
       CCContainerizedKraftCluster.EXTERNAL_LISTENER_NAME + ":PLAINTEXT"));
-    props.setProperty(CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
-    props.setProperty(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, "CruiseControlMetricsTopic");
     return props;
   }
 

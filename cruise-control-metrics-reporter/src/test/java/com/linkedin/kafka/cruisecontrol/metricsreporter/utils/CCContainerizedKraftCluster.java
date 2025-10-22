@@ -5,6 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
@@ -34,7 +36,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
 
 /**
  * The {@code CCContainerizedKraftCluster} class creates a containerized KRaft Kafka cluster used for testing purposes.
@@ -112,6 +116,11 @@ public class CCContainerizedKraftCluster implements Startable {
           brokerConfig.put("node.id", brokerNum + "");
           brokerConfig.put("process.roles", "broker,controller");
           brokerConfig.put("controller.quorum.voters", controllerQuorumVoters);
+          brokerConfig.put(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
+          brokerConfig.put(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
+          "127.0.0.1:" + CONTAINER_INTERNAL_LISTENER_PORT);
+          brokerConfig.put(CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
+          brokerConfig.putIfAbsent(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, DEFAULT_CRUISE_CONTROL_METRICS_TOPIC);
 
           // TestContainers automatically sets `inter.broker.listener.name` so we must disable `security.inter.broker.protocol`
           // https://kafka.apache.org/documentation/#brokerconfigs_inter.broker.listener.name
@@ -186,6 +195,15 @@ public class CCContainerizedKraftCluster implements Startable {
     }
   }
 
+  /**
+   * Sets up required resources inside the Kafka container, including the Cruise Control Metrics Reporter JAR.
+   *
+   * <p>Note: This requires the 'cruise-control-metrics-reporter' project to be built beforehand.
+   * The JAR is expected to be located in '../cruise-control-metrics-reporter/build/libs/'.</p>
+   *
+   * @param kafkaContainer the Kafka test container
+   * @param brokerConfig   the Kafka broker configuration
+   */
   private void setupContainerResources(KafkaContainer kafkaContainer, Map<Object, Object> brokerConfig) {
     Path projectRoot = Paths.get("").toAbsolutePath().normalize();
 
@@ -199,7 +217,8 @@ public class CCContainerizedKraftCluster implements Startable {
         .filter(path -> path.getFileName().toString().startsWith("cruise-control-metrics-reporter"))
         .filter(path -> path.getFileName().toString().endsWith(".jar"))
         .findFirst()
-        .orElseThrow(() -> new IllegalStateException("Cruise Control Metrics Reporter jar not found in: " + metricsReporterJarPath));
+        .orElseThrow(() -> new IllegalStateException("Cruise Control Metrics Reporter jar not found in: " + metricsReporterJarPath
+          + "The 'cruise-control-metrics-reporter' project must be built first."));
 
       kafkaContainer.withCopyToContainer(
         MountableFile.forHostPath(jarPath.toString(), 0755),
