@@ -854,8 +854,17 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
       TopicDescription topic = null;
       try {
+        Set<Integer> expectedBrokerIds = proposal.newReplicas().stream()
+          .map(ReplicaPlacementInfo::brokerId)
+          .collect(Collectors.toSet());
+
         waitForTopicMetadataPropagation(adminClient, tp,
-          topicDescription -> topicDescription.partitions().get(tp.partition()).replicas().size() == expectedReplicationFactor);
+          topicDescription -> {
+            List<Node> replicas = topicDescription.partitions().get(tp.partition()).replicas();
+            Set<Integer> actualBrokerIds = replicas.stream().map(Node::id).collect(Collectors.toSet());
+            return actualBrokerIds.containsAll(expectedBrokerIds)
+              && actualBrokerIds.size() == expectedBrokerIds.size();
+          });
 
         // After waiting for topic metadata to propagate, fetch the latest topic description once.
         topic = adminClient.describeTopics(Collections.singleton(tp.topic())).topicNameValues().get(tp.topic()).get();
