@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -36,12 +37,9 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
@@ -65,7 +63,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.*;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
@@ -182,9 +180,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
       // Kill broker before starting the reassignment.
       int brokerId = initialLeader0 == 0 ? 1 : 0;
-      _cluster.getBrokers().get(brokerId).stop();
-      // Wait until broker properly shuts down
-      waitUntilBrokerShutsDown(adminClient, brokerId);
+
+      _cluster.shutDownBroker(brokerId);
 
       ExecutionProposal proposal0 =
           new ExecutionProposal(TP0, PRODUCE_SIZE_IN_BYTES, new ReplicaPlacementInfo(initialLeader0),
@@ -304,9 +301,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     assertEquals(Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass(), result.partitions().get().get(TP2).get().getClass());
 
     // Case 4: Handle the scenario, where we tried to elect the preferred leader but it is offline.
-    _cluster.getBrokers().get(0).stop();
-    // Allow broker to shut down properly
-    waitUntilBrokerShutsDown(adminClient, 0);
+    _cluster.shutDownBroker(0);
 
     task = new ExecutionTask(0,
                              new ExecutionProposal(TP0, 0, oldLeader, replicas, replicas),
@@ -852,25 +847,19 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
       int expectedReplicationFactor = replicationFactors.get(tp);
 
-      TopicDescription topic = null;
-      try {
-        Set<Integer> expectedBrokerIds = proposal.newReplicas().stream()
-          .map(ReplicaPlacementInfo::brokerId)
-          .collect(Collectors.toSet());
+      Set<Integer> expectedBrokerIds = proposal.newReplicas().stream()
+        .map(ReplicaPlacementInfo::brokerId)
+        .collect(Collectors.toSet());
 
-        waitForTopicMetadataPropagation(adminClient, tp,
-          topicDescription -> {
-            List<Node> replicas = topicDescription.partitions().get(tp.partition()).replicas();
-            Set<Integer> actualBrokerIds = replicas.stream().map(Node::id).collect(Collectors.toSet());
-            return actualBrokerIds.containsAll(expectedBrokerIds)
-              && actualBrokerIds.size() == expectedBrokerIds.size();
-          });
+      // Wait for topic metadata change to propagate.
+      TopicDescription topic = _cluster.waitForTopicMetadata(tp.topic(), Duration.ofSeconds(60),
+        topicDescription -> {
+          List<Node> replicas = topicDescription.partitions().get(tp.partition()).replicas();
+          Set<Integer> actualBrokerIds = replicas.stream().map(Node::id).collect(Collectors.toSet());
+          return actualBrokerIds.containsAll(expectedBrokerIds)
+            && actualBrokerIds.size() == expectedBrokerIds.size();
+        });
 
-        // After waiting for topic metadata to propagate, fetch the latest topic description once.
-        topic = adminClient.describeTopics(Collections.singleton(tp.topic())).topicNameValues().get(tp.topic()).get();
-      } catch (InterruptedException | ExecutionException e) {
-        fail("Topic description for topic " + tp.topic() + " is not available.");
-      }
       assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFactor,
               expectedReplicationFactor, topic.partitions().get(tp.partition()).replicas().size());
 
@@ -917,39 +906,5 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG, Long.toString(LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS));
     props.setProperty(ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG, "120000");
     return props;
-  }
-
-  private void waitForTopicMetadataPropagation(Admin adminClient, TopicPartition tp, Predicate<TopicDescription> condition) {
-    waitUntilTrue(() -> {
-          try {
-            TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(tp.topic()))
-              .topicNameValues()
-              .get(tp.topic())
-              .get();
-            return condition.test(topicDescription);
-          } catch (InterruptedException | ExecutionException e) {
-          return false;
-          }
-        }, "Topic metadata failed to be updated in time", TimeUnit.SECONDS.toMillis(60), TimeUnit.SECONDS.toMillis(5));
-  }
-
-  private void waitUntilBrokerShutsDown(Admin adminClient, int brokerId) {
-    waitUntilTrue(() -> !_cluster.getBrokers().get(brokerId).isRunning(),
-      "Broker did not shut down properly",
-      TimeUnit.SECONDS.toMillis(60),
-      TimeUnit.SECONDS.toMillis(5));
-
-    waitUntilTrue(() -> {
-      Set<String> brokerIds;
-      try {
-        brokerIds = adminClient.describeCluster().nodes().get().stream()
-                .map(node -> String.valueOf(node.id()))
-                .collect(Collectors.toSet());
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      // Verify the brokerId is no longer in the list
-      return !brokerIds.contains(String.valueOf(brokerId));
-    }, "Broker did not shut down properly", TimeUnit.SECONDS.toMillis(60), TimeUnit.SECONDS.toMillis(5));
   }
 }
