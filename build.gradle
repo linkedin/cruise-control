@@ -189,7 +189,6 @@ project(':cruise-control-core') {
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
     implementation 'org.apache.commons:commons-math3:3.6.1'
     api "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
-    implementation 'com.github.spotbugs:spotbugs-annotations:4.8.6'
 
     api "io.vertx:vertx-core:${vertxVersion}"
     api "io.vertx:vertx-web:${vertxVersion}"
