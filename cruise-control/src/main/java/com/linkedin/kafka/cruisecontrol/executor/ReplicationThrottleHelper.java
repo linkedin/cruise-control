@@ -434,22 +434,6 @@ class ReplicationThrottleHelper {
   }
 
   // Retries until we can read the configs changes we just wrote
-  void waitForConfigs(ConfigResource cf, Collection<AlterConfigOp> ops) {
-    // Use HashMap::new instead of Collectors.toMap to allow inserting null values
-    Map<String, String> expectedConfigs = ops.stream()
-            .collect(HashMap::new, (m, o) -> m.put(o.configEntry().name(), o.configEntry().value()), HashMap::putAll);
-    boolean retryResponse = CruiseControlMetricsUtils.retry(() -> {
-      try {
-        return !configsEqual(getEntityConfigs(cf), expectedConfigs);
-      } catch (ExecutionException | InterruptedException | TimeoutException e) {
-        return false;
-      }
-    }, _retries);
-    if (!retryResponse) {
-      throw new IllegalStateException("The following configs " + ops + " were not applied to " + cf + " within the time limit");
-    }
-  }
-
   void waitForConfigs(Map<ConfigResource, Collection<AlterConfigOp>> opsByResource) {
     Map<ConfigResource, Map<String, String>> expectedByResource = new HashMap<>();
     for (Map.Entry<ConfigResource, Collection<AlterConfigOp>> entry : opsByResource.entrySet()) {

@@ -521,15 +521,15 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.replay(mockAdminClient);
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, 100L, retries);
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, TOPIC0);
-    assertThrows(IllegalStateException.class, () -> throttleHelper.waitForConfigs(cf, Collections.singletonList(
-            new AlterConfigOp(new ConfigEntry("k", "v"), AlterConfigOp.OpType.SET)
-    )));
+    Map<ConfigResource, Collection<AlterConfigOp>> opsByResource = Collections.singletonMap(cf,
+            Collections.singletonList(new AlterConfigOp(new ConfigEntry("k", "v"), AlterConfigOp.OpType.SET)));
+    assertThrows(IllegalStateException.class, () -> throttleHelper.waitForConfigs(opsByResource));
 
     // Case 2: queue a single result and call checkConfigs with matching configs, so it succeeds
     EasyMock.reset(mockAdminClient);
     expectDescribeTopicConfigs(mockAdminClient, TOPIC0, EMPTY_CONFIG, true);
     EasyMock.replay(mockAdminClient);
-    throttleHelper.waitForConfigs(cf, Collections.emptyList());
+    throttleHelper.waitForConfigs(Collections.singletonMap(cf, Collections.emptyList()));
   }
 
   @Test
