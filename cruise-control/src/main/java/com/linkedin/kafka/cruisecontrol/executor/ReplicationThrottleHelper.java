@@ -40,14 +40,8 @@ class ReplicationThrottleHelper {
   static final String WILDCARD_ASTERISK = "*";
   static final String LEADER_REPLICATION_THROTTLED_RATE_CONFIG = "leader.replication.throttled.rate";
   static final String FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG = "follower.replication.throttled.rate";
-  private static final List<String> REPLICATION_THROTTLED_RATE_CONFIGS = Arrays.asList(
-      LEADER_REPLICATION_THROTTLED_RATE_CONFIG,
-      FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG);
   static final String LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG = "leader.replication.throttled.replicas";
   static final String FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG = "follower.replication.throttled.replicas";
-  private static final List<String> REPLICATION_THROTTLED_REPLICAS_CONFIGS = Arrays.asList(
-      LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG,
-      FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   static final int RETRIES = 30;
 
@@ -218,7 +212,7 @@ class ReplicationThrottleHelper {
         brokerConfigs = new Config(Collections.emptyList());
       }
       List<AlterConfigOp> ops = new ArrayList<>();
-      for (String replicaThrottleRateConfigKey : REPLICATION_THROTTLED_RATE_CONFIGS) {
+      for (String replicaThrottleRateConfigKey : List.of(LEADER_REPLICATION_THROTTLED_RATE_CONFIG, FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG)) {
         ConfigEntry currThrottleRate = brokerConfigs.get(replicaThrottleRateConfigKey);
         if (currThrottleRate == null || !currThrottleRate.value().equals(String.valueOf(_throttleRate))) {
           LOG.debug("Setting {} to {} bytes/second for broker {}", replicaThrottleRateConfigKey, _throttleRate, cf.name());
@@ -251,7 +245,7 @@ class ReplicationThrottleHelper {
         topicConfig = new Config(Collections.emptyList());
       }
       List<AlterConfigOp> ops = new ArrayList<>();
-      for (String replicaThrottleConfigKey : REPLICATION_THROTTLED_REPLICAS_CONFIGS) {
+      for (String replicaThrottleConfigKey : List.of(LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG, FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG)) {
         ConfigEntry currThrottledReplicas = topicConfig.get(replicaThrottleConfigKey);
         if (currThrottledReplicas != null && currThrottledReplicas.value().trim().equals(WILDCARD_ASTERISK)) {
           continue;
