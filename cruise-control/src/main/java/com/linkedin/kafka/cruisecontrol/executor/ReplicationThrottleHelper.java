@@ -152,10 +152,8 @@ class ReplicationThrottleHelper {
   private Set<Integer> getParticipatingBrokers(List<ExecutionProposal> replicaMovementProposals) {
     Set<Integer> participatingBrokers = new TreeSet<>();
     for (ExecutionProposal proposal : replicaMovementProposals) {
-      participatingBrokers.addAll(
-          proposal.oldReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
-      participatingBrokers.addAll(
-          proposal.newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
+      participatingBrokers.addAll(proposal.oldReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
+      participatingBrokers.addAll(proposal.newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
     }
     participatingBrokers.removeAll(_deadBrokers);
     return participatingBrokers;
@@ -231,7 +229,7 @@ class ReplicationThrottleHelper {
         bulkOps.put(cf, ops);
       }
     }
-    applyIncrementalAlterConfigsForBrokers(bulkOps);
+    changeBrokerConfigs(bulkOps);
   }
 
   private void setThrottledReplicas(Map<String, Set<String>> replicasByTopic)
@@ -269,7 +267,7 @@ class ReplicationThrottleHelper {
         bulkOps.put(cf, ops);
       }
     }
-    applyIncrementalAlterConfigsForTopics(bulkOps);
+    changeTopicConfigs(bulkOps);
   }
 
   boolean topicExists(String topic) throws InterruptedException, TimeoutException, ExecutionException {
@@ -356,7 +354,7 @@ class ReplicationThrottleHelper {
         bulkOps.put(cf, ops);
       }
     }
-    applyIncrementalAlterConfigsForTopics(bulkOps);
+    changeTopicConfigs(bulkOps);
   }
 
   private void removeThrottledRateFromBrokers(Set<Integer> brokerIds)
@@ -390,10 +388,10 @@ class ReplicationThrottleHelper {
         bulkOps.put(cf, ops);
       }
     }
-    applyIncrementalAlterConfigsForBrokers(bulkOps);
+    changeBrokerConfigs(bulkOps);
   }
 
-  private void applyIncrementalAlterConfigsForBrokers(Map<ConfigResource, Collection<AlterConfigOp>> bulkOps)
+  private void changeBrokerConfigs(Map<ConfigResource, Collection<AlterConfigOp>> bulkOps)
     throws ExecutionException, InterruptedException, TimeoutException {
     if (bulkOps == null || bulkOps.isEmpty()) {
       return;
@@ -403,7 +401,7 @@ class ReplicationThrottleHelper {
     waitForConfigs(bulkOps);
   }
 
-  private void applyIncrementalAlterConfigsForTopics(Map<ConfigResource, Collection<AlterConfigOp>> bulkOps)
+  private void changeTopicConfigs(Map<ConfigResource, Collection<AlterConfigOp>> bulkOps)
     throws ExecutionException, InterruptedException, TimeoutException {
     if (bulkOps == null || bulkOps.isEmpty()) {
       return;
