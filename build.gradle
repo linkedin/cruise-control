@@ -339,6 +339,7 @@ project(':cruise-control') {
     testImplementation 'com.jayway.jsonpath:json-path:2.7.0'
     testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
     testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
+    testImplementation "org.testcontainers:kafka:$testcontainersVersion"
   }
 
   publishing {
@@ -483,7 +484,7 @@ project(':cruise-control-metrics-reporter') {
     testImplementation "org.apache.kafka:kafka-raft:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-storage:$kafkaVersion"
     testImplementation 'commons-io:commons-io:2.11.0'
-    testImplementation "org.testcontainers:kafka:1.21.3"
+    testImplementation "org.testcontainers:kafka:$testcontainersVersion"
     testOutput sourceSets.test.output
   }
 

@@ -15,12 +15,14 @@ import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKraftCluster;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,7 +37,6 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -62,7 +63,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.*;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
@@ -82,19 +83,52 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final int MOCK_BROKER_ID_TO_DROP = 1;
   private static final long MOCK_CURRENT_TIME = 1596842708000L;
 
+  private CCContainerizedKraftCluster _cluster;
+  private List<String> _brokerAddressList;
+
   @Override
   public int clusterSize() {
-    return 2;
+    /*
+     * The containerized Kraft cluster we create runs brokers in dual broker/controller mode.
+     * Some tests, such as testBrokerDiesBeforeMovingPartition() and testSubmitPreferredLeaderElection(), involve
+     * shutting down brokers while moving partitions.
+     * To ensure the controllers can maintain quorum during these operations, these tests require at least 3 brokers.
+     */
+    return 3;
   }
 
+  /**
+   * Setup the unit test.
+   */
   @Before
   public void setUp() {
-    super.setUp();
+    Properties adminClientProps = new Properties();
+    setSecurityConfigs(adminClientProps, "admin");
+
+    _cluster = new CCContainerizedKraftCluster(clusterSize(), buildBrokerConfigs(), adminClientProps);
+    _cluster.start();
+    _brokerAddressList = _cluster.getBrokerAddressList();
+    _bootstrapUrl = _cluster.getExternalBootstrapAddress();
   }
 
+  /**
+   * Tear down the unit test.
+   */
   @After
   public void tearDown() {
-    super.tearDown();
+    if (_cluster != null) {
+      _cluster.close();
+    }
+  }
+
+  @Override
+  public Properties overridingProps() {
+    Properties props = new Properties();
+    props.put("listener.security.protocol.map", String.join(",",
+      CCContainerizedKraftCluster.CONTROLLER_LISTENER_NAME + ":PLAINTEXT",
+      CCContainerizedKraftCluster.INTERNAL_LISTENER_NAME + ":PLAINTEXT",
+      CCContainerizedKraftCluster.EXTERNAL_LISTENER_NAME + ":PLAINTEXT"));
+    return props;
   }
 
   @Test
@@ -146,9 +180,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
       // Kill broker before starting the reassignment.
       int brokerId = initialLeader0 == 0 ? 1 : 0;
-      _brokers.get(brokerId).shutdown();
-      // Wait until broker properly shuts down
-      waitUntilBrokerShutsDown(adminClient, brokerId);
+
+      _cluster.shutDownBroker(brokerId);
 
       ExecutionProposal proposal0 =
           new ExecutionProposal(TP0, PRODUCE_SIZE_IN_BYTES, new ReplicaPlacementInfo(initialLeader0),
@@ -178,7 +211,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   public void testSubmitReplicaReassignmentTasksWithDeadTaskAndNoReassignmentInProgress() throws InterruptedException {
     createTopics(0);
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(0)));
 
     TopicPartition tp = new TopicPartition(TOPIC0, 0);
     ExecutionProposal proposal = new ExecutionProposal(tp,
@@ -201,10 +234,10 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
-  public void testSubmitPreferredLeaderElection() throws InterruptedException, ExecutionException {
+  public void testSubmitPreferredLeaderElection() throws InterruptedException, ExecutionException, TimeoutException {
     Map<String, TopicDescription> topicDescriptions = createTopics(0);
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(0)));
 
     // Case 1: Handle the successful case.
     ReplicaPlacementInfo oldLeader = new ReplicaPlacementInfo(topicDescriptions.get(TP1.topic()).partitions().get(PARTITION).leader().id());
@@ -252,7 +285,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                              ExecutionTask.TaskType.LEADER_ACTION,
                              EXECUTION_ALERTING_THRESHOLD_MS);
     task.inProgress(MOCK_CURRENT_TIME);
-
     result = ExecutionUtils.submitPreferredLeaderElection(adminClient, Collections.singletonList(task));
     assertTrue(result.partitions().get().get(TP0).isPresent());
     assertEquals(Errors.ELECTION_NOT_NEEDED.exception().getClass(), result.partitions().get().get(TP0).get().getClass());
@@ -269,9 +301,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     assertEquals(Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass(), result.partitions().get().get(TP2).get().getClass());
 
     // Case 4: Handle the scenario, where we tried to elect the preferred leader but it is offline.
-    _brokers.get(0).shutdown();
-    // Allow broker to shut down properly
-    waitUntilBrokerShutsDown(adminClient, _brokers.get(0).id());
+    _cluster.shutDownBroker(0);
 
     task = new ExecutionTask(0,
                              new ExecutionProposal(TP0, 0, oldLeader, replicas, replicas),
@@ -279,7 +309,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                              EXECUTION_ALERTING_THRESHOLD_MS);
 
     task.inProgress(MOCK_CURRENT_TIME);
-
     result = ExecutionUtils.submitPreferredLeaderElection(adminClient, Collections.singletonList(task));
     assertTrue(result.partitions().get().get(TP0).isPresent());
     assertEquals(Errors.PREFERRED_LEADER_NOT_AVAILABLE.exception().getClass(), result.partitions().get().get(TP0).get().getClass());
@@ -288,7 +317,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testSubmitReplicaReassignmentTasksWithInProgressTaskAndNonExistingTopic() throws InterruptedException {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(0)));
 
     ExecutionProposal proposal = new ExecutionProposal(TP0,
                                                        100,
@@ -320,7 +349,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
 
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(0)));
 
     ExecutionTask task = new ExecutionTask(0,
                                            proposal0,
@@ -632,7 +661,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
    */
   private Map<String, TopicDescription> createTopics(int produceSizeInBytes) throws InterruptedException {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(BROKER_ID_0)));
     try {
       adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, Collections.singletonMap(0, Collections.singletonList(0))),
                                              new NewTopic(TOPIC1, Collections.singletonMap(0, List.of(0, 1)))));
@@ -647,9 +676,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
       AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(BROKER_ID_0)));
       AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_1).plaintextAddr()));
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(BROKER_ID_1)));
       try {
         topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).allTopicNames().get();
         topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).allTopicNames().get();
@@ -673,7 +702,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   private void verifyOngoingPartitionReassignments(Set<TopicPartition> partitions) {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(BROKER_ID_0)));
     try {
       waitUntilTrue(() -> {
                       try {
@@ -818,12 +847,19 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
       int expectedReplicationFactor = replicationFactors.get(tp);
 
-      TopicDescription topic = null;
-      try {
-        topic = adminClient.describeTopics(Collections.singleton(tp.topic())).topicNameValues().get(tp.topic()).get();
-      } catch (InterruptedException | ExecutionException e) {
-        fail("Topic description for topic " + tp.topic() + " is not available.");
-      }
+      Set<Integer> expectedBrokerIds = proposal.newReplicas().stream()
+        .map(ReplicaPlacementInfo::brokerId)
+        .collect(Collectors.toSet());
+
+      // Wait for topic metadata change to propagate.
+      TopicDescription topic = _cluster.waitForTopicMetadata(tp.topic(), Duration.ofSeconds(60),
+        topicDescription -> {
+          List<Node> replicas = topicDescription.partitions().get(tp.partition()).replicas();
+          Set<Integer> actualBrokerIds = replicas.stream().map(Node::id).collect(Collectors.toSet());
+          return actualBrokerIds.containsAll(expectedBrokerIds)
+            && actualBrokerIds.size() == expectedBrokerIds.size();
+        });
+
       assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFactor,
               expectedReplicationFactor, topic.partitions().get(tp.partition()).replicas().size());
 
@@ -870,20 +906,5 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG, Long.toString(LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS));
     props.setProperty(ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG, "120000");
     return props;
-  }
-
-  private void waitUntilBrokerShutsDown(AdminClient adminClient, int brokerId) {
-    waitUntilTrue(() -> {
-      Set<String> brokerIds;
-      try {
-        brokerIds = adminClient.describeCluster().nodes().get().stream()
-                .map(node -> String.valueOf(node.id()))
-                .collect(Collectors.toSet());
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      // Verify the brokerId is no longer in the list
-      return !brokerIds.contains(String.valueOf(brokerId));
-    }, "Broker did not shut down properly", TimeUnit.SECONDS.toMillis(60), TimeUnit.SECONDS.toMillis(5));
   }
 }
