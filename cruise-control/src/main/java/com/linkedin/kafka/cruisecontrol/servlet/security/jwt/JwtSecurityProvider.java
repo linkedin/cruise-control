@@ -8,10 +8,9 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
+import jakarta.servlet.ServletException;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.LoginService;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import javax.servlet.ServletException;
 import java.io.IOException;
 import java.security.cert.CertificateException;
 import java.util.List;
@@ -60,7 +59,12 @@ public class JwtSecurityProvider extends DefaultRoleSecurityProvider {
     return new JwtAuthenticator(_authenticationProviderUrl, _cookieName);
   }
 
-  public AuthorizationService authorizationService() {
+  /**
+   * Gets the role provider for JWT authentication.
+   *
+   * @return UserStoreAuthorizationService
+   */
+  public UserStoreAuthorizationService authorizationService() {
     return new UserStoreAuthorizationService(_privilegesFilePath);
   }
 }

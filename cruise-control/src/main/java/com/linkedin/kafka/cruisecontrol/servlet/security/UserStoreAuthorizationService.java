@@ -4,12 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security;
 
-import org.eclipse.jetty.security.PropertyUserStore;
-import org.eclipse.jetty.security.UserStore;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import org.eclipse.jetty.server.UserIdentity;
+import com.linkedin.kafka.cruisecontrol.servlet.ExposedPropertyUserStore;
+import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
-import javax.servlet.http.HttpServletRequest;
+import org.eclipse.jetty.util.resource.PathResourceFactory;
+import org.eclipse.jetty.util.resource.Resource;
+import java.nio.file.Path;
 
 /**
  * Can be used for authorization scenarios where a file can be created in a secure location with a relatively
@@ -18,18 +19,18 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class UserStoreAuthorizationService extends AbstractLifeCycle implements AuthorizationService {
 
-  private final UserStore _userStore;
+  private final ExposedPropertyUserStore _userStore;
 
   public UserStoreAuthorizationService(String privilegesFilePath) {
     this(userStoreFromFile(privilegesFilePath));
   }
 
-  public UserStoreAuthorizationService(UserStore userStore) {
+  public UserStoreAuthorizationService(ExposedPropertyUserStore userStore) {
     _userStore = userStore;
   }
 
   @Override
-  public UserIdentity getUserIdentity(HttpServletRequest request, String name) {
+  public UserIdentity getUserIdentity(Request request, String name) {
     return _userStore.getUserIdentity(name);
   }
 
@@ -45,9 +46,10 @@ public class UserStoreAuthorizationService extends AbstractLifeCycle implements 
     super.doStop();
   }
 
-  private static UserStore userStoreFromFile(String privilegesFilePath) {
-    PropertyUserStore userStore = new PropertyUserStore();
-    userStore.setConfig(privilegesFilePath);
+  private static ExposedPropertyUserStore userStoreFromFile(String privilegesFilePath) {
+    ExposedPropertyUserStore userStore = new ExposedPropertyUserStore();
+    Resource res = new PathResourceFactory().newResource(Path.of(privilegesFilePath));
+    userStore.setConfig(res);
     return userStore;
   }
 }

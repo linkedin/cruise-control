@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.jwt;
 
+import com.linkedin.kafka.cruisecontrol.servlet.security.AuthorizationService;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
@@ -14,13 +15,12 @@ import com.nimbusds.jwt.SignedJWT;
 import org.eclipse.jetty.security.DefaultIdentityService;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.LoginService;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Session;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.eclipse.jetty.util.component.LifeCycle;
 import javax.security.auth.Subject;
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,6 +36,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtAuthenticator.JWT_LOGGER;
 
@@ -99,11 +100,8 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
   }
 
   @Override
-  public UserIdentity login(String username, Object credentials, ServletRequest request) {
+  public UserIdentity login(String username, Object credentials, Request request, Function<Boolean, Session> getOrCreateSession) {
     if (!(credentials instanceof SignedJWT)) {
-      return null;
-    }
-    if (!(request instanceof HttpServletRequest)) {
       return null;
     }
 
@@ -119,7 +117,7 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     }
     if (valid) {
       String serializedToken = (String) request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE);
-      UserIdentity rolesDelegate = _authorizationService.getUserIdentity((HttpServletRequest) request, username);
+      UserIdentity rolesDelegate = _authorizationService.getUserIdentity(request, username);
       if (rolesDelegate == null) {
         return null;
       } else {

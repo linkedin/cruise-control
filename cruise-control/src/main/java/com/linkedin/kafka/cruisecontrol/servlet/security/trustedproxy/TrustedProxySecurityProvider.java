@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoSecurityProvider;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.LoginService;
-import org.eclipse.jetty.security.authentication.ConfigurableSpnegoAuthenticator;
+import org.eclipse.jetty.security.authentication.SPNEGOAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.file.Paths;
@@ -55,6 +55,6 @@ public class TrustedProxySecurityProvider extends SpnegoSecurityProvider {
 
   @Override
   public Authenticator authenticator() {
-    return new ConfigurableSpnegoAuthenticator();
+    return new SPNEGOAuthenticator();
   }
 }

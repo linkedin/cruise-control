@@ -4,11 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 
+import com.linkedin.kafka.cruisecontrol.servlet.ExposedPropertyUserStore;
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
-import org.eclipse.jetty.security.UserStore;
-import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.UserIdentity;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -20,7 +20,7 @@ public class SpnegoUserStoreAuthorizationServiceTest {
 
   @Test
   public void testPrincipalNames() {
-    UserStore users = new UserStore();
+    ExposedPropertyUserStore users = new ExposedPropertyUserStore();
     users.addUser(TEST_USER, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
     UserStoreAuthorizationService usas = new SpnegoUserStoreAuthorizationService(users);
 
