@@ -5,11 +5,15 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.DescribeClusterResult;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.Uuid;
 import org.apache.kafka.common.config.types.Password;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
@@ -31,10 +35,14 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
 
 /**
  * The {@code CCContainerizedKraftCluster} class creates a containerized KRaft Kafka cluster used for testing purposes.
@@ -74,6 +82,8 @@ public class CCContainerizedKraftCluster implements Startable {
 
   private final List<KafkaContainer> _brokers;
   private final String _bootstrapServers;
+  private final List<String> _brokerAddressList;
+  private final Admin _adminClient;
 
   public CCContainerizedKraftCluster(int numOfBrokers, List<Map<Object, Object>> brokerConfigs, Properties adminClientProps) {
     if (numOfBrokers <= 0) {
@@ -88,7 +98,8 @@ public class CCContainerizedKraftCluster implements Startable {
       INTERNAL_LISTENER_NAME + "://0.0.0.0:" + CONTAINER_INTERNAL_LISTENER_PORT,
       EXTERNAL_LISTENER_NAME + "://0.0.0.0:" + CONTAINER_EXTERNAL_LISTENER_PORT
     );
-    this._bootstrapServers = generateBootstrapServersList(numOfBrokers, containerHostPorts);
+    this._brokerAddressList = generateServerAddressList(numOfBrokers, containerHostPorts);
+    this._bootstrapServers = String.join(",", _brokerAddressList);
 
     /*
      * Ideally, we would construct the admin client properties directly in this constructor. However, due to the current
@@ -99,6 +110,8 @@ public class CCContainerizedKraftCluster implements Startable {
     Properties adminClientPropsWithBootstrapAddress = new Properties();
     adminClientPropsWithBootstrapAddress.putAll(adminClientProps);
     adminClientPropsWithBootstrapAddress.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, _bootstrapServers);
+    adminClientPropsWithBootstrapAddress.setProperty(AdminClientConfig.METADATA_MAX_AGE_CONFIG, "10000");
+    this._adminClient = Admin.create(adminClientPropsWithBootstrapAddress);
 
     this._brokers =
       IntStream
@@ -110,6 +123,11 @@ public class CCContainerizedKraftCluster implements Startable {
           brokerConfig.put("node.id", brokerNum + "");
           brokerConfig.put("process.roles", "broker,controller");
           brokerConfig.put("controller.quorum.voters", controllerQuorumVoters);
+          brokerConfig.put(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
+          brokerConfig.put(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
+          "127.0.0.1:" + CONTAINER_INTERNAL_LISTENER_PORT);
+          brokerConfig.put(CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
+          brokerConfig.putIfAbsent(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, DEFAULT_CRUISE_CONTROL_METRICS_TOPIC);
 
           // TestContainers automatically sets `inter.broker.listener.name` so we must disable `security.inter.broker.protocol`
           // https://kafka.apache.org/documentation/#brokerconfigs_inter.broker.listener.name
@@ -143,7 +161,7 @@ public class CCContainerizedKraftCluster implements Startable {
             //.withLogConsumer(outputFrame -> System.out.print(networkAlias + " | " + outputFrame.getUtf8String()))
             // Uncomment the following line when debugging SSL connection problems.
             //.withEnv("KAFKA_OPTS", "-Djavax.net.debug=ssl,handshake")
-            .waitingFor(new BrokerWaitStrategy(brokerNum, metricsTopic, adminClientPropsWithBootstrapAddress)
+            .waitingFor(new BrokerWaitStrategy(brokerNum, metricsTopic, _adminClient)
               .withStartupTimeout(Duration.ofMinutes(1))
             );
           kafkaContainer.setPortBindings(List.of(containerHostPort + ":" + CONTAINER_EXTERNAL_LISTENER_PORT));
@@ -171,10 +189,10 @@ public class CCContainerizedKraftCluster implements Startable {
       .collect(Collectors.toList());
   }
 
-  private String generateBootstrapServersList(int numOfBrokers, List<Integer> containerHostPorts) {
+  private List<String> generateServerAddressList(int numOfBrokers, List<Integer> containerHostPorts) {
     return IntStream.range(0, numOfBrokers)
       .mapToObj(i -> String.format("%s:%s", CONTAINER_HOST, containerHostPorts.get(i)))
-      .collect(Collectors.joining(","));
+      .collect(Collectors.toList());
   }
 
   private void copyCertToContainer(KafkaContainer container, Map<Object, Object> config, String key) {
@@ -184,15 +202,30 @@ public class CCContainerizedKraftCluster implements Startable {
     }
   }
 
+  /**
+   * Sets up required resources inside the Kafka container, including the Cruise Control Metrics Reporter JAR.
+   *
+   * <p>Note: This requires the 'cruise-control-metrics-reporter' project to be built beforehand.
+   * The JAR is expected to be located in '../cruise-control-metrics-reporter/build/libs/'.</p>
+   *
+   * @param kafkaContainer the Kafka test container
+   * @param brokerConfig   the Kafka broker configuration
+   */
   private void setupContainerResources(KafkaContainer kafkaContainer, Map<Object, Object> brokerConfig) {
-    Path libsDir = Paths.get("build", "libs").toAbsolutePath().normalize();
+    Path projectRoot = Paths.get("").toAbsolutePath().normalize();
+
+    Path metricsReporterJarPath = projectRoot
+      .resolveSibling("cruise-control-metrics-reporter")
+      .resolve("build")
+      .resolve("libs");
 
     try {
-      Path jarPath = Files.list(libsDir)
+      Path jarPath = Files.list(metricsReporterJarPath)
         .filter(path -> path.getFileName().toString().startsWith("cruise-control-metrics-reporter"))
         .filter(path -> path.getFileName().toString().endsWith(".jar"))
         .findFirst()
-        .orElseThrow(() -> new IllegalStateException("Cruise Control Metrics Reporter jar not found in: " + libsDir));
+        .orElseThrow(() -> new IllegalStateException("Cruise Control Metrics Reporter jar not found in: " + metricsReporterJarPath
+          + "The 'cruise-control-metrics-reporter' project must be built first."));
 
       kafkaContainer.withCopyToContainer(
         MountableFile.forHostPath(jarPath.toString(), 0755),
@@ -258,6 +291,15 @@ public class CCContainerizedKraftCluster implements Startable {
     return _bootstrapServers;
   }
 
+  /**
+   * Returns the list of broker addresses.
+   *
+   * @return a list of broker address strings.
+   */
+  public List<String> getBrokerAddressList() {
+    return _brokerAddressList;
+  }
+
   @Override
   public void start() {
     _brokers.parallelStream().forEach(GenericContainer::start);
@@ -265,37 +307,122 @@ public class CCContainerizedKraftCluster implements Startable {
 
   @Override
   public void stop() {
+    this._adminClient.close();
     this._brokers.stream().parallel().forEach(GenericContainer::close);
+  }
+
+  private static <T> T waitUntil(Supplier<T> supplier, Predicate<T> condition, Duration timeout, String timeoutMessage) {
+    long deadline = System.currentTimeMillis() + timeout.toMillis();
+
+    while (System.currentTimeMillis() < deadline) {
+      T value;
+      try {
+        value = supplier.get();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+
+      if (condition.test(value)) {
+        return value;
+      }
+
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      }
+    }
+
+    throw new RuntimeException(timeoutMessage);
+  }
+
+  /**
+   * Waits until the metadata for a Kafka topic meets the specified condition,
+   * or until the given timeout period elapses.
+   *
+   * @param topicName the name of the topic whose metadata should be monitored
+   * @param timeout   the maximum duration to wait for the condition to be satisfied
+   * @param condition a {@link Predicate} that tests the {@link TopicDescription} for readiness
+   * @return the {@link TopicDescription} once the condition evaluates to {@code true}
+   */
+  public TopicDescription waitForTopicMetadata(String topicName, Duration timeout, Predicate<TopicDescription> condition) {
+    return waitUntil(
+      () -> {
+        try {
+          return _adminClient.describeTopics(Collections.singleton(topicName))
+              .topicNameValues()
+              .get(topicName)
+              .get();
+        } catch (ExecutionException e) {
+          if (e.getCause() instanceof UnknownTopicOrPartitionException) {
+            // Topic doesn't exist yet, retry
+            return null;
+          }
+          throw new RuntimeException("Failed to describe topic: " + topicName, e);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Interrupted while waiting for broker to become ready", e);
+        }
+      },
+      td -> td != null && condition.test(td),
+      timeout,
+      String.format("Timeout waiting for topic %s metadata to be ready.", topicName)
+    );
+  }
+
+  /**
+   * Shuts down the Kafka broker with the given broker ID and waits for it
+   * to be removed from the cluster metadata.
+   *
+   * @param brokerId the ID of the broker to wait for shutdown.
+   */
+  public void shutDownBroker(int brokerId) {
+    Duration timeout = Duration.ofSeconds(30);
+    _brokers.get(brokerId).stop();
+
+    // Wait until brokerId is no longer in the cluster metadata.
+    waitUntil(
+      () -> {
+        try {
+          return _adminClient.describeCluster().nodes().get().stream()
+            .map(node -> String.valueOf(node.id()))
+            .collect(Collectors.toSet());
+        } catch (InterruptedException | ExecutionException e) {
+          throw new RuntimeException(e);
+        }
+      },
+      brokerIds -> !brokerIds.contains(String.valueOf(brokerId)),
+      timeout,
+      String.format("Broker %s did not shutdown properly.", brokerId)
+    );
   }
 
   public static class BrokerWaitStrategy extends AbstractWaitStrategy {
     private final int _brokerId;
     private final String _metricsTopic;
-    private final Properties _adminClientProps;
+    private final Admin _adminClient;
 
-    public BrokerWaitStrategy(int brokerId, String metricsTopic, Properties adminClientProps) {
+    public BrokerWaitStrategy(int brokerId, String metricsTopic, Admin adminClient) {
       this._brokerId = brokerId;
       this._metricsTopic = metricsTopic;
-      this._adminClientProps = adminClientProps;
+      this._adminClient = adminClient;
     }
 
     @Override
     protected void waitUntilReady() {
-      long deadline = System.currentTimeMillis() + startupTimeout.toMillis();
-
-      try (Admin adminClient = Admin.create(_adminClientProps)) {
-        while (System.currentTimeMillis() < deadline) {
+      waitUntil(
+        () -> {
+          // Returns true if broker is online and metrics topic exists
           try {
-            DescribeClusterResult cluster = adminClient.describeCluster();
-            boolean brokerOnline = cluster.nodes().get().stream().anyMatch(node -> node.id() == _brokerId);
+            boolean brokerOnline = _adminClient.describeCluster().nodes().get().stream().anyMatch(node -> node.id() == _brokerId);
 
             if (!brokerOnline) {
-              Thread.sleep(500);
-              continue;
+              return false;
             }
 
-            adminClient.describeTopics(Collections.singleton(_metricsTopic)).allTopicNames().get(5, TimeUnit.SECONDS);
-            return;
+            return _adminClient.describeTopics(Collections.singleton(_metricsTopic))
+              .allTopicNames().get(5, TimeUnit.SECONDS).containsKey(_metricsTopic);
 
           } catch (InterruptedException e) {
             // Restore interrupt status.
@@ -303,11 +430,13 @@ public class CCContainerizedKraftCluster implements Startable {
             throw new RuntimeException("Interrupted while waiting for broker to become ready", e);
           } catch (ExecutionException | TimeoutException e) {
             // Kafka broker is not ready yet, ignore and retry.
+            return false;
           }
-        }
-
-        throw new RuntimeException(String.format("Broker %d did not become ready within timeout of %d ms", _brokerId, startupTimeout.toMillis()));
-      }
+        },
+        ready -> ready,
+        startupTimeout,
+        String.format("Broker %d did not become ready within timeout of %d ms", _brokerId, startupTimeout.toMillis())
+      );
     }
   }
 }
