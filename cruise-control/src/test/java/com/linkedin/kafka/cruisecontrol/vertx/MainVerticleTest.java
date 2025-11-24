@@ -15,7 +15,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -59,8 +58,6 @@ public class MainVerticleTest {
    */
   @Test
   public void testMainVerticleCreation() {
-    // Test that MainVerticle can be created with required parameters
-    // This test primarily validates that Jackson dependencies are correctly resolved
     MainVerticle verticle = new MainVerticle(_mockAsyncKafkaCruiseControl, _metricRegistry, 9090, "localhost");
     
     assertNotNull("Verticle should not be null", verticle);
@@ -75,10 +72,7 @@ public class MainVerticleTest {
   @Test
   public void testJacksonDependenciesAvailable() {
     try {
-      // Attempt to load the JsonIncludeProperties class that was missing
       Class.forName("com.fasterxml.jackson.annotation.JsonIncludeProperties");
-      // If we get here, the class is available and the dependency issue is fixed
-      assertTrue("Jackson JsonIncludeProperties should be available", true);
     } catch (ClassNotFoundException e) {
       fail("Jackson JsonIncludeProperties class should be available: " + e.getMessage());
     }
