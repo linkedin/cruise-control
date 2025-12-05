@@ -4,18 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
-import com.linkedin.kafka.cruisecontrol.common.TopicMinIsrCache.MinIsrWithTime;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyAdjustingRecommendation;
-import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,13 +35,21 @@ import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.UnsupportedVersionException;
 import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
+import com.linkedin.kafka.cruisecontrol.common.TopicMinIsrCache.MinIsrWithTime;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyAdjustingRecommendation;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 
 import static com.linkedin.cruisecontrol.common.utils.Utils.*;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
-
 
 public final class ExecutionUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionUtils.class);
@@ -363,7 +364,7 @@ public final class ExecutionUtils {
    * @return The map of {@link PartitionReassignment reassignment} by {@link TopicPartition partitions}.
    */
   public static Map<TopicPartition, PartitionReassignment> ongoingPartitionReassignments(AdminClient adminClient)
-      throws InterruptedException, ExecutionException, TimeoutException {
+          throws InterruptedException, ExecutionException, TimeoutException {
     Map<TopicPartition, PartitionReassignment> partitionReassignments = null;
     int attempts = 0;
     long timeoutMs = listPartitionReassignmentsTimeoutMs;
@@ -374,14 +375,23 @@ public final class ExecutionUtils {
         partitionReassignments = responseResult.reassignments().get(timeoutMs, TimeUnit.MILLISECONDS);
       } catch (TimeoutException e) {
         LOG.info("Failed to list partition reassignments in {}ms (attempt={}). Consider increasing the value of {} config.",
-                 timeoutMs, attempts + 1, ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
+                timeoutMs, attempts + 1, ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
         if (++attempts == listPartitionReassignmentsMaxAttempts) {
           throw e;
         }
         timeoutMs *= DEFAULT_RETRY_BACKOFF_BASE;
+      } catch (ExecutionException e) {
+        Throwable cause = e.getCause();
+        //Fix #2217: handle legacy brokers that do not support the API
+        if (cause instanceof UnsupportedVersionException) {
+          LOG.warn("Broker does not support LIST_PARTITION_REASSIGNMENTS API. "
+                  + "Assuming no ongoing partition reassignments. "
+                  + "Consider upgrading Kafka brokers for full safety checks.", cause);
+          return Collections.emptyMap();
+        }
+        throw e;
       }
     } while (partitionReassignments == null);
-
     return partitionReassignments;
   }
 
