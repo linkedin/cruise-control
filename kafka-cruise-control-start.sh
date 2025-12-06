@@ -184,6 +184,9 @@ fi
 # If Cygwin is detected, classpath is converted to Windows format.
 (( CYGWIN )) && CLASSPATH=$(cygpath --path --mixed "${CLASSPATH}")
 
+# Configure the JMX exporter agent.
+JVM_OPTS="$JVM_OPTS -javaagent:observability/jmx_prometheus_javaagent-1.2.0.jar=7071:observability/jmx_exporter_config.yaml"
+
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
   nohup $JAVA $KAFKA_HEAP_OPTS $KAFKA_JVM_PERFORMANCE_OPTS $KAFKA_GC_LOG_OPTS $KAFKA_JMX_OPTS $KAFKA_LOG4J_OPTS -cp $CLASSPATH $KAFKA_OPTS com.linkedin.kafka.cruisecontrol.KafkaCruiseControlMain "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
