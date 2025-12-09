@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -35,6 +34,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.testcontainers.kafka.KafkaContainer;
 
@@ -201,7 +201,8 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   }
 
   @Test
-  public void testUpdatingMetricsTopicConfig() throws InterruptedException, TimeoutException {
+  @Ignore("Container stop and start will destroy Kafka broker and create a new one so this test is not valid in this form.")
+  public void testUpdatingMetricsTopicConfig() {
     TopicDescription topicDescription = _cluster.waitForTopicMetadata(TOPIC, Duration.ofSeconds(30), td -> true);
     assertEquals(1, topicDescription.partitions().size());
 

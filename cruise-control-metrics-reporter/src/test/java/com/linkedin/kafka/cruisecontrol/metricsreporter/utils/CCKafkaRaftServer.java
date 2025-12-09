@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 
-import kafka.log.UnifiedLog;
 import kafka.metrics.KafkaMetricsReporter;
 import kafka.server.BrokerServer;
 import kafka.server.ControllerServer;
@@ -34,6 +33,7 @@ import org.apache.kafka.metadata.properties.MetaPropertiesEnsemble.Copier;
 import org.apache.kafka.metadata.properties.MetaPropertiesEnsemble.Loader;
 import org.apache.kafka.metadata.properties.MetaPropertiesEnsemble.VerificationFlag;
 import org.apache.kafka.metadata.properties.MetaPropertiesVersion;
+import org.apache.kafka.raft.MetadataLogConfig;
 import org.apache.kafka.raft.QuorumConfig;
 import org.apache.kafka.server.ProcessRole;
 import org.apache.kafka.server.ServerSocketFactory;
@@ -42,9 +42,9 @@ import org.apache.kafka.server.config.ServerLogConfigs;
 import org.apache.kafka.server.config.ServerTopicConfigSynonyms;
 import org.apache.kafka.server.metrics.KafkaYammerMetrics;
 import org.apache.kafka.storage.internals.log.LogConfig;
+import org.apache.kafka.storage.internals.log.UnifiedLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.jdk.javaapi.CollectionConverters;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -165,7 +165,7 @@ public class CCKafkaRaftServer implements Server {
     private static MetaTuple initializeLogDirs(KafkaConfig config, String logPrefix) {
         Loader loader = new Loader();
         loader.addMetadataLogDir(config.metadataLogDir());
-        loader.addLogDirs(CollectionConverters.asJava(config.logDirs()));
+        loader.addLogDirs(config.logDirs());
 
         // Load the MetaPropertiesEnsemble
         MetaPropertiesEnsemble initialMetaPropsEnsemble;
@@ -222,7 +222,7 @@ public class CCKafkaRaftServer implements Server {
 
     private void initializeMetaData(KafkaConfig config) {
         Set<File> allLogDirs = new HashSet<>(readLogDirs(config));
-        allLogDirs.add(new File(config.getString(KRaftConfigs.METADATA_LOG_DIR_CONFIG)));
+        allLogDirs.add(new File(config.getString(MetadataLogConfig.METADATA_LOG_DIR_CONFIG)));
         for (File logDir : allLogDirs) {
             File metaPropsFile = new File(logDir, "meta.properties");
             if (!metaPropsFile.exists()) {
@@ -240,7 +240,7 @@ public class CCKafkaRaftServer implements Server {
             properties.setProperty(CLUSTER_ID_CONFIG, _clusterId);
             properties.setProperty(KRaftConfigs.NODE_ID_CONFIG, config.get(KRaftConfigs.NODE_ID_CONFIG).toString());
             properties.setProperty(ServerLogConfigs.LOG_DIR_CONFIG, config.getString(ServerLogConfigs.LOG_DIR_CONFIG));
-            properties.setProperty(KRaftConfigs.METADATA_LOG_DIR_CONFIG, config.getString(KRaftConfigs.METADATA_LOG_DIR_CONFIG));
+            properties.setProperty(MetadataLogConfig.METADATA_LOG_DIR_CONFIG, config.getString(MetadataLogConfig.METADATA_LOG_DIR_CONFIG));
 
             try (FileOutputStream out = new FileOutputStream(metaPropsFile)) {
                 properties.store(out, "Meta Properties");

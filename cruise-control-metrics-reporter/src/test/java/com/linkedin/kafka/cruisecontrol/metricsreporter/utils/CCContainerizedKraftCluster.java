@@ -55,7 +55,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetr
  * </ul>
  */
 public class CCContainerizedKraftCluster implements Startable {
-  private static final String KAFKA_IMAGE = System.getenv().getOrDefault("KAFKA_IMAGE", "apache/kafka:3.9.1");
+  private static final String KAFKA_IMAGE = System.getenv().getOrDefault("KAFKA_IMAGE", "apache/kafka:4.1.1");
   /**
    * Determines the hostname used by containers to connect to services running on the host machine.
    * Required for CI environments like CircleCI, where the Docker executor relies on a specific hostname
@@ -156,6 +156,7 @@ public class CCContainerizedKraftCluster implements Startable {
             .withNetwork(NETWORK)
             .withNetworkAliases(networkAlias)
             .withExposedPorts(CONTAINER_EXTERNAL_LISTENER_PORT)
+            .withCreateContainerCmdModifier(cmd -> cmd.withUser("root"))
             .withEnv("CLUSTER_ID", clusterId)
             // Uncomment the following line when debugging Kafka cluster problems.
             //.withLogConsumer(outputFrame -> System.out.print(networkAlias + " | " + outputFrame.getUtf8String()))
