@@ -396,6 +396,25 @@ public class CCContainerizedKraftCluster implements Startable {
       timeout,
       String.format("Broker %s did not shutdown properly.", brokerId)
     );
+
+    // Wait until describeLogDirs fails
+    waitUntil(
+      () -> {
+        try {
+          _adminClient.describeLogDirs(Collections.singletonList(brokerId))
+            .allDescriptions()
+            .get(5, TimeUnit.SECONDS);
+          return false;
+        } catch (InterruptedException ie) {
+          throw new RuntimeException(ie);
+        } catch (Exception e) {
+          return true;
+        }
+      },
+      result -> result,
+      timeout,
+      String.format("Broker %s did not fully shut down (logDirs RPC still succeeds).", brokerId)
+    );
   }
 
   public static class BrokerWaitStrategy extends AbstractWaitStrategy {
