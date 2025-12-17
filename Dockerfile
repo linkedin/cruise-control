@@ -10,7 +10,6 @@ RUN apk add --no-cache bash
 WORKDIR /cc
 COPY --from=build /workspace/cruise-control/build/ /cc/cruise-control/build/
 COPY --from=build /workspace/config/ /cc/config/
-COPY --from=build /workspace/observability/ /cc/observability/
 COPY --from=build /workspace/kafka-cruise-control-start.sh /cc/
 RUN chmod +x kafka-cruise-control-start.sh
 EXPOSE 9090
