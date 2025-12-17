@@ -13,5 +13,5 @@ COPY --from=build /workspace/config/ /cc/config/
 COPY --from=build /workspace/observability/ /cc/observability/
 COPY --from=build /workspace/kafka-cruise-control-start.sh /cc/
 RUN chmod +x kafka-cruise-control-start.sh
-EXPOSE 5600
-CMD ["./kafka-cruise-control-start.sh", "config/cruisecontrol.properties", "5600"]
+EXPOSE 9090
+CMD ["./kafka-cruise-control-start.sh", "config/cruisecontrol.properties", "9090"]
