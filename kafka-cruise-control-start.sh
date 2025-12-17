@@ -185,7 +185,7 @@ fi
 (( CYGWIN )) && CLASSPATH=$(cygpath --path --mixed "${CLASSPATH}")
 
 # Configure the JMX exporter agent.
-JVM_OPTS="$JVM_OPTS -javaagent:observability/jmx_prometheus_javaagent-1.2.0.jar=7071:observability/jmx_exporter_config.yaml"
+KAFKA_OPTS="$KAFKA_OPTS -javaagent:observability/jmx_prometheus_javaagent-1.2.0.jar=7071:observability/jmx_exporter_config.yaml"
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
