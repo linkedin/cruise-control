@@ -95,6 +95,17 @@ subprojects {
   apply plugin: "com.github.spotbugs"
   apply plugin: 'jacoco'
 
+  configurations.all {
+    resolutionStrategy {
+      capabilitiesResolution {
+        withCapability('org.lz4:lz4-java') {
+          select('org.lz4:lz4-java:0')
+          because 'CVE-2025-12183: Prefer org.lz4 over at.yawk.lz4'
+        }
+      }
+    }
+  }
+
   // This project requires Java 17
   sourceCompatibility = JavaVersion.VERSION_17
 
