@@ -334,6 +334,9 @@ project(':cruise-control') {
       implementation("commons-beanutils:commons-beanutils:1.11.0") {
         because("version 1.9.4 pulled from kafa 3.9.1 has CVE-2025-48734 in it, which is fixed in 1.11.0")
       }
+      implementation("org.lz4:lz4-java:${lz4JavaVersion}") {
+        because("CVE-2025-12183: Security vulnerability in 1.8.0")
+      }
     }
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
