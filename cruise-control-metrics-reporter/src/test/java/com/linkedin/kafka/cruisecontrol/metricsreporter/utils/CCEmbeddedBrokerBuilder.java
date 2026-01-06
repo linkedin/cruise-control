@@ -13,7 +13,6 @@ import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
 import org.apache.kafka.network.SocketServerConfigs;
-import org.apache.kafka.raft.MetadataLogConfig;
 import org.apache.kafka.raft.QuorumConfig;
 import org.apache.kafka.server.config.KRaftConfigs;
 import org.apache.kafka.server.config.ReplicationConfigs;
@@ -22,6 +21,7 @@ import org.apache.kafka.server.config.ServerLogConfigs;
 import org.apache.kafka.storage.internals.log.CleanerConfig;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaRaftServer.CLUSTER_ID_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.KafkaServerConfigs.METADATA_LOG_DIR_CONFIG;
 
 
 public class CCEmbeddedBrokerBuilder {
@@ -274,7 +274,7 @@ public class CCEmbeddedBrokerBuilder {
     props.put(SocketServerConfigs.LISTENER_SECURITY_PROTOCOL_MAP_CONFIG, "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL");
     props.put(SocketServerConfigs.LISTENERS_CONFIG, csvJoiner.toString());
     props.put(ServerLogConfigs.LOG_DIR_CONFIG, _logDirectory.getAbsolutePath());
-    props.put(MetadataLogConfig.METADATA_LOG_DIR_CONFIG, _metadataLogDirectory.getAbsolutePath());
+    props.put(METADATA_LOG_DIR_CONFIG, _metadataLogDirectory.getAbsolutePath());
     props.put(ReplicationConfigs.REPLICA_SOCKET_TIMEOUT_MS_CONFIG, Long.toString(_socketTimeoutMs));
     props.put(ReplicationConfigs.CONTROLLER_SOCKET_TIMEOUT_MS_CONFIG, Long.toString(_socketTimeoutMs));
     props.put(ServerConfigs.CONTROLLED_SHUTDOWN_ENABLE_CONFIG, Boolean.toString(_enableControlledShutdown));

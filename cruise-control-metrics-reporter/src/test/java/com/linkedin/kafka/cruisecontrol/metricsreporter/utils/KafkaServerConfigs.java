@@ -12,6 +12,7 @@ public final class KafkaServerConfigs {
     public static final String OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG = "offsets.topic.replication.factor";
     public static final String DEFAULT_REPLICATION_FACTOR_CONFIG = "default.replication.factor";
     public static final String NUM_PARTITIONS_CONFIG = "num.partitions";
+    public static final String METADATA_LOG_DIR_CONFIG = "metadata.log.dir";
 
     private KafkaServerConfigs() { }
 }

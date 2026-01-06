@@ -16,13 +16,13 @@ import org.apache.kafka.common.network.ListenerName;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.network.SocketServerConfigs;
-import org.apache.kafka.raft.MetadataLogConfig;
 import org.apache.kafka.server.config.KRaftConfigs;
 import org.apache.kafka.server.config.ServerLogConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaRaftServer.CLUSTER_ID_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.KafkaServerConfigs.METADATA_LOG_DIR_CONFIG;
 
 public class CCEmbeddedBroker implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(CCEmbeddedBroker.class);
@@ -61,7 +61,7 @@ public class CCEmbeddedBroker implements AutoCloseable {
   private void parseConfigs(Map<Object, Object> config) {
     readLogDirs(config);
     _id = Integer.parseInt((String) config.get(KRaftConfigs.NODE_ID_CONFIG));
-    _metadataLogDir = new File((String) config.get(MetadataLogConfig.METADATA_LOG_DIR_CONFIG));
+    _metadataLogDir = new File((String) config.get(METADATA_LOG_DIR_CONFIG));
 
     // Bind addresses
     String listenersString = (String) config.get(SocketServerConfigs.LISTENERS_CONFIG);
