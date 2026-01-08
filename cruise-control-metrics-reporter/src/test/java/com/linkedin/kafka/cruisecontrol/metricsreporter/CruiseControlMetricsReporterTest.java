@@ -34,7 +34,6 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.testcontainers.kafka.KafkaContainer;
 
@@ -50,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
-  private static final int NUM_OF_BROKERS = 2;
+  private static final int NUM_OF_BROKERS = 3;
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
   protected static final String HOST = "127.0.0.1";
   protected CCContainerizedKraftCluster _cluster;
@@ -113,6 +112,11 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     props.setProperty("offsets.topic.replication.factor", "1");
     props.setProperty("default.replication.factor", "2");
     return props;
+  }
+
+  @Override
+  protected int clusterSize() {
+    return NUM_OF_BROKERS;
   }
 
   @Test
@@ -201,7 +205,6 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   }
 
   @Test
-  @Ignore("Container stop and start will destroy Kafka broker and create a new one so this test is not valid in this form.")
   public void testUpdatingMetricsTopicConfig() {
     TopicDescription topicDescription = _cluster.waitForTopicMetadata(TOPIC, Duration.ofSeconds(30), td -> true);
     assertEquals(1, topicDescription.partitions().size());
