@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -274,6 +275,15 @@ public class CCContainerizedKraftCluster implements Startable {
   }
 
   /**
+   * Returns the {@link Admin} client used by this cluster instance.
+   *
+   * @return the {@link Admin} client associated with this cluster
+   */
+  public Admin adminClient() {
+    return _adminClient;
+  }
+
+  /**
    * Returns list of KafkaContainer broker objects within the TestContainer Kafka cluster.
    *
    * @return List of KafkaContainer broker objects within the TestContainer Kafka cluster.
@@ -338,36 +348,47 @@ public class CCContainerizedKraftCluster implements Startable {
   }
 
   /**
-   * Waits until the metadata for a Kafka topic meets the specified condition,
+   * Waits until the metadata for the listed Kafka topics meet the specified condition,
    * or until the given timeout period elapses.
    *
-   * @param topicName the name of the topic whose metadata should be monitored
-   * @param timeout   the maximum duration to wait for the condition to be satisfied
+   * @param topicNames the names of the topics whose metadata should be monitored
+   * @param fetchTimeout the timeout duration for the metadata retrieval call
+   * @param waitTimeout the maximum duration to wait for the condition to be satisfied
    * @param condition a {@link Predicate} that tests the {@link TopicDescription} for readiness
-   * @return the {@link TopicDescription} once the condition evaluates to {@code true}
+   * @return the {@link Map}{@code <String, TopicDescription>} once the condition evaluates to {@code true}
    */
-  public TopicDescription waitForTopicMetadata(String topicName, Duration timeout, Predicate<TopicDescription> condition) {
+  public Map<String, TopicDescription> waitForTopicMetadata(List<String> topicNames,
+                                               Duration fetchTimeout,
+                                               Duration waitTimeout,
+                                               Predicate<TopicDescription> condition) {
     return waitUntil(
       () -> {
         try {
-          return _adminClient.describeTopics(Collections.singleton(topicName))
-              .topicNameValues()
-              .get(topicName)
-              .get();
+          Map<String, TopicDescription> descriptions =
+            _adminClient.describeTopics(topicNames)
+              .allTopicNames()
+              .get(fetchTimeout.toSeconds(), TimeUnit.SECONDS);
+
+          boolean topicMetadataReady = descriptions.values().stream().allMatch(td -> td != null && condition.test(td));
+
+          return topicMetadataReady ? descriptions : null;
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Interrupted while waiting for broker to become ready", e);
         } catch (ExecutionException e) {
           if (e.getCause() instanceof UnknownTopicOrPartitionException) {
             // Topic doesn't exist yet, retry
             return null;
           }
-          throw new RuntimeException("Failed to describe topic: " + topicName, e);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException("Interrupted while waiting for broker to become ready", e);
+          throw new RuntimeException("Failed to describe topics: " + topicNames, e);
+        } catch (TimeoutException e) {
+          // Timeout fetching metadata, treat as transient and retry
+          return null;
         }
       },
-      td -> td != null && condition.test(td),
-      timeout,
-      String.format("Timeout waiting for topic %s metadata to be ready.", topicName)
+      Objects::nonNull,
+      waitTimeout,
+      String.format("Timeout waiting for topics %s metadata to be ready.", topicNames)
     );
   }
 
@@ -385,35 +406,25 @@ public class CCContainerizedKraftCluster implements Startable {
     waitUntil(
       () -> {
         try {
-          return _adminClient.describeCluster().nodes().get().stream()
-            .map(node -> String.valueOf(node.id()))
-            .collect(Collectors.toSet());
-        } catch (InterruptedException | ExecutionException e) {
-          throw new RuntimeException(e);
+          return _adminClient.describeCluster().nodes().get(10, TimeUnit.SECONDS)
+            .stream().noneMatch(node -> node.id() == brokerId);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while waiting for broker removal", e);
+        } catch (ExecutionException e) {
+          if (e.getCause() instanceof UnknownTopicOrPartitionException) {
+            // Topic doesn't exist yet, retry
+            return false;
+          }
+          throw new RuntimeException("Failed to describe cluster: " + e);
+        } catch (TimeoutException e) {
+          // Timeout fetching metadata, treat as transient and retry
+          return false;
         }
       },
-      brokerIds -> !brokerIds.contains(String.valueOf(brokerId)),
+      Boolean::booleanValue,
       timeout,
       String.format("Broker %s did not shutdown properly.", brokerId)
-    );
-
-    // Wait until describeLogDirs fails
-    waitUntil(
-      () -> {
-        try {
-          _adminClient.describeLogDirs(Collections.singletonList(brokerId))
-            .allDescriptions()
-            .get(5, TimeUnit.SECONDS);
-          return false;
-        } catch (InterruptedException ie) {
-          throw new RuntimeException(ie);
-        } catch (Exception e) {
-          return true;
-        }
-      },
-      result -> result,
-      timeout,
-      String.format("Broker %s did not fully shut down (logDirs RPC still succeeds).", brokerId)
     );
   }
 

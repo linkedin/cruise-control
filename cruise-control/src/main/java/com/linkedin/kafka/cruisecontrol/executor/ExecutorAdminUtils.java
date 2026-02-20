@@ -13,11 +13,13 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.LogDirDescription;
 import org.apache.kafka.clients.admin.ReplicaInfo;
 import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartitionReplica;
 import org.apache.kafka.common.errors.KafkaStorageException;
 import org.apache.kafka.common.errors.LogDirNotFoundException;
@@ -44,7 +46,7 @@ public final class ExecutorAdminUtils {
    * @return Replica logdir information by task.
    */
   static Map<ExecutionTask, ReplicaLogDirInfo> getLogdirInfoForExecutionTask(Collection<ExecutionTask> tasks,
-                                                                             AdminClient adminClient,
+                                                                             Admin adminClient,
                                                                              KafkaCruiseControlConfig config) {
     Set<TopicPartitionReplica> replicasToCheck = new HashSet<>();
     Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask = new HashMap<>();
@@ -75,7 +77,7 @@ public final class ExecutorAdminUtils {
    * @param config The config object that holds all the Cruise Control related configs
    */
   static void executeIntraBrokerReplicaMovements(List<ExecutionTask> tasksToExecute,
-                                                 AdminClient adminClient,
+                                                 Admin adminClient,
                                                  ExecutionTaskManager executionTaskManager,
                                                  KafkaCruiseControlConfig config) {
     Map<TopicPartitionReplica, String> replicaAssignment = new HashMap<>();
@@ -99,14 +101,14 @@ public final class ExecutorAdminUtils {
 
   /**
    * Check whether there is ongoing intra-broker replica movement.
-   * @param brokersToCheck List of broker to check.
    * @param adminClient The adminClient to send describeLogDirs request.
    * @param config The config object that holds all the Cruise Control related configs
    * @return {@code true} if there is ongoing intra-broker replica movement.
    */
-  static boolean hasOngoingIntraBrokerReplicaMovement(Collection<Integer> brokersToCheck, AdminClient adminClient,
+  static boolean hasOngoingIntraBrokerReplicaMovement(Admin adminClient,
                                                       KafkaCruiseControlConfig config)
       throws InterruptedException, ExecutionException, TimeoutException {
+    Collection<Integer> brokersToCheck = adminClient.describeCluster().nodes().get().stream().map(Node::id).collect(Collectors.toSet());
     Map<Integer, KafkaFuture<Map<String, LogDirDescription>>> logDirsByBrokerId = adminClient.describeLogDirs(brokersToCheck).descriptions();
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirDescription>>> entry : logDirsByBrokerId.entrySet()) {
       Map<String, LogDirDescription> logInfos = entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);

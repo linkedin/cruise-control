@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult;
 import org.apache.kafka.clients.admin.ElectLeadersResult;
@@ -347,7 +347,7 @@ public final class ExecutionUtils {
    * @param adminClient The adminClient to ask for ongoing partition reassignments.
    * @return The set of {@link TopicPartition partitions} that are being reassigned.
    */
-  public static Set<TopicPartition> partitionsBeingReassigned(AdminClient adminClient)
+  public static Set<TopicPartition> partitionsBeingReassigned(Admin adminClient)
       throws InterruptedException, ExecutionException, TimeoutException {
     return ongoingPartitionReassignments(adminClient).keySet();
   }
@@ -362,7 +362,7 @@ public final class ExecutionUtils {
    * @param adminClient The adminClient to ask for ongoing partition reassignments.
    * @return The map of {@link PartitionReassignment reassignment} by {@link TopicPartition partitions}.
    */
-  public static Map<TopicPartition, PartitionReassignment> ongoingPartitionReassignments(AdminClient adminClient)
+  public static Map<TopicPartition, PartitionReassignment> ongoingPartitionReassignments(Admin adminClient)
       throws InterruptedException, ExecutionException, TimeoutException {
     Map<TopicPartition, PartitionReassignment> partitionReassignments = null;
     int attempts = 0;
@@ -404,7 +404,7 @@ public final class ExecutionUtils {
    * @param tasks Preferred leader election tasks to execute.
    * @return The {@link ElectLeadersResult result} of preferred leader election request -- cannot be {@code null}.
    */
-  public static ElectLeadersResult submitPreferredLeaderElection(AdminClient adminClient, List<ExecutionTask> tasks) {
+  public static ElectLeadersResult submitPreferredLeaderElection(Admin adminClient, List<ExecutionTask> tasks) {
     if (validateNotNull(tasks, "Tasks to execute cannot be null.").isEmpty()) {
       throw new IllegalArgumentException("Tasks to execute cannot be empty.");
     }
@@ -442,7 +442,7 @@ public final class ExecutionUtils {
    * @param tasks Inter-broker replica reassignment tasks to execute.
    * @return The {@link AlterPartitionReassignmentsResult result} of reassignment request -- cannot be {@code null}.
    */
-  public static AlterPartitionReassignmentsResult submitReplicaReassignmentTasks(AdminClient adminClient, List<ExecutionTask> tasks) {
+  public static AlterPartitionReassignmentsResult submitReplicaReassignmentTasks(Admin adminClient, List<ExecutionTask> tasks) {
     if (validateNotNull(tasks, "Tasks to execute cannot be null.").isEmpty()) {
       throw new IllegalArgumentException("Tasks to execute cannot be empty.");
     }
@@ -491,7 +491,7 @@ public final class ExecutionUtils {
    * @param adminClient The adminClient to stop the inter-broker replica reassignments.
    * @return The {@link AlterPartitionReassignmentsResult result} of stop reassignment request, {@code null} if there isn't any reassignments.
    */
-  public static AlterPartitionReassignmentsResult maybeStopPartitionReassignment(AdminClient adminClient) {
+  public static AlterPartitionReassignmentsResult maybeStopPartitionReassignment(Admin adminClient) {
     Set<TopicPartition> partitionsBeingReassigned;
     try {
       partitionsBeingReassigned = partitionsBeingReassigned(adminClient);

@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
-import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.common.MetadataAdminClient;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -40,6 +40,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
@@ -53,6 +54,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
@@ -84,6 +86,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final long MOCK_CURRENT_TIME = 1596842708000L;
 
   private CCContainerizedKraftCluster _cluster;
+  private Admin _adminClient;
   private List<String> _brokerAddressList;
 
   @Override
@@ -103,12 +106,14 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Before
   public void setUp() {
     Properties adminClientProps = new Properties();
+    adminClientProps.setProperty(AdminClientConfig.METADATA_MAX_AGE_CONFIG, "0");
     setSecurityConfigs(adminClientProps, "admin");
 
     _cluster = new CCContainerizedKraftCluster(clusterSize(), buildBrokerConfigs(), adminClientProps);
     _cluster.start();
     _brokerAddressList = _cluster.getBrokerAddressList();
     _bootstrapUrl = _cluster.getExternalBootstrapAddress();
+    _adminClient = _cluster.adminClient();
   }
 
   /**
@@ -133,19 +138,10 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   @Test
   public void testReplicaReassignment() throws InterruptedException, OngoingExecutionException {
-    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(getExecutorProperties());
-    Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
-    adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
-
-    try {
-      List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
-      List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
-      populateProposals(proposalsToExecute, proposalsToCheck, 0);
-      executeAndVerifyProposals(adminClient, proposalsToExecute, proposalsToCheck, false, null, false, true);
-    } finally {
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
+    List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
+    List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
+    populateProposals(proposalsToExecute, proposalsToCheck, 0);
+    executeAndVerifyProposals(_adminClient, proposalsToExecute, proposalsToCheck, false, null, false, true);
   }
 
   @Test
@@ -168,43 +164,34 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   @Test
   public void testBrokerDiesBeforeMovingPartition() throws Exception {
-    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(getExecutorProperties());
-    Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
-    adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+    Map<String, TopicDescription> topicDescriptions = createTopics((int) PRODUCE_SIZE_IN_BYTES);
+    // initialLeader0 will be alive after killing a broker in cluster.
+    int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
+    int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
+    // Kill broker before starting the reassignment.
+    int brokerId = initialLeader0 == 0 ? 1 : 0;
 
-    try {
-      Map<String, TopicDescription> topicDescriptions = createTopics((int) PRODUCE_SIZE_IN_BYTES);
-      // initialLeader0 will be alive after killing a broker in cluster.
-      int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
-      int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
-      // Kill broker before starting the reassignment.
-      int brokerId = initialLeader0 == 0 ? 1 : 0;
+    _cluster.shutDownBroker(brokerId);
 
-      _cluster.shutDownBroker(brokerId);
+    ExecutionProposal proposal0 =
+      new ExecutionProposal(TP0, PRODUCE_SIZE_IN_BYTES, new ReplicaPlacementInfo(initialLeader0),
+                            Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
+                            Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
+    ExecutionProposal proposal1 =
+      new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
+                            Arrays.asList(new ReplicaPlacementInfo(initialLeader1),
+                                          new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
+                            Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0),
+                                          new ReplicaPlacementInfo(initialLeader1)));
 
-      ExecutionProposal proposal0 =
-          new ExecutionProposal(TP0, PRODUCE_SIZE_IN_BYTES, new ReplicaPlacementInfo(initialLeader0),
-                                Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
-                                Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
-      ExecutionProposal proposal1 =
-          new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
-                                Arrays.asList(new ReplicaPlacementInfo(initialLeader1),
-                                              new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
-                                Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0),
-                                              new ReplicaPlacementInfo(initialLeader1)));
+    Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
+    executeAndVerifyProposals(_adminClient, proposalsToExecute, Collections.emptyList(), true, null, false, false);
 
-      Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-      executeAndVerifyProposals(adminClient, proposalsToExecute, Collections.emptyList(), true, null, false, false);
-
-      // We are doing the rollback. -- The leadership should be on the alive broker.
-      TopicDescription topic0 = adminClient.describeTopics(Collections.singleton(TOPIC0)).topicNameValues().get(TOPIC0).get();
-      TopicDescription topic1 = adminClient.describeTopics(Collections.singleton(TOPIC1)).topicNameValues().get(TOPIC1).get();
-      assertEquals(initialLeader0, topic0.partitions().get(PARTITION).leader().id());
-      assertEquals(initialLeader0, topic1.partitions().get(PARTITION).leader().id());
-    } finally {
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
+    // We are doing the rollback. -- The leadership should be on the alive broker.
+    TopicDescription topic0 = _adminClient.describeTopics(Collections.singleton(TOPIC0)).topicNameValues().get(TOPIC0).get();
+    TopicDescription topic1 = _adminClient.describeTopics(Collections.singleton(TOPIC1)).topicNameValues().get(TOPIC1).get();
+    assertEquals(initialLeader0, topic0.partitions().get(PARTITION).leader().id());
+    assertEquals(initialLeader0, topic1.partitions().get(PARTITION).leader().id());
   }
 
   @Test
@@ -405,7 +392,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testSetRequestedExecutionProgressCheckIntervalMs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
-    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+    Executor executor = new Executor(config, null, new MetricRegistry(), null, EasyMock.mock(MetadataAdminClient.class),
                                      null, EasyMock.mock(AnomalyDetectorManager.class));
     long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
 
@@ -419,7 +406,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testSetExecutionProgressCheckIntervalMsWithRequestedValue() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
-    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+    Executor executor = new Executor(config, null, new MetricRegistry(), null, EasyMock.mock(MetadataAdminClient.class),
                                      null, EasyMock.mock(AnomalyDetectorManager.class));
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
@@ -440,7 +427,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testSetExecutionProgressCheckIntervalMsWithNoRequestedValue() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
-    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+    Executor executor = new Executor(config, null, new MetricRegistry(), null, EasyMock.mock(MetadataAdminClient.class),
                                      null, EasyMock.mock(AnomalyDetectorManager.class));
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
@@ -461,7 +448,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testResetExecutionProgressCheckIntervalMs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
-    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+    Executor executor = new Executor(config, null, new MetricRegistry(), null, EasyMock.mock(MetadataAdminClient.class),
         null, EasyMock.mock(AnomalyDetectorManager.class));
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     executor.resetExecutionProgressCheckIntervalMs();
@@ -477,8 +464,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   public void testExecutionKnobs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     assertThrows(IllegalStateException.class,
-                 () -> new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), null, null));
-    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+                 () -> new Executor(config, null, new MetricRegistry(), null, EasyMock.mock(MetadataAdminClient.class), null, null));
+    Executor executor = new Executor(config, null, new MetricRegistry(), null, EasyMock.mock(MetadataAdminClient.class),
                                      null, EasyMock.mock(AnomalyDetectorManager.class));
 
     // Verify correctness of add/drop recently removed/demoted brokers.
@@ -502,7 +489,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     Time time = new MockTime();
-    MetadataClient mockMetadataClient = EasyMock.mock(MetadataClient.class);
+    MetadataAdminClient mockMetadataClient = EasyMock.mock(MetadataAdminClient.class);
     // Fake the metadata to never change so the leader movement will timeout.
     Node node0 = new Node(BROKER_ID_0, "host0", 100);
     Node node1 = new Node(BROKER_ID_1, "host1", 100);
@@ -512,9 +499,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     PartitionInfo partitionInfo = new PartitionInfo(TP1.topic(), TP1.partition(), node1, replicas, replicas);
     Cluster cluster = new Cluster("id", Arrays.asList(node0, node1), Collections.singleton(partitionInfo),
                                   Collections.emptySet(), Collections.emptySet());
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = new MetadataClient.ClusterAndGeneration(cluster, 0);
-    EasyMock.expect(mockMetadataClient.refreshMetadata()).andReturn(clusterAndGeneration).anyTimes();
-    EasyMock.expect(mockMetadataClient.cluster()).andReturn(clusterAndGeneration.cluster()).anyTimes();
+    EasyMock.expect(mockMetadataClient.cluster()).andReturn(cluster).anyTimes();
     LoadMonitor mockLoadMonitor = getMockLoadMonitor();
     AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID, false);
     UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
@@ -523,7 +508,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     EasyMock.replay(mockMetadataClient, mockLoadMonitor, mockAnomalyDetectorManager, mockUserTaskInfo, mockUserTaskManager);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
-    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, null,
+    Executor executor = new Executor(configs, time, new MetricRegistry(), null, mockMetadataClient, null,
                                      mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
 
@@ -659,45 +644,30 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
    * {@link com.linkedin.kafka.cruisecontrol.common.TestConstants#TOPIC0 topic0}.
    * @return A map from topic names to their description.
    */
-  private Map<String, TopicDescription> createTopics(int produceSizeInBytes) throws InterruptedException {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(BROKER_ID_0)));
-    try {
-      adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, Collections.singletonMap(0, Collections.singletonList(0))),
-                                             new NewTopic(TOPIC1, Collections.singletonMap(0, List.of(0, 1)))));
-    } finally {
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
+  private Map<String, TopicDescription> createTopics(int produceSizeInBytes) {
+    _adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, Collections.singletonMap(0, Collections.singletonList(0))),
+                                            new NewTopic(TOPIC1, Collections.singletonMap(0, List.of(0, 1)))));
 
-    // We need to use the admin clients to query the metadata from two different brokers to make sure that
-    // both brokers have the latest metadata. Otherwise the Executor may get confused when it does not
-    // see expected topics in the metadata.
-    Map<String, TopicDescription> topicDescriptions0 = null;
-    Map<String, TopicDescription> topicDescriptions1 = null;
-    do {
-      AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(BROKER_ID_0)));
-      AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(BROKER_ID_1)));
-      try {
-        topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).allTopicNames().get();
-        topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).allTopicNames().get();
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      } catch (ExecutionException ee) {
-        // Let it go.
-      } finally {
-        KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient0);
-        KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient1);
-      }
-    } while (topicDescriptions0 == null || topicDescriptions0.size() < 2
-             || topicDescriptions1 == null || topicDescriptions1.size() < 2);
+    // Wait for the metadata of newly created topics to be propagated to all the brokers by ensuring
+    //   - Every partition has a leader assigned,
+    //   - Every partition has replicas assigned,
+    //   - Every partition's in-sync replicas list is populated
+    // so subsequent Admin operations on these topics can safely assume the metadata is consistent.
+    Map<String, TopicDescription> topicDescriptions = _cluster.waitForTopicMetadata(
+      List.of(TOPIC0, TOPIC1),
+      Duration.ofSeconds(15),
+      Duration.ofSeconds(60),
+      topicDescription -> {
+        return topicDescription.partitions() != null
+          && !topicDescription.partitions().isEmpty()
+          && topicDescription.partitions().stream().allMatch(p ->
+            p.leader() != null
+            && p.replicas() != null && !p.replicas().isEmpty()
+            && p.isr() != null && !p.isr().isEmpty());
+      });
 
     produceRandomDataToTopic(TOPIC0, produceSizeInBytes);
-    return topicDescriptions0;
+    return topicDescriptions;
   }
 
   private void verifyOngoingPartitionReassignments(Set<TopicPartition> partitions) {
@@ -784,7 +754,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     return mockUserTaskInfo;
   }
 
-  private void executeAndVerifyProposals(AdminClient adminClient,
+  private void executeAndVerifyProposals(Admin adminClient,
                                          Collection<ExecutionProposal> proposalsToExecute,
                                          Collection<ExecutionProposal> proposalsToCheck,
                                          boolean completeWithError,
@@ -815,8 +785,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
     MetricRegistry metricRegistry = new MetricRegistry();
-    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, null, mockExecutorNotifier,
-                                     mockAnomalyDetectorManager);
+    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, _adminClient,
+      new MetadataAdminClient(_adminClient), mockExecutorNotifier, mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {
@@ -852,13 +822,24 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
         .collect(Collectors.toSet());
 
       // Wait for topic metadata change to propagate.
-      TopicDescription topic = _cluster.waitForTopicMetadata(tp.topic(), Duration.ofSeconds(60),
+      Map<String, TopicDescription> topicDescriptions = _cluster.waitForTopicMetadata(
+        List.of(tp.topic()),
+        Duration.ofSeconds(15),
+        Duration.ofSeconds(60),
         topicDescription -> {
-          List<Node> replicas = topicDescription.partitions().get(tp.partition()).replicas();
+          TopicPartitionInfo partitionInfo = topicDescription.partitions().get(tp.partition());
+
+          List<Node> replicas = partitionInfo.replicas();
           Set<Integer> actualBrokerIds = replicas.stream().map(Node::id).collect(Collectors.toSet());
-          return actualBrokerIds.containsAll(expectedBrokerIds)
-            && actualBrokerIds.size() == expectedBrokerIds.size();
+          boolean replicasMatch = actualBrokerIds.containsAll(expectedBrokerIds);
+
+          Node leader = partitionInfo.leader();
+          boolean leaderMatches = leader != null && leader.id() == proposal.newLeader().brokerId();
+
+          return replicasMatch && leaderMatches;
         });
+
+      TopicDescription topic = topicDescriptions.get(proposal.topic());
 
       assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFactor,
               expectedReplicationFactor, topic.partitions().get(tp.partition()).replicas().size());

@@ -26,7 +26,13 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+/**
+ * Legacy client for fetching Kafka cluster metadata.
+ *
+ * @deprecated This class is deprecated and will be removed in a future release in favor of {@link MetadataAdminClient}
+ * which uses public Kafka APIs.
+ */
+@Deprecated
 public class MetadataClient {
   private static final Logger LOG = LoggerFactory.getLogger(MetadataClient.class);
   private static final LogContext LOG_CONTEXT = new LogContext();

@@ -9,10 +9,10 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.common.MetadataAdminClient;
 import com.linkedin.kafka.cruisecontrol.common.TopicMinIsrCache;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
-import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
@@ -42,18 +42,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.apache.kafka.clients.Metadata;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.ElectLeadersResult;
 import org.apache.kafka.clients.admin.PartitionReassignment;
 import org.apache.kafka.common.Cluster;
-import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
-import org.apache.kafka.common.internals.ClusterResourceListeners;
-import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,12 +83,12 @@ public class Executor {
   private static final long EXECUTION_PROGRESS_CHECK_INTERVAL_ADJUSTING_MS = 1000;
   // The execution progress is controlled by the ExecutionTaskManager.
   private final ExecutionTaskManager _executionTaskManager;
-  private final MetadataClient _metadataClient;
+  private final MetadataAdminClient _metadataClient;
   private volatile long _executionProgressCheckIntervalMs;
   private final long _defaultExecutionProgressCheckIntervalMs;
   private Long _requestedExecutionProgressCheckIntervalMs;
   private final ExecutorService _proposalExecutor;
-  private final AdminClient _adminClient;
+  private final Admin _adminClient;
   private final double _leaderMovementTimeoutMs;
 
   private static final int NO_STOP_EXECUTION = 0;
@@ -156,7 +152,7 @@ public class Executor {
                   Time time,
                   MetricRegistry dropwizardMetricRegistry,
                   AnomalyDetectorManager anomalyDetectorManager) {
-    this(config, time, dropwizardMetricRegistry, null, null, anomalyDetectorManager);
+    this(config, time, dropwizardMetricRegistry, null, null, null, anomalyDetectorManager);
   }
 
   /**
@@ -168,7 +164,8 @@ public class Executor {
   Executor(KafkaCruiseControlConfig config,
            Time time,
            MetricRegistry dropwizardMetricRegistry,
-           MetadataClient metadataClient,
+           Admin adminClient,
+           MetadataAdminClient metadataClient,
            ExecutorNotifier executorNotifier,
            AnomalyDetectorManager anomalyDetectorManager) {
     _numExecutionStopped = new AtomicInteger(0);
@@ -185,19 +182,12 @@ public class Executor {
     _config = config;
 
     _time = time;
-    _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
+    _adminClient = adminClient != null ? adminClient
+      : KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _executionTaskManager = new ExecutionTaskManager(_adminClient, dropwizardMetricRegistry, time, config);
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
-    _metadataClient = metadataClient != null ? metadataClient
-                                             : new MetadataClient(config,
-                                                                  new Metadata(ExecutionUtils.METADATA_REFRESH_BACKOFF,
-                                                                               ExecutionUtils.METADATA_REFRESH_BACKOFF_MAX,
-                                                                               ExecutionUtils.METADATA_EXPIRY_MS,
-                                                                               new LogContext(),
-                                                                               new ClusterResourceListeners()),
-                                                                  -1L,
-                                                                  time);
+    _metadataClient = metadataClient != null ? metadataClient : new MetadataAdminClient(_adminClient);
     _defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _executionProgressCheckIntervalMs = _defaultExecutionProgressCheckIntervalMs;
     _leaderMovementTimeoutMs = config.getLong(ExecutorConfig.LEADER_MOVEMENT_TIMEOUT_MS_CONFIG);
@@ -875,7 +865,7 @@ public class Executor {
                                                                recentlyRemovedBrokers(), isTriggeredByUserRequest);
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     // Get a snapshot of (1) cluster and (2) minIsr with time by topic name.
-    StrategyOptions strategyOptions = new StrategyOptions.Builder(_metadataClient.refreshMetadata().cluster())
+    StrategyOptions strategyOptions = new StrategyOptions.Builder(_metadataClient.cluster())
         .minIsrWithTimeByTopic(_topicMinIsrCache.minIsrWithTimeByTopic()).build();
     _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, strategyOptions, replicaMovementStrategy);
     _concurrencyAdjuster.initAdjustment(loadMonitor,
@@ -1069,9 +1059,7 @@ public class Executor {
     } else {
       boolean hasOngoingIntraBrokerReplicaMovement;
       try {
-        hasOngoingIntraBrokerReplicaMovement =
-            hasOngoingIntraBrokerReplicaMovement(_metadataClient.cluster().nodes().stream().mapToInt(Node::id).boxed()
-                                                                .collect(Collectors.toSet()), _adminClient, _config);
+        hasOngoingIntraBrokerReplicaMovement = hasOngoingIntraBrokerReplicaMovement(_adminClient, _config);
       } catch (TimeoutException | InterruptedException | ExecutionException e) {
         // This may indicate transient (e.g. network) issues.
         throw new IllegalStateException("Failed to retrieve if there are already ongoing intra-broker replica reassignments.", e);
@@ -1799,7 +1787,7 @@ public class Executor {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Tasks in execution: {}", inExecutionTasks());
       }
-      return _metadataClient.refreshMetadata().cluster();
+      return _metadataClient.cluster();
     }
 
     /**
