@@ -62,7 +62,7 @@ jobs:
       matrix:
         java-ver: [17]
         java-dist: ['temurin']
-        hw_platform: ['s390x']
+        hw_platform: ['s390x', 'ppc64le']
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

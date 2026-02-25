@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
-import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.KafkaTopicDescriptionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKraftCluster;
@@ -20,11 +19,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -36,7 +32,6 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +40,6 @@ import org.testcontainers.kafka.KafkaContainer;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_HOST;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.DEFAULT_BOOTSTRAP_SERVERS_PORT;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.getTopicDescription;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
@@ -206,41 +200,9 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     assertEquals("Expected " + expectedMetricTypes + ", but saw " + metricTypes, expectedMetricTypes, metricTypes);
   }
 
-  private TopicDescription waitForTopicMetadata(Admin adminClient,
-                                                Duration timeout,
-                                                Predicate<TopicDescription> condition)
-    throws InterruptedException, TimeoutException {
-
-    long deadline = System.currentTimeMillis() + timeout.toMillis();
-
-    while (System.currentTimeMillis() < deadline) {
-      try {
-        TopicDescription topicDescription = getTopicDescription((AdminClient) adminClient, TOPIC);
-
-        if (condition.test(topicDescription)) {
-          return topicDescription;
-        }
-      } catch (KafkaTopicDescriptionException e) {
-        if (!(e.getCause() instanceof UnknownTopicOrPartitionException)) {
-          throw new RuntimeException("Failed to describe topic: " + TOPIC, e);
-        }
-        // else ignore and retry
-      }
-
-      Thread.sleep(500);
-    }
-
-    throw new TimeoutException("Timeout waiting for topic metadata condition to be met: " + TOPIC);
-  }
-
   @Test
   public void testUpdatingMetricsTopicConfig() throws InterruptedException, TimeoutException {
-    Properties props = new Properties();
-    setSecurityConfigs(props, "admin");
-    props.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    Admin adminClient = Admin.create(props);
-
-    TopicDescription topicDescription = waitForTopicMetadata(adminClient, Duration.ofSeconds(30), td -> true);
+    TopicDescription topicDescription = _cluster.waitForTopicMetadata(TOPIC, Duration.ofSeconds(30), td -> true);
     assertEquals(1, topicDescription.partitions().size());
 
     KafkaContainer broker = _cluster.getBrokers().get(0);
@@ -261,7 +223,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
 
     // Wait for topic metadata configuration change to propagate
     int oldPartitionCount = topicDescription.partitions().size();
-    TopicDescription newTopicDescription = waitForTopicMetadata(adminClient, Duration.ofSeconds(30),
+    TopicDescription newTopicDescription = _cluster.waitForTopicMetadata(TOPIC, Duration.ofSeconds(30),
       td -> td.partitions().size() != oldPartitionCount);
 
     assertEquals(2, newTopicDescription.partitions().size());
