@@ -63,7 +63,6 @@ public class AnomalyDetectorManager {
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors
   private final GoalViolationDetector _goalViolationDetector;
-  private final IntraBrokerGoalViolationDetector _intraBrokerGoalViolationDetector;
   private final AbstractBrokerFailureDetector _brokerFailureDetector;
   private final MetricAnomalyDetector _metricAnomalyDetector;
   private final DiskFailureDetector _diskFailureDetector;
@@ -114,7 +113,6 @@ public class AnomalyDetectorManager {
     _selfHealingIntraBrokerGoals = getSelfHealingIntraBrokerGoalNames(config);
     sanityCheckGoals(_selfHealingGoals, false, config);
     _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl, dropwizardMetricRegistry);
-    _intraBrokerGoalViolationDetector = new IntraBrokerGoalViolationDetector(_anomalies, _kafkaCruiseControl, dropwizardMetricRegistry);
     _brokerFailureDetector = new KafkaBrokerFailureDetector(_anomalies, _kafkaCruiseControl);
     _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(_anomalies, _kafkaCruiseControl);
@@ -143,7 +141,6 @@ public class AnomalyDetectorManager {
                          KafkaCruiseControl kafkaCruiseControl,
                          AnomalyNotifier anomalyNotifier,
                          GoalViolationDetector goalViolationDetector,
-                         IntraBrokerGoalViolationDetector intraBrokerGoalViolationDetector,
                          AbstractBrokerFailureDetector brokerFailureDetector,
                          MetricAnomalyDetector metricAnomalyDetector,
                          DiskFailureDetector diskFailureDetector,
@@ -157,7 +154,6 @@ public class AnomalyDetectorManager {
     _brokerFailureDetectionBackoffMs = anomalyDetectionIntervalMs;
     _anomalyNotifier = anomalyNotifier;
     _goalViolationDetector = goalViolationDetector;
-    _intraBrokerGoalViolationDetector = intraBrokerGoalViolationDetector;
     _brokerFailureDetector = brokerFailureDetector;
     _metricAnomalyDetector = metricAnomalyDetector;
     _diskFailureDetector = diskFailureDetector;
@@ -240,7 +236,7 @@ public class AnomalyDetectorManager {
    * Start each anomaly detector.
    */
   public void startDetection() {
-    scheduleDetectorAtFixedRate(INTRA_BROKER_GOAL_VIOLATION, _intraBrokerGoalViolationDetector);
+    // The unified GoalViolationDetector now handles both inter-broker and intra-broker goal violations
     scheduleDetectorAtFixedRate(GOAL_VIOLATION, _goalViolationDetector);
     scheduleDetectorAtFixedRate(METRIC_ANOMALY, _metricAnomalyDetector);
     scheduleDetectorAtFixedRate(TOPIC_ANOMALY, _topicAnomalyDetector);

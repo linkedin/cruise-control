@@ -93,15 +93,14 @@ public class AnomalyDetectorManagerTest {
 
   private static void startRunnableDetectors(ScheduledExecutorService mockDetectorScheduler,
                                              GoalViolationDetector mockGoalViolationDetector,
-                                             IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector,
                                              MetricAnomalyDetector mockMetricAnomalyDetector,
                                              DiskFailureDetector mockDiskFailureDetector,
                                              AbstractBrokerFailureDetector mockBrokerFailureDetector,
                                              TopicAnomalyDetector mockTopicAnomalyDetector,
                                              MaintenanceEventDetector mockMaintenanceEventDetector,
                                              ScheduledExecutorService executorService) {
+    // The unified GoalViolationDetector now handles both inter-broker and intra-broker goal violations
     scheduleDetectorAtFixedRate(mockDetectorScheduler, mockGoalViolationDetector);
-    scheduleDetectorAtFixedRate(mockDetectorScheduler, mockIntraBrokerGoalViolationDetector);
     scheduleDetectorAtFixedRate(mockDetectorScheduler, mockMetricAnomalyDetector);
     scheduleDetectorAtFixedRate(mockDetectorScheduler, mockDiskFailureDetector);
     scheduleDetectorAtFixedRate(mockDetectorScheduler, mockBrokerFailureDetector);
@@ -127,7 +126,6 @@ public class AnomalyDetectorManagerTest {
   private static void replayCommonMocks(AnomalyNotifier mockAnomalyNotifier,
                                         AbstractBrokerFailureDetector mockBrokerFailureDetector,
                                         GoalViolationDetector mockGoalViolationDetector,
-                                        IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector,
                                         MetricAnomalyDetector mockMetricAnomalyDetector,
                                         TopicAnomalyDetector mockTopicAnomalyDetector,
                                         MaintenanceEventDetector mockMaintenanceEventDetector,
@@ -137,7 +135,6 @@ public class AnomalyDetectorManagerTest {
     EasyMock.replay(mockAnomalyNotifier);
     EasyMock.replay(mockBrokerFailureDetector);
     EasyMock.replay(mockGoalViolationDetector);
-    EasyMock.replay(mockIntraBrokerGoalViolationDetector);
     EasyMock.replay(mockMetricAnomalyDetector);
     EasyMock.replay(mockTopicAnomalyDetector);
     EasyMock.replay(mockMaintenanceEventDetector);
@@ -167,7 +164,6 @@ public class AnomalyDetectorManagerTest {
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(KafkaBrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
-    IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector = EasyMock.createNiceMock(IntraBrokerGoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
     TopicAnomalyDetector mockTopicAnomalyDetector = EasyMock.createNiceMock(TopicAnomalyDetector.class);
     MaintenanceEventDetector mockMaintenanceEventDetector = EasyMock.createNiceMock(MaintenanceEventDetector.class);
@@ -181,7 +177,7 @@ public class AnomalyDetectorManagerTest {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 4);
-    startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector,
+    startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector,
                            mockMetricAnomalyDetector, mockDiskFailureDetector, mockBrokerFailureDetector, mockTopicAnomalyDetector,
                            mockMaintenanceEventDetector, executorService);
     // Schedule a delayed check
@@ -194,12 +190,12 @@ public class AnomalyDetectorManagerTest {
     // The following state are used to test the delayed check when executor is idle.
     EasyMock.expect(mockKafkaCruiseControl.executionState()).andReturn(ExecutorState.State.NO_TASK_IN_PROGRESS);
     replayCommonMocks(mockAnomalyNotifier, mockBrokerFailureDetector, mockGoalViolationDetector,
-                      mockIntraBrokerGoalViolationDetector, mockMetricAnomalyDetector, mockTopicAnomalyDetector,
+                      mockMetricAnomalyDetector, mockTopicAnomalyDetector,
                       mockMaintenanceEventDetector, mockDiskFailureDetector, mockDetectorScheduler, mockKafkaCruiseControl);
 
     AnomalyDetectorManager anomalyDetectorManager
             = new AnomalyDetectorManager(anomalies, MOCK_ANOMALY_DETECTION_INTERVAL_MS, mockKafkaCruiseControl,
-                                         mockAnomalyNotifier, mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector,
+                                         mockAnomalyNotifier, mockGoalViolationDetector,
                                          mockBrokerFailureDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
                                          mockTopicAnomalyDetector, mockMaintenanceEventDetector, mockDetectorScheduler);
 
@@ -228,7 +224,7 @@ public class AnomalyDetectorManagerTest {
       executorService.shutdown();
     }
     EasyMock.verify(mockAnomalyNotifier, mockDetectorScheduler, mockKafkaCruiseControl, mockBrokerFailureDetector,
-                    mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector, mockMetricAnomalyDetector,
+                    mockGoalViolationDetector, mockMetricAnomalyDetector,
                     mockTopicAnomalyDetector, mockMaintenanceEventDetector, mockDiskFailureDetector);
   }
 
@@ -269,7 +265,6 @@ public class AnomalyDetectorManagerTest {
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(KafkaBrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
-    IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector = EasyMock.createNiceMock(IntraBrokerGoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
     TopicAnomalyDetector mockTopicAnomalyDetector = EasyMock.createNiceMock(TopicAnomalyDetector.class);
     MaintenanceEventDetector mockMaintenanceEventDetector = EasyMock.createNiceMock(MaintenanceEventDetector.class);
@@ -293,7 +288,7 @@ public class AnomalyDetectorManagerTest {
     EasyMock.expect(mockKafkaCruiseControl.getLoadMonitorTaskRunnerState())
             .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING).times(1, 2);
 
-    startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector,
+    startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector,
                            mockMetricAnomalyDetector, mockDiskFailureDetector, mockBrokerFailureDetector, mockTopicAnomalyDetector,
                            mockMaintenanceEventDetector, executorService);
     shutdownDetector(mockDetectorScheduler, executorService);
@@ -478,13 +473,13 @@ public class AnomalyDetectorManagerTest {
     mockKafkaCruiseControl.setGeneratingProposalsForExecution(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.eq(false));
 
     replayCommonMocks(mockAnomalyNotifier, mockBrokerFailureDetector, mockGoalViolationDetector,
-                      mockIntraBrokerGoalViolationDetector, mockMetricAnomalyDetector, mockTopicAnomalyDetector,
+                      mockMetricAnomalyDetector, mockTopicAnomalyDetector,
                       mockMaintenanceEventDetector, mockDiskFailureDetector, mockDetectorScheduler, mockKafkaCruiseControl);
     expectAndReplayFixMocks(mockOptimizerResult, mockBrokerStats);
 
     AnomalyDetectorManager anomalyDetectorManager
             = new AnomalyDetectorManager(anomalies, MOCK_ANOMALY_DETECTION_INTERVAL_MS, mockKafkaCruiseControl,
-                                         mockAnomalyNotifier, mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector,
+                                         mockAnomalyNotifier, mockGoalViolationDetector,
                                          mockBrokerFailureDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
                                          mockTopicAnomalyDetector, mockMaintenanceEventDetector, mockDetectorScheduler);
 
@@ -565,7 +560,7 @@ public class AnomalyDetectorManagerTest {
       assertEquals(anomalyDetectorState.recentAnomaliesByType().get(KafkaAnomalyType.TOPIC_ANOMALY).size(),
                    anomalyType == KafkaAnomalyType.TOPIC_ANOMALY ? 1 : 0);
       EasyMock.verify(mockAnomalyNotifier, mockDetectorScheduler, mockKafkaCruiseControl, mockBrokerFailureDetector,
-                      mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector, mockMetricAnomalyDetector,
+                      mockGoalViolationDetector, mockMetricAnomalyDetector,
                       mockTopicAnomalyDetector, mockMaintenanceEventDetector, mockDiskFailureDetector);
     } finally {
       executorService.shutdown();
@@ -582,7 +577,6 @@ public class AnomalyDetectorManagerTest {
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(KafkaBrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
-    IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector = EasyMock.createNiceMock(IntraBrokerGoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
     TopicAnomalyDetector mockTopicAnomalyDetector = EasyMock.createNiceMock(TopicAnomalyDetector.class);
     MaintenanceEventDetector mockMaintenanceEventDetector = EasyMock.createNiceMock(MaintenanceEventDetector.class);
@@ -594,7 +588,7 @@ public class AnomalyDetectorManagerTest {
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(2);
 
-    startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector,
+    startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector,
                            mockMetricAnomalyDetector, mockDiskFailureDetector, mockBrokerFailureDetector, mockTopicAnomalyDetector,
                            mockMaintenanceEventDetector, executorService);
     shutdownDetector(mockDetectorScheduler, executorService);
@@ -604,13 +598,13 @@ public class AnomalyDetectorManagerTest {
     EasyMock.expect(mockKafkaCruiseControl.executionState())
             .andReturn(ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS);
 
-    replayCommonMocks(mockAnomalyNotifier, mockBrokerFailureDetector, mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector,
+    replayCommonMocks(mockAnomalyNotifier, mockBrokerFailureDetector, mockGoalViolationDetector,
                       mockMetricAnomalyDetector, mockTopicAnomalyDetector, mockMaintenanceEventDetector,
                       mockDiskFailureDetector, mockDetectorScheduler, mockKafkaCruiseControl);
 
     AnomalyDetectorManager anomalyDetectorManager
             = new AnomalyDetectorManager(anomalies, MOCK_ANOMALY_DETECTION_INTERVAL_MS, mockKafkaCruiseControl,
-                                         mockAnomalyNotifier, mockGoalViolationDetector, mockIntraBrokerGoalViolationDetector,
+                                         mockAnomalyNotifier, mockGoalViolationDetector,
                                          mockBrokerFailureDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
                                          mockTopicAnomalyDetector, mockMaintenanceEventDetector, mockDetectorScheduler);
 
@@ -650,7 +644,6 @@ public class AnomalyDetectorManagerTest {
     AbstractBrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(KafkaBrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
-    IntraBrokerGoalViolationDetector mockIntraBrokerGoalViolationDetector = EasyMock.createNiceMock(IntraBrokerGoalViolationDetector.class);
     TopicAnomalyDetector mockTopicAnomalyDetector = EasyMock.createNiceMock(TopicAnomalyDetector.class);
     MaintenanceEventDetector mockMaintenanceEventDetector = EasyMock.createNiceMock(MaintenanceEventDetector.class);
     DiskFailureDetector mockDiskFailureDetector = EasyMock.createNiceMock(DiskFailureDetector.class);
@@ -661,7 +654,7 @@ public class AnomalyDetectorManagerTest {
     AnomalyDetectorManager anomalyDetectorManager
             = new AnomalyDetectorManager(anomalies, MOCK_ANOMALY_DETECTION_INTERVAL_MS,
                                          mockKafkaCruiseControl, mockAnomalyNotifier, mockGoalViolationDetector,
-                                         mockIntraBrokerGoalViolationDetector, mockBrokerFailureDetector,
+                                         mockBrokerFailureDetector,
                                          mockMetricAnomalyDetector, mockDiskFailureDetector, mockTopicAnomalyDetector,
                                          mockMaintenanceEventDetector, detectorScheduler);
 
