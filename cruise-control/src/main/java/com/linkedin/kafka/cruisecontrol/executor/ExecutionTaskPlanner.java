@@ -28,7 +28,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
@@ -75,7 +75,7 @@ public class ExecutionTaskPlanner {
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
   private long _executionId;
   private ReplicaMovementStrategy _defaultReplicaMovementTaskStrategy;
-  private final Admin _adminClient;
+  private final AdminClient _adminClient;
   private final KafkaCruiseControlConfig _config;
   private final long _taskExecutionAlertingThresholdMs;
   private final double _interBrokerReplicaMovementRateAlertingThreshold;
@@ -89,7 +89,7 @@ public class ExecutionTaskPlanner {
    * @param adminClient The adminClient to send describeReplicaLogDirs request.
    * @param config The config object that holds all the Cruise Control related configs.
    */
-  public ExecutionTaskPlanner(Admin adminClient, KafkaCruiseControlConfig config) {
+  public ExecutionTaskPlanner(AdminClient adminClient, KafkaCruiseControlConfig config) {
     _executionId = 0L;
     _interPartMoveTasksByBrokerId = new HashMap<>();
     _intraPartMoveTasksByBrokerId = new HashMap<>();

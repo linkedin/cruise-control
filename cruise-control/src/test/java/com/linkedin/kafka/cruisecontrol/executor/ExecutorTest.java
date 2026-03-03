@@ -651,6 +651,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     // Wait for the metadata of newly created topics to be propagated to all the brokers by ensuring
     //   - Every partition has a leader assigned,
     //   - Every partition has replicas assigned,
+    //   - The leader is included in the replicas list,
     //   - Every partition's in-sync replicas list is populated
     // so subsequent Admin operations on these topics can safely assume the metadata is consistent.
     Map<String, TopicDescription> topicDescriptions = _cluster.waitForTopicMetadata(
@@ -662,8 +663,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
           && !topicDescription.partitions().isEmpty()
           && topicDescription.partitions().stream().allMatch(p ->
             p.leader() != null
-            && p.replicas() != null && !p.replicas().isEmpty()
-            && p.isr() != null && !p.isr().isEmpty());
+            && !p.replicas().isEmpty()
+            && p.replicas().contains(p.leader())
+            && !p.isr().isEmpty());
       });
 
     produceRandomDataToTopic(TOPIC0, produceSizeInBytes);
@@ -785,7 +787,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
     MetricRegistry metricRegistry = new MetricRegistry();
-    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, _adminClient,
+    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, (AdminClient) _adminClient,
       new MetadataAdminClient(_adminClient), mockExecutorNotifier, mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();

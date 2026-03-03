@@ -41,19 +41,6 @@ public class MetadataAdminClient {
   }
 
   /**
-   * Close adminClient
-   */
-  public void close() {
-    if (_adminClient != null) {
-      try {
-        _adminClient.close();
-      } catch (Exception e) {
-        LOG.warn("Failed to close AdminClient", e);
-      }
-    }
-  }
-
-  /**
    * Fetches the current metadata for the Kafka cluster.
    *
    * @return a {@link Cluster} containing the cluster ID, broker nodes, and partition information for all topics
@@ -89,7 +76,6 @@ public class MetadataAdminClient {
 
     } catch (ExecutionException e) {
         LOG.error("ExecutionException while fetching cluster metadata", e);
-        // Could inspect e.getCause() and retry if RetriableException, but fail fast for now
         throw new RuntimeException("Failed to fetch cluster metadata", e);
     }
   }

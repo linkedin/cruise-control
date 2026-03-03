@@ -15,7 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -53,7 +53,7 @@ public class ExecutionTaskManager {
    * @param time The time object to get the time.
    * @param config config object that holds all Kafka Cruise control related configs
    */
-  public ExecutionTaskManager(Admin adminClient,
+  public ExecutionTaskManager(AdminClient adminClient,
                               MetricRegistry dropwizardMetricRegistry,
                               Time time,
                               KafkaCruiseControlConfig config) {

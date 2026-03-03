@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
@@ -43,28 +43,28 @@ class ReplicationThrottleHelper {
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   static final int RETRIES = 30;
 
-  private final Admin _adminClient;
+  private final AdminClient _adminClient;
   private final Long _throttleRate;
   private final int _retries;
   private final Set<Integer> _deadBrokers;
 
-  ReplicationThrottleHelper(Admin adminClient, Long throttleRate) {
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate) {
     this(adminClient, throttleRate, RETRIES);
   }
 
-  ReplicationThrottleHelper(Admin adminClient, Long throttleRate, Set<Integer> deadBrokers) {
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, Set<Integer> deadBrokers) {
     this(adminClient, throttleRate, RETRIES, deadBrokers);
   }
 
   // for testing
-  ReplicationThrottleHelper(Admin adminClient, Long throttleRate, int retries) {
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, int retries) {
     this._adminClient = adminClient;
     this._throttleRate = throttleRate;
     this._retries = retries;
     this._deadBrokers = new HashSet<Integer>();
   }
 
-  ReplicationThrottleHelper(Admin adminClient, Long throttleRate, int retries, Set<Integer> deadBrokers) {
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, int retries, Set<Integer> deadBrokers) {
     this._adminClient = adminClient;
     this._throttleRate = throttleRate;
     this._retries = retries;

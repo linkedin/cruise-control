@@ -13,6 +13,7 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.Uuid;
 import org.apache.kafka.common.config.types.Password;
+import org.apache.kafka.common.errors.RetriableException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
@@ -376,8 +377,8 @@ public class CCContainerizedKraftCluster implements Startable {
           Thread.currentThread().interrupt();
           throw new RuntimeException("Interrupted while waiting for broker to become ready", e);
         } catch (ExecutionException e) {
-          if (e.getCause() instanceof UnknownTopicOrPartitionException) {
-            // Topic doesn't exist yet, retry
+          if (e.getCause() instanceof UnknownTopicOrPartitionException || e.getCause() instanceof RetriableException) {
+            // Topic doesn't exist yet or transient error, retry
             return null;
           }
           throw new RuntimeException("Failed to describe topics: " + topicNames, e);
@@ -412,11 +413,10 @@ public class CCContainerizedKraftCluster implements Startable {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while waiting for broker removal", e);
         } catch (ExecutionException e) {
-          if (e.getCause() instanceof UnknownTopicOrPartitionException) {
-            // Topic doesn't exist yet, retry
+          if (e.getCause() instanceof RetriableException) {
             return false;
           }
-          throw new RuntimeException("Failed to describe cluster: " + e);
+          throw new RuntimeException("Failed to describe cluster: ", e);
         } catch (TimeoutException e) {
           // Timeout fetching metadata, treat as transient and retry
           return false;

@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.LogDirDescription;
 import org.apache.kafka.clients.admin.ReplicaInfo;
 import org.apache.kafka.common.KafkaFuture;
@@ -46,7 +46,7 @@ public final class ExecutorAdminUtils {
    * @return Replica logdir information by task.
    */
   static Map<ExecutionTask, ReplicaLogDirInfo> getLogdirInfoForExecutionTask(Collection<ExecutionTask> tasks,
-                                                                             Admin adminClient,
+                                                                             AdminClient adminClient,
                                                                              KafkaCruiseControlConfig config) {
     Set<TopicPartitionReplica> replicasToCheck = new HashSet<>();
     Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask = new HashMap<>();
@@ -77,7 +77,7 @@ public final class ExecutorAdminUtils {
    * @param config The config object that holds all the Cruise Control related configs
    */
   static void executeIntraBrokerReplicaMovements(List<ExecutionTask> tasksToExecute,
-                                                 Admin adminClient,
+                                                 AdminClient adminClient,
                                                  ExecutionTaskManager executionTaskManager,
                                                  KafkaCruiseControlConfig config) {
     Map<TopicPartitionReplica, String> replicaAssignment = new HashMap<>();
@@ -105,7 +105,7 @@ public final class ExecutorAdminUtils {
    * @param config The config object that holds all the Cruise Control related configs
    * @return {@code true} if there is ongoing intra-broker replica movement.
    */
-  static boolean hasOngoingIntraBrokerReplicaMovement(Admin adminClient,
+  static boolean hasOngoingIntraBrokerReplicaMovement(AdminClient adminClient,
                                                       KafkaCruiseControlConfig config)
       throws InterruptedException, ExecutionException, TimeoutException {
     Collection<Integer> brokersToCheck = adminClient.describeCluster().nodes().get().stream().map(Node::id).collect(Collectors.toSet());
