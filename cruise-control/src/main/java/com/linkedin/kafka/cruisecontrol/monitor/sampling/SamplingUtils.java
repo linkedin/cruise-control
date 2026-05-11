@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersion
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerLoad;
@@ -353,5 +354,20 @@ public final class SamplingUtils {
    */
   public static Consumer<byte[], byte[]> createSampleStoreConsumer(Map<String, ?> configs, String clientIdPrefix) {
     return createConsumer(configs, clientIdPrefix, bootstrapServers(configs), ByteArrayDeserializer.class, ByteArrayDeserializer.class, false);
+  }
+
+  public static String convertMSKPrivateLinkHostToBrokerHost(Node node) {
+    return _convertMSKPrivateLinkHostToBrokerHost(node.host(), node.id());
+  }
+
+  public static String convertMSKPrivateLinkHostToBrokerHost(Broker broker) {
+    return _convertMSKPrivateLinkHostToBrokerHost(broker.host().name(), broker.id());
+  }
+
+  private static String _convertMSKPrivateLinkHostToBrokerHost(String privatelinkHost, int brokerId) {
+    final String expectedHostPrefix = "b-" + brokerId;
+    final String host = privatelinkHost.indexOf(expectedHostPrefix) != 0 ?
+         expectedHostPrefix + privatelinkHost.substring(privatelinkHost.indexOf(".")) : privatelinkHost;
+    return host;
   }
 }
