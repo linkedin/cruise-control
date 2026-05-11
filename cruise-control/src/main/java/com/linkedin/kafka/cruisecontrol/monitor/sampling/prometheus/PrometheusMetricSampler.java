@@ -32,6 +32,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.Promet
 import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.replaceDotsWithUnderscores;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.convertMSKPrivateLinkHostToBrokerHost;
 
 /**
  * Metric sampler that fetches Kafka metrics from a Prometheus server and converts them to samples.
@@ -152,7 +153,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
     private void mapNodesToClusterId(Cluster cluster) {
         for (Node node : cluster.nodes()) {
-            _hostToBrokerIdMap.put(node.host(), node.id());
+            _hostToBrokerIdMap.put(convertMSKPrivateLinkHostToBrokerHost(node), node.id());
         }
     }
 
