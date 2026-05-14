@@ -94,14 +94,35 @@ class IntraBrokerReplicationThrottleHelper {
   /**
    * Remove throttle from all brokers that were throttled during this execution.
    * Used as a final cleanup to ensure no throttle configs are left behind.
+   * Attempts all brokers even if some fail, then reports failures.
    */
   void clearAllThrottles() throws ExecutionException, InterruptedException, TimeoutException {
     if (throttlingEnabled() && !_throttledBrokers.isEmpty()) {
       LOG.info("Final cleanup: removing intra-broker throttles from all participating brokers: {}", _throttledBrokers);
+      List<Integer> failedBrokers = new java.util.ArrayList<>();
+      Exception firstException = null;
       for (int broker : _throttledBrokers) {
-        removeThrottledRateFromBroker(broker);
+        try {
+          removeThrottledRateFromBroker(broker);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+          LOG.warn("Failed to remove intra-broker throttle from broker {}", broker, e);
+          failedBrokers.add(broker);
+          if (firstException == null) {
+            firstException = e;
+          }
+        }
       }
       _throttledBrokers.clear();
+      if (firstException != null) {
+        LOG.error("Failed to remove intra-broker throttles from brokers: {}", failedBrokers);
+        if (firstException instanceof ExecutionException) {
+          throw (ExecutionException) firstException;
+        } else if (firstException instanceof InterruptedException) {
+          throw (InterruptedException) firstException;
+        } else {
+          throw (TimeoutException) firstException;
+        }
+      }
     }
   }
 
