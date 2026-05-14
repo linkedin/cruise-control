@@ -8,10 +8,13 @@ import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +36,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final Long _intraBrokerReplicationThrottle;
   protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = false;
 
   /**
@@ -54,7 +58,9 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
     _brokerLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
-    _replicationThrottle = kafkaCruiseControl.config().getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
+    _replicationThrottle = config.getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _intraBrokerReplicationThrottle = ParameterUtils.resolveIntraBrokerReplicationThrottle(config);
   }
 
   public FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -70,6 +76,17 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
+    // FixOfflineReplicas endpoint does not expose intra_broker_replication_throttle as a request parameter,
+    // so resolve from config with the per-request replication_throttle as fallback.
+    KafkaCruiseControlConfig userReqConfig = kafkaCruiseControl.config();
+    Long intraBrokerThrottle = userReqConfig.getLong(ExecutorConfig.DEFAULT_INTRA_BROKER_REPLICATION_THROTTLE_CONFIG);
+    if (intraBrokerThrottle == null) {
+      intraBrokerThrottle = _replicationThrottle;
+    }
+    if (intraBrokerThrottle == null) {
+      intraBrokerThrottle = userReqConfig.getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    }
+    _intraBrokerReplicationThrottle = intraBrokerThrottle;
   }
 
   @Override
@@ -111,7 +128,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                            _executionProgressCheckIntervalMs,
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
-                                           null,
+                                           _intraBrokerReplicationThrottle,
                                            _isTriggeredByUserRequest,
                                            _uuid,
                                            SKIP_AUTO_REFRESHING_CONCURRENCY);

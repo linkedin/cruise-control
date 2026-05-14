@@ -12,6 +12,7 @@ import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.config.ConfigResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -99,12 +100,12 @@ class IntraBrokerReplicationThrottleHelper {
   void clearAllThrottles() throws ExecutionException, InterruptedException, TimeoutException {
     if (throttlingEnabled() && !_throttledBrokers.isEmpty()) {
       LOG.info("Final cleanup: removing intra-broker throttles from all participating brokers: {}", _throttledBrokers);
-      List<Integer> failedBrokers = new java.util.ArrayList<>();
+      List<Integer> failedBrokers = new ArrayList<>();
       Exception firstException = null;
       for (int broker : _throttledBrokers) {
         try {
           removeThrottledRateFromBroker(broker);
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        } catch (ExecutionException | InterruptedException | TimeoutException | IllegalStateException e) {
           LOG.warn("Failed to remove intra-broker throttle from broker {}", broker, e);
           failedBrokers.add(broker);
           if (firstException == null) {
@@ -119,8 +120,10 @@ class IntraBrokerReplicationThrottleHelper {
           throw (ExecutionException) firstException;
         } else if (firstException instanceof InterruptedException) {
           throw (InterruptedException) firstException;
-        } else {
+        } else if (firstException instanceof TimeoutException) {
           throw (TimeoutException) firstException;
+        } else {
+          throw (IllegalStateException) firstException;
         }
       }
     }
@@ -182,7 +185,25 @@ class IntraBrokerReplicationThrottleHelper {
       throws ExecutionException, InterruptedException, TimeoutException {
     Config brokerConfigs = getBrokerConfigs(brokerId);
     ConfigEntry currThrottle = brokerConfigs.get(REPLICA_ALTER_LOG_DIRS_IO_MAX_BYTES_PER_SECOND_CONFIG);
-    if (currThrottle == null) {
+    if (currThrottle == null || currThrottle.value() == null || currThrottle.value().isEmpty()) {
+      // Config is not currently visible. If this broker is tracked (we previously wrote a SET that was
+      // accepted), issue restore/delete anyway to compensate in case the write becomes visible later.
+      if (_originalThrottleValues.containsKey(brokerId)) {
+        String originalValue = _originalThrottleValues.get(brokerId);
+        if (originalValue != null) {
+          LOG.debug("Config not visible on broker {} but was previously set. Restoring original value: {}", brokerId, originalValue);
+          List<AlterConfigOp> ops = Collections.singletonList(
+              new AlterConfigOp(new ConfigEntry(REPLICA_ALTER_LOG_DIRS_IO_MAX_BYTES_PER_SECOND_CONFIG, originalValue),
+                  AlterConfigOp.OpType.SET));
+          changeBrokerConfigs(brokerId, ops);
+        } else {
+          LOG.debug("Config not visible on broker {} but was previously set. Issuing DELETE to compensate.", brokerId);
+          List<AlterConfigOp> ops = Collections.singletonList(
+              new AlterConfigOp(new ConfigEntry(REPLICA_ALTER_LOG_DIRS_IO_MAX_BYTES_PER_SECOND_CONFIG, null),
+                  AlterConfigOp.OpType.DELETE));
+          changeBrokerConfigs(brokerId, ops);
+        }
+      }
       return;
     }
     if (currThrottle.source() == ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG) {
