@@ -12,11 +12,13 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Disk;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveDisksParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import org.slf4j.Logger;
@@ -107,6 +109,7 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
 
         OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
         if (!_dryRun) {
+            KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
             _kafkaCruiseControl.executeProposals(
                     result.goalProposals(),
                     Collections.emptySet(),
@@ -118,7 +121,8 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
                     BROKER_CONCURRENT_LEADER_MOVEMENTS,
                     SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS,
                     SELF_HEALING_REPLICA_MOVEMENT_STRATEGY,
-                    _kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG),
+                    config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG),
+                    ParameterUtils.resolveIntraBrokerReplicationThrottle(config),
                     _isTriggeredByUserRequest,
                     _uuid,
                     false

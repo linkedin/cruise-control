@@ -111,6 +111,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                            _executionProgressCheckIntervalMs,
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
+                                           null,
                                            _isTriggeredByUserRequest,
                                            _uuid,
                                            SKIP_AUTO_REFRESHING_CONCURRENCY);

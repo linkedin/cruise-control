@@ -6,9 +6,11 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collections;
@@ -38,6 +40,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final Long _intraBrokerReplicationThrottle;
   protected final boolean _ignoreProposalCache;
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _isRebalanceDiskMode;
@@ -63,7 +66,9 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     _brokerLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
-    _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
+    _replicationThrottle = config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _intraBrokerReplicationThrottle = ParameterUtils.resolveIntraBrokerReplicationThrottle(config);
     _ignoreProposalCache = SELF_HEALING_IGNORE_PROPOSAL_CACHE;
     _destinationBrokerIds = SELF_HEALING_DESTINATION_BROKER_IDS;
     _isRebalanceDiskMode = SELF_HEALING_IS_REBALANCE_DISK_MODE;
@@ -89,7 +94,9 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     _brokerLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
-    _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    KafkaCruiseControlConfig ccConfig = kafkaCruiseControl.config();
+    _replicationThrottle = ccConfig.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _intraBrokerReplicationThrottle = ParameterUtils.resolveIntraBrokerReplicationThrottle(ccConfig);
     _ignoreProposalCache = ignoreProposalCache;
     _destinationBrokerIds = SELF_HEALING_DESTINATION_BROKER_IDS;
     _isRebalanceDiskMode = isRebalanceDiskMode;
@@ -109,6 +116,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
+    _intraBrokerReplicationThrottle = parameters.intraBrokerReplicationThrottle();
     _ignoreProposalCache = parameters.ignoreProposalCache();
     _destinationBrokerIds = parameters.destinationBrokerIds();
     _isRebalanceDiskMode = parameters.isRebalanceDiskMode();
@@ -150,7 +158,8 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
           _concurrentInterBrokerPartitionMovements, _maxInterBrokerPartitionMovements,
           _concurrentIntraBrokerPartitionMovements, _clusterLeaderMovementConcurrency, _brokerLeaderMovementConcurrency,
           _executionProgressCheckIntervalMs, _replicaMovementStrategy,
-          _replicationThrottle, _isTriggeredByUserRequest, _uuid, SKIP_AUTO_REFRESHING_CONCURRENCY);
+          _replicationThrottle, _intraBrokerReplicationThrottle, _isTriggeredByUserRequest, _uuid,
+          SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
   }

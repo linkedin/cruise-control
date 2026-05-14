@@ -670,6 +670,8 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing proposals (if null, no throttling is applied).
+   * @param intraBrokerReplicationThrottle The intra-broker replication throttle (bytes/second) to apply during
+   *                                      log dir reassignment (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param skipInterBrokerReplicaConcurrencyAdjustment {@code true} to skip auto adjusting concurrency of inter-broker
@@ -686,6 +688,7 @@ public class KafkaCruiseControl {
                                Long executionProgressCheckIntervalMs,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                Long replicationThrottle,
+                               Long intraBrokerReplicationThrottle,
                                boolean isTriggeredByUserRequest,
                                String uuid,
                                boolean skipInterBrokerReplicaConcurrencyAdjustment) throws OngoingExecutionException {
@@ -693,7 +696,8 @@ public class KafkaCruiseControl {
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
                                  maxInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements, clusterConcurrentLeaderMovements,
                                  brokerConcurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
-                                 isTriggeredByUserRequest, uuid, isKafkaAssignerMode, skipInterBrokerReplicaConcurrencyAdjustment);
+                                 intraBrokerReplicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode,
+                                 skipInterBrokerReplicaConcurrencyAdjustment);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
@@ -740,7 +744,7 @@ public class KafkaCruiseControl {
                                  _loadMonitor, concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements, 0,
                                  clusterLeaderMovementConcurrency, brokerLeaderMovementConcurrency,
                                  executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
-                                 isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
+                                 null, isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
