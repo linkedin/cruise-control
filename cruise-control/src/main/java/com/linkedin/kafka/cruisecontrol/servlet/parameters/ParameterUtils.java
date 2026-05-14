@@ -433,8 +433,14 @@ public final class ParameterUtils {
     return value;
   }
 
-  static Long intraBrokerReplicationThrottle(CruiseControlRequestContext requestContext, KafkaCruiseControlConfig config) {
+  static Long intraBrokerReplicationThrottle(CruiseControlRequestContext requestContext, KafkaCruiseControlConfig config,
+                                              Long requestReplicationThrottle) {
     Long defaultValue = resolveIntraBrokerReplicationThrottle(config);
+    // If the config-based default is null but the request specifies a replication_throttle,
+    // use the per-request replication throttle as the fallback for intra-broker moves.
+    if (defaultValue == null && requestReplicationThrottle != null) {
+      defaultValue = requestReplicationThrottle;
+    }
     Long value = getLongParam(requestContext, INTRA_BROKER_REPLICATION_THROTTLE_PARAM, defaultValue);
     if (value != null && value < 0) {
       throw new UserRequestException(

@@ -112,7 +112,7 @@ public class RebalanceParameters extends ProposalsParameters {
     _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_requestContext);
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _replicationThrottle = ParameterUtils.replicationThrottle(_requestContext, _config);
-    _intraBrokerReplicationThrottle = ParameterUtils.intraBrokerReplicationThrottle(_requestContext, _config);
+    _intraBrokerReplicationThrottle = ParameterUtils.intraBrokerReplicationThrottle(_requestContext, _config, _replicationThrottle);
     _reviewId = ParameterUtils.reviewId(_requestContext, twoStepVerificationEnabled);
     _isRebalanceDiskMode = ParameterUtils.isRebalanceDiskMode(_requestContext);
     boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
