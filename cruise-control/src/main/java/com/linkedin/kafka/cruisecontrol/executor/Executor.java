@@ -2204,7 +2204,7 @@ public class Executor {
             if (!logdirInfoByTask.containsKey(task)) {
               boolean isNonRetriable = nonRetriableLogdirFailures != null && nonRetriableLogdirFailures.contains(task);
               if (isNonRetriable) {
-                // Positive evidence of disk/replica failure — mark dead regardless of stop signal.
+                // Positive evidence of disk/replica failure - mark dead regardless of stop signal.
                 _executionTaskManager.markTaskDead(task);
                 LOG.warn("User task {}: Killing execution for task {} because the destination disk is down "
                     + "(non-retriable logdir error).", _uuid, task);

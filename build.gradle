@@ -98,6 +98,13 @@ subprojects {
   // This project requires Java 17
   sourceCompatibility = JavaVersion.VERSION_17
 
+  tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+  }
+  tasks.withType(ScalaCompile) {
+    options.encoding = 'UTF-8'
+  }
+
   task sourcesJar(type: Jar, dependsOn: classes) {
     archiveClassifier.set("sources")
     from sourceSets.main.allSource
