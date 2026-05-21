@@ -84,11 +84,11 @@ public abstract class CruiseControlMetric {
     }
 
     static MetricClassId forId(byte id) {
-      if (id < values().length) {
+      if (id >= 0 && id < values().length) {
         return values()[id];
-      } else {
-        throw new IllegalArgumentException("MetricClassId " + id + " does not exist.");
       }
+      // Unknown class id introduced by a newer build; let the caller drop the sample.
+      return null;
     }
   }
 

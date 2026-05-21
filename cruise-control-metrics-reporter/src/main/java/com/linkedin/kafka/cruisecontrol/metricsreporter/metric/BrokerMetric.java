@@ -64,6 +64,10 @@ public class BrokerMetric extends CruiseControlMetric {
     long time = buffer.getLong();
     int brokerId = buffer.getInt();
     double value = buffer.getDouble();
+    if (rawMetricType == null) {
+      // Unknown metric id introduced by a newer build; drop the sample rather than fail the consumer.
+      return null;
+    }
     return new BrokerMetric(rawMetricType, time, brokerId, value);
   }
 

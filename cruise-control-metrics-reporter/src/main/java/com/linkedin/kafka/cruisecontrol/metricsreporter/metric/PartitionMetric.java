@@ -88,6 +88,10 @@ public class PartitionMetric extends CruiseControlMetric {
     buffer.position(buffer.position() + topicLength);
     int partition = buffer.getInt();
     double value = buffer.getDouble();
+    if (rawMetricType == null) {
+      // Unknown metric id introduced by a newer build; drop the sample rather than fail the consumer.
+      return null;
+    }
     return new PartitionMetric(rawMetricType, time, brokerId, topic, partition, value);
   }
 

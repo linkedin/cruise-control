@@ -146,14 +146,16 @@ public enum RawMetricType {
 
   /**
    * @param id Cruise Control Metric type.
-   * @return Raw metric type.
+   * @return Raw metric type, or {@code null} if the id is unknown to this build.
+   *         Callers must treat null as "unknown metric, drop this sample" so that
+   *         deserializers from older builds skip metrics introduced by newer ones
+   *         rather than failing the whole consumer.
    */
   public static RawMetricType forId(byte id) {
-    if (id < values().length) {
+    if (id >= 0 && id < values().length) {
       return values()[id];
-    } else {
-      throw new IllegalArgumentException("CruiseControlMetric type " + id + " does not exist.");
     }
+    return null;
   }
 
   public enum MetricScope {

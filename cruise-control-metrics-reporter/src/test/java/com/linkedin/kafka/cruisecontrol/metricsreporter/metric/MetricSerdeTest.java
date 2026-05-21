@@ -5,9 +5,11 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter.metric;
 
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
+import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 
 public class MetricSerdeTest {
@@ -51,5 +53,36 @@ public class MetricSerdeTest {
     assertEquals(TOPIC, ((PartitionMetric) deserialized).topic());
     assertEquals(PARTITION, ((PartitionMetric) deserialized).partition());
     assertEquals(VALUE, deserialized.value(), 0.000001);
+  }
+
+  /**
+   * Backward-compatibility contract: an older deserializer that does not know about a future
+   * {@link RawMetricType} id must drop the sample rather than throw. We simulate that by writing
+   * a broker metric whose raw-metric-id byte is past the end of the current enum.
+   */
+  @Test
+  public void testForwardCompatibleUnknownRawMetricTypeIsDropped() throws UnknownVersionException {
+    byte unknownRawMetricId = (byte) (RawMetricType.values().length + 5);
+    ByteBuffer buffer = ByteBuffer.allocate(1 + 1 + 1 + Long.BYTES + Integer.BYTES + Double.BYTES);
+    buffer.put(CruiseControlMetric.MetricClassId.BROKER_METRIC.id());
+    // BrokerMetric METRIC_VERSION (0) — must match the current wire format.
+    buffer.put((byte) 0);
+    buffer.put(unknownRawMetricId);
+    buffer.putLong(TIME);
+    buffer.putInt(BROKER_ID);
+    buffer.putDouble(VALUE);
+    assertNull("Unknown raw metric ids must deserialize to null", MetricSerde.fromBytes(buffer.array()));
+  }
+
+  /**
+   * Backward-compatibility contract for the outer class id: an unknown
+   * {@link CruiseControlMetric.MetricClassId} byte must also drop cleanly.
+   */
+  @Test
+  public void testForwardCompatibleUnknownMetricClassIdIsDropped() throws UnknownVersionException {
+    byte unknownClassId = (byte) (CruiseControlMetric.MetricClassId.values().length + 5);
+    byte[] payload = new byte[16];
+    payload[0] = unknownClassId;
+    assertNull("Unknown metric class ids must deserialize to null", MetricSerde.fromBytes(payload));
   }
 }

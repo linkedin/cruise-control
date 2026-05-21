@@ -77,6 +77,10 @@ public class TopicMetric extends CruiseControlMetric {
     String topic = new String(buffer.array(), buffer.arrayOffset() + buffer.position(), topicLength, StandardCharsets.UTF_8);
     buffer.position(buffer.position() + topicLength);
     double value = buffer.getDouble();
+    if (rawMetricType == null) {
+      // Unknown metric id introduced by a newer build; drop the sample rather than fail the consumer.
+      return null;
+    }
     return new TopicMetric(rawMetricType, time, brokerId, topic, value);
   }
 

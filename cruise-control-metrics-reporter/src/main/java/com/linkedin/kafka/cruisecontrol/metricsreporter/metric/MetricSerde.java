@@ -36,7 +36,12 @@ public class MetricSerde implements Serializer<CruiseControlMetric>, Deserialize
    */
   public static CruiseControlMetric fromBytes(byte[] bytes) throws UnknownVersionException {
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
-    switch (CruiseControlMetric.MetricClassId.forId(buffer.get())) {
+    CruiseControlMetric.MetricClassId classId = CruiseControlMetric.MetricClassId.forId(buffer.get());
+    if (classId == null) {
+      // Unknown class id introduced by a newer build; drop the sample rather than fail the consumer.
+      return null;
+    }
+    switch (classId) {
       case BROKER_METRIC:
         return BrokerMetric.fromBuffer(buffer);
       case TOPIC_METRIC:
