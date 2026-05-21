@@ -30,10 +30,20 @@ public final class MetricsUtils {
   private static final String SIZE = "Size";
   private static final String REQUEST_HANDLER_AVG_IDLE_PERCENT = "RequestHandlerAvgIdlePercent";
   private static final String LOG_FLUSH_RATE_AND_TIME_MS = "LogFlushRateAndTimeMs";
+  // Socket server (KafkaMetric, not Yammer).
+  // Name of the per-listener open connection count gauge published by Kafka's SocketServer
+  // via org.apache.kafka.common.metrics.Metrics. One sample is published per listener and the
+  // reporter sums them at emission time to produce a single BROKER_CONNECTION_COUNT sample.
+  static final String SOCKET_SERVER_CONNECTION_COUNT = "connection-count";
+  // Name of the optional per-broker max-connection gauge (broker-side ceiling, typically derived
+  // from max.connections). Reported by the metrics reporter only when the broker exposes this
+  // gauge; absent on stock Apache Kafka, in which case CC falls back to its capacity config.
+  static final String SOCKET_SERVER_MAX_CONNECTIONS = "max-connections";
   // Groups
   private static final String KAFKA_SERVER = "kafka.server";
   private static final String KAFKA_LOG = "kafka.log";
   private static final String KAFKA_NETWORK = "kafka.network";
+  static final String SOCKET_SERVER_METRICS = "socket-server-metrics";
   // Type Keys
   private static final String TYPE_KEY = "type";
   private static final String TOPIC_KEY = "topic";
@@ -68,6 +78,12 @@ public final class MetricsUtils {
     private static final Set<String> INTERESTED_LOG_METRIC_NAMES = Set.of(SIZE, LOG_FLUSH_RATE_AND_TIME_MS);
 
   private static final Set<String> INTERESTED_SERVER_METRIC_NAMES = Collections.singleton(REQUEST_HANDLER_AVG_IDLE_PERCENT);
+
+  // Per-listener socket-server metrics the reporter consumes. Their values are summed across
+  // listeners by the reporter (see CruiseControlMetricsReporter.reportKafkaMetrics) into a single
+  // BROKER_* sample per emission cycle.
+  private static final Set<String> INTERESTED_SOCKET_SERVER_METRIC_NAMES =
+      Set.of(SOCKET_SERVER_CONNECTION_COUNT, SOCKET_SERVER_MAX_CONNECTIONS);
 
   // Request type set
   private static final Set<String> INTERESTED_REQUEST_TYPE =
@@ -456,8 +472,29 @@ public final class MetricsUtils {
              || (REQUEST_METRICS_GROUP.equals(type) && INTERESTED_REQUEST_TYPE.contains(tags.get(REQUEST_TYPE_KEY)));
     } else if (group.equals(KAFKA_LOG) && INTERESTED_LOG_METRIC_NAMES.contains(name)) {
       return LOG_GROUP.equals(type) || LOG_FLUSH_STATS_GROUP.equals(type);
+    } else if (group.equals(SOCKET_SERVER_METRICS) && INTERESTED_SOCKET_SERVER_METRIC_NAMES.contains(name)) {
+      // Per-listener gauges; the reporter sums them at emission time.
+      return true;
     }
     return false;
+  }
+
+  /**
+   * @param metricName Kafka metric name to test.
+   * @return {@code true} if the given KafkaMetric name targets the per-listener socket-server
+   *         {@link #SOCKET_SERVER_CONNECTION_COUNT} gauge, {@code false} otherwise.
+   */
+  public static boolean isSocketServerConnectionCount(org.apache.kafka.common.MetricName metricName) {
+    return SOCKET_SERVER_METRICS.equals(metricName.group()) && SOCKET_SERVER_CONNECTION_COUNT.equals(metricName.name());
+  }
+
+  /**
+   * @param metricName Kafka metric name to test.
+   * @return {@code true} if the given KafkaMetric name targets the per-listener socket-server
+   *         {@link #SOCKET_SERVER_MAX_CONNECTIONS} gauge, {@code false} otherwise.
+   */
+  public static boolean isSocketServerMaxConnections(org.apache.kafka.common.MetricName metricName) {
+    return SOCKET_SERVER_METRICS.equals(metricName.group()) && SOCKET_SERVER_MAX_CONNECTIONS.equals(metricName.name());
   }
 
   /**

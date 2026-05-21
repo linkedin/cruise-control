@@ -5,9 +5,11 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.CruiseControlMetricsReporterException;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricsUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.YammerMetricProcessor;
 import java.io.IOException;
@@ -481,8 +483,33 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   private void reportKafkaMetrics(long now) {
     LOG.debug("Reporting KafkaMetrics. {}", _interestedMetrics.values());
+    double connectionCountSum = 0.0;
+    boolean connectionCountObserved = false;
+    double maxConnectionsSum = 0.0;
+    boolean maxConnectionsObserved = false;
     for (KafkaMetric metric : _interestedMetrics.values()) {
-      sendCruiseControlMetric(MetricsUtils.toCruiseControlMetric(metric, now, _brokerId));
+      if (MetricsUtils.isSocketServerConnectionCount(metric.metricName())) {
+        // Per-listener gauge; aggregate across listeners and emit once per cycle.
+        Object value = metric.metricValue();
+        if (value instanceof Number) {
+          connectionCountSum += ((Number) value).doubleValue();
+          connectionCountObserved = true;
+        }
+      } else if (MetricsUtils.isSocketServerMaxConnections(metric.metricName())) {
+        Object value = metric.metricValue();
+        if (value instanceof Number) {
+          maxConnectionsSum += ((Number) value).doubleValue();
+          maxConnectionsObserved = true;
+        }
+      } else {
+        sendCruiseControlMetric(MetricsUtils.toCruiseControlMetric(metric, now, _brokerId));
+      }
+    }
+    if (connectionCountObserved) {
+      sendCruiseControlMetric(new BrokerMetric(RawMetricType.BROKER_CONNECTION_COUNT, now, _brokerId, connectionCountSum));
+    }
+    if (maxConnectionsObserved) {
+      sendCruiseControlMetric(new BrokerMetric(RawMetricType.BROKER_CONNECTION_CAPACITY, now, _brokerId, maxConnectionsSum));
     }
     LOG.debug("Finished reporting KafkaMetrics.");
   }
