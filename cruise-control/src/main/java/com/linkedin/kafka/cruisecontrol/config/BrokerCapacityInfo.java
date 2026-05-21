@@ -24,12 +24,19 @@ import java.util.stream.Collectors;
  */
 public class BrokerCapacityInfo {
   public static final short DEFAULT_NUM_CPU_CORES = 1;
+  /**
+   * Sentinel that indicates the broker has no configured connection-count ceiling. Treated as
+   * "no limit" by consumers, so existing capacity configs (which don't supply a value) behave
+   * identically to today's CC.
+   */
+  public static final double UNLIMITED_CONNECTION_CAPACITY = Double.MAX_VALUE;
   private static final String DEFAULT_ESTIMATION_INFO = "";
   private static final Map<String, Double> DEFAULT_DISK_CAPACITY_BY_LOGDIR = null;
   private final Map<Resource, Double> _capacity;
   private final String _estimationInfo;
   private final Map<String, Double> _diskCapacityByLogDir;
   private final double _numCpuCores;
+  private final double _connectionCapacity;
 
   /**
    * BrokerCapacityInfo with the given capacity, estimation, per absolute logDir disk capacity, and number of CPU cores.
@@ -43,11 +50,30 @@ public class BrokerCapacityInfo {
                             String estimationInfo,
                             Map<String, Double> diskCapacityByLogDir,
                             double numCpuCores) {
+    this(capacity, estimationInfo, diskCapacityByLogDir, numCpuCores, UNLIMITED_CONNECTION_CAPACITY);
+  }
+
+  /**
+   * BrokerCapacityInfo with the given capacity, estimation, per absolute logDir disk capacity,
+   * number of CPU cores, and connection-count capacity.
+   *
+   * @param capacity Capacity information for each resource.
+   * @param estimationInfo Description if there is any capacity estimation, {@code null} or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
+   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
+   * @param numCpuCores Number of CPU cores.
+   * @param connectionCapacity Per-broker connection-count ceiling, or {@link #UNLIMITED_CONNECTION_CAPACITY} if not configured.
+   */
+  public BrokerCapacityInfo(Map<Resource, Double> capacity,
+                            String estimationInfo,
+                            Map<String, Double> diskCapacityByLogDir,
+                            double numCpuCores,
+                            double connectionCapacity) {
     sanityCheckCapacity(capacity);
     _capacity = capacity;
     _estimationInfo = estimationInfo == null ? DEFAULT_ESTIMATION_INFO : estimationInfo;
     _diskCapacityByLogDir = diskCapacityByLogDir;
     _numCpuCores = numCpuCores;
+    _connectionCapacity = connectionCapacity;
   }
 
   /**
@@ -144,6 +170,15 @@ public class BrokerCapacityInfo {
    */
   public double numCpuCores() {
     return _numCpuCores;
+  }
+
+  /**
+   * @return Per-broker connection-count ceiling. Returns {@link #UNLIMITED_CONNECTION_CAPACITY} when no
+   *         ceiling is configured, in which case consumers should treat the broker as having no
+   *         connection-count limit.
+   */
+  public double connectionCapacity() {
+    return _connectionCapacity;
   }
 
   /**

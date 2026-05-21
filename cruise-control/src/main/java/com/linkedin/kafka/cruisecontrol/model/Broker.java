@@ -41,6 +41,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final int _id;
   private final Host _host;
   private final double[] _brokerCapacity;
+  private double _connectionCapacity;
   private final Set<Replica> _replicas;
   private final Set<Replica> _leaderReplicas;
   /** A map of cached sorted replicas using different user defined score functions. */
@@ -75,6 +76,7 @@ public class Broker implements Serializable, Comparable<Broker> {
       _brokerCapacity[resource.id()] = (resource == Resource.CPU) ? (entry.getValue() * brokerCapacityInfo.numCpuCores())
                                                                   : entry.getValue();
     }
+    _connectionCapacity = brokerCapacityInfo.connectionCapacity();
 
     if (populateReplicaPlacementInfo) {
       _diskByLogdir = new TreeMap<>();
@@ -125,6 +127,16 @@ public class Broker implements Serializable, Comparable<Broker> {
    */
   public double capacityFor(Resource resource) {
       return _brokerCapacity[resource.id()];
+  }
+
+  /**
+   * @return The per-broker connection-count ceiling. Returns
+   *         {@link com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo#UNLIMITED_CONNECTION_CAPACITY}
+   *         when no ceiling is configured. Consumers should treat that sentinel as "no limit".
+   *         Dead brokers report {@link #DEAD_BROKER_CAPACITY}.
+   */
+  public double connectionCapacity() {
+    return _connectionCapacity;
   }
 
   /**
@@ -325,6 +337,7 @@ public class Broker implements Serializable, Comparable<Broker> {
       _currentOfflineReplicas.addAll(replicas());
       _diskByLogdir.values().forEach(d -> d.setState(Disk.State.DEAD));
       Resource.cachedValues().forEach(r -> _brokerCapacity[r.id()] = DEAD_BROKER_CAPACITY);
+      _connectionCapacity = DEAD_BROKER_CAPACITY;
     }
   }
 
