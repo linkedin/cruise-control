@@ -31,7 +31,8 @@ public class BrokerMetricSampleTest {
     }
     sample.close((long) value);
     byte[] bytes = sample.toBytes();
-    assertEquals(461, bytes.length);
+    // v5 baseline is 461 bytes; v6 adds BROKER_CONNECTION_COUNT + BROKER_CONNECTION_CAPACITY (2 * 8).
+    assertEquals(477, bytes.length);
     BrokerMetricSample deserializedSample = BrokerMetricSample.fromBytes(bytes);
 
     assertEquals("host", deserializedSample.entity().host());

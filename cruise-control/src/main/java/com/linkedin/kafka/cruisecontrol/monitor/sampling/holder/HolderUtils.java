@@ -83,6 +83,13 @@ final class HolderUtils {
       case BROKER_PRODUCE_REQUEST_RATE:
       case BROKER_CONSUMER_FETCH_REQUEST_RATE:
         return true;
+      case BROKER_CONNECTION_COUNT:
+      case BROKER_CONNECTION_CAPACITY:
+        // Optional broker-reported signals: not every reporter version publishes them, and not
+        // every Kafka build exposes the underlying gauges (the max-connections gauge in
+        // particular is broker-side opt-in). Missing samples are treated as "unknown" by
+        // downstream consumers, who fall back to CC-side config.
+        return true;
       default:
         return false;
     }

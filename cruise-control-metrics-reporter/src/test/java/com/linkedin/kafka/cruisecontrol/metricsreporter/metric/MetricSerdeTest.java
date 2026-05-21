@@ -55,6 +55,19 @@ public class MetricSerdeTest {
     assertEquals(VALUE, deserialized.value(), 0.000001);
   }
 
+  @Test
+  public void testBrokerConnectionMetricsSerde() throws UnknownVersionException {
+    BrokerMetric count = new BrokerMetric(RawMetricType.BROKER_CONNECTION_COUNT, TIME, BROKER_ID, 12345.0);
+    CruiseControlMetric deserializedCount = MetricSerde.fromBytes(MetricSerde.toBytes(count));
+    assertEquals(RawMetricType.BROKER_CONNECTION_COUNT.id(), deserializedCount.rawMetricType().id());
+    assertEquals(12345.0, deserializedCount.value(), 0.000001);
+
+    BrokerMetric capacity = new BrokerMetric(RawMetricType.BROKER_CONNECTION_CAPACITY, TIME, BROKER_ID, 500000.0);
+    CruiseControlMetric deserializedCapacity = MetricSerde.fromBytes(MetricSerde.toBytes(capacity));
+    assertEquals(RawMetricType.BROKER_CONNECTION_CAPACITY.id(), deserializedCapacity.rawMetricType().id());
+    assertEquals(500000.0, deserializedCapacity.value(), 0.000001);
+  }
+
   /**
    * Backward-compatibility contract: an older deserializer that does not know about a future
    * {@link RawMetricType} id must drop the sample rather than throw. We simulate that by writing

@@ -92,7 +92,15 @@ public enum RawMetricType {
   BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_50TH(BROKER, (byte) 59, (byte) 5),
   BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH(BROKER, (byte) 60, (byte) 5),
   BROKER_LOG_FLUSH_TIME_MS_50TH(BROKER, (byte) 61, (byte) 5),
-  BROKER_LOG_FLUSH_TIME_MS_999TH(BROKER, (byte) 62, (byte) 5);
+  BROKER_LOG_FLUSH_TIME_MS_999TH(BROKER, (byte) 62, (byte) 5),
+  // Total open client connections across all listeners on the broker, summed at emission time
+  // from kafka.server:type=socket-server-metrics,name=connection-count. Reported by the
+  // metrics reporter only when the broker exposes the socket-server connection-count gauge.
+  BROKER_CONNECTION_COUNT(BROKER, (byte) 63, (byte) 6),
+  // Broker-side connection capacity ceiling (e.g. derived from max.connections). Reported by
+  // the metrics reporter only when the broker exposes a corresponding gauge; otherwise CC
+  // falls back to its capacity config.
+  BROKER_CONNECTION_CAPACITY(BROKER, (byte) 64, (byte) 6);
 
   private static final List<RawMetricType> CACHED_VALUES = List.of(RawMetricType.values());
   private static final SortedMap<Byte, Set<RawMetricType>> BROKER_METRIC_TYPES_DIFF_BY_VERSION = buildBrokerMetricTypesDiffByVersion();

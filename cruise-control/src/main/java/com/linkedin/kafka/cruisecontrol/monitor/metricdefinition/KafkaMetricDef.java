@@ -98,7 +98,14 @@ public enum KafkaMetricDef {
   BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_50TH(AVG, BROKER_ONLY, null, false),
   BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH(AVG, BROKER_ONLY, null, false),
   BROKER_LOG_FLUSH_TIME_MS_50TH(AVG, BROKER_ONLY, null, false),
-  BROKER_LOG_FLUSH_TIME_MS_999TH(AVG, BROKER_ONLY, null, false);
+  BROKER_LOG_FLUSH_TIME_MS_999TH(AVG, BROKER_ONLY, null, false),
+  // Total open client connections across all listeners on the broker. Reported when the broker
+  // exposes the socket-server connection-count gauge; otherwise the windowed value is zero
+  // (treated as "unknown" by downstream consumers).
+  BROKER_CONNECTION_COUNT(AVG, BROKER_ONLY, null, false),
+  // Broker-side connection capacity ceiling. Reported when the broker exposes a max-connections
+  // gauge; otherwise the windowed value is zero and consumers fall back to CC's capacity config.
+  BROKER_CONNECTION_CAPACITY(LATEST, BROKER_ONLY, null, false);
 
   private final ValueComputingStrategy _valueComputingStrategy;
   private final String _group;
@@ -180,6 +187,8 @@ public enum KafkaMetricDef {
     TYPE_TO_DEF.put(RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH, BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH);
     TYPE_TO_DEF.put(RawMetricType.BROKER_LOG_FLUSH_TIME_MS_50TH, BROKER_LOG_FLUSH_TIME_MS_50TH);
     TYPE_TO_DEF.put(RawMetricType.BROKER_LOG_FLUSH_TIME_MS_999TH, BROKER_LOG_FLUSH_TIME_MS_999TH);
+    TYPE_TO_DEF.put(RawMetricType.BROKER_CONNECTION_COUNT, BROKER_CONNECTION_COUNT);
+    TYPE_TO_DEF.put(RawMetricType.BROKER_CONNECTION_CAPACITY, BROKER_CONNECTION_CAPACITY);
   }
 
   /**
