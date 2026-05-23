@@ -25,6 +25,7 @@ import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
@@ -37,6 +38,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -528,6 +530,10 @@ public class LoadMonitor {
         populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo, _brokerCapacityConfigResolver, allowCapacityEstimation);
         step.incrementPopulatedNumPartitions();
       }
+      // Stamp BROKER_ONLY metric ids (e.g. BROKER_CONNECTION_COUNT) on each broker's load. These
+      // aren't reachable through the partition aggregator path used above, so without this step
+      // any goal that reads them via Broker.load() sees a missing series. See Broker.setBrokerOnlyLoad.
+      populateBrokerOnlyLoads(clusterModel, cluster);
       // Set the state of bad brokers in clusterModel based on the Kafka cluster state.
       setBadBrokerState(clusterModel, cluster);
 
@@ -676,6 +682,47 @@ public class LoadMonitor {
       brokerEntities.add(new BrokerEntity(node.host(), node.id()));
     }
     return _brokerMetricSampleAggregator.aggregate(brokerEntities);
+  }
+
+  /**
+   * Stamp every alive broker's load with whatever broker-only metric ids the broker aggregator can
+   * produce for it. Called from {@link #clusterModel} after partition loads are populated so
+   * broker-only ids (e.g. {@code BROKER_CONNECTION_COUNT}) are visible to goals that read off
+   * {@code Broker.load()}. When the broker aggregator has no usable window yet, this is a no-op
+   * and goals just see the missing-metric path.
+   * @param clusterModel The cluster model whose broker loads should receive broker-only metrics.
+   * @param cluster The Kafka cluster metadata used to resolve broker entities.
+   */
+  private void populateBrokerOnlyLoads(ClusterModel clusterModel, Cluster cluster) {
+    Set<BrokerEntity> entities = new HashSet<>();
+    Map<Integer, BrokerEntity> byId = new HashMap<>();
+    for (Node node : cluster.nodes()) {
+      BrokerEntity entity = new BrokerEntity(node.host(), node.id());
+      entities.add(entity);
+      byId.put(node.id(), entity);
+    }
+    if (entities.isEmpty()) {
+      return;
+    }
+    MetricSampleAggregationResult<String, BrokerEntity> result = _brokerMetricSampleAggregator.aggregate(entities);
+    if (result == null) {
+      return;
+    }
+    Map<BrokerEntity, ValuesAndExtrapolations> valuesByBroker = result.valuesAndExtrapolations();
+    if (valuesByBroker == null || valuesByBroker.isEmpty()) {
+      return;
+    }
+    for (Map.Entry<Integer, BrokerEntity> entry : byId.entrySet()) {
+      ValuesAndExtrapolations values = valuesByBroker.get(entry.getValue());
+      if (values == null) {
+        continue;
+      }
+      Broker broker = clusterModel.broker(entry.getKey());
+      if (broker == null) {
+        continue;
+      }
+      broker.setBrokerOnlyLoad(values.metricValues());
+    }
   }
 
   /**

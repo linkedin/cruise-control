@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import java.io.IOException;
@@ -594,6 +595,49 @@ public class Broker implements Serializable, Comparable<Broker> {
       _leadershipLoadForNwResources.addMetricValues(aggregatedMetricValues, windows);
     }
     _load.addMetricValues(aggregatedMetricValues, windows);
+  }
+
+  /**
+   * Populate broker-only metric ids (e.g. {@code BROKER_CONNECTION_COUNT}) on this broker's load.
+   * Resource-mapped metric ids are aggregated up from per-replica loads via {@link #setReplicaLoad};
+   * broker-only ids have no per-partition counterpart and must come from
+   * {@code KafkaBrokerMetricSampleAggregator}. This method bridges the two paths so that goals can
+   * read broker-only metrics off {@link #load()}.
+   *
+   * <p>The broker aggregator may return a different number of windows than the partition
+   * aggregator that already filled this broker's load. To keep all metric ids inside the same
+   * {@link Load} the same length, each broker-only metric is flattened to a single scalar (its
+   * latest value) and stamped across every window slot. The goals only consume {@code avg} /
+   * {@code latest} of this series, both of which are equal to that scalar.
+   *
+   * <p>Idempotent only for distinct ids: calling twice with the same id will accumulate into the
+   * underlying values (matching {@link AggregatedMetricValues#add(short, MetricValues)}). The
+   * caller (typically {@code LoadMonitor.clusterModel}) is expected to invoke this once per
+   * cluster-model build.
+   *
+   * @param brokerOnlyMetrics aggregator output containing broker-only metric ids; no-op when null
+   *                          or empty.
+   */
+  public void setBrokerOnlyLoad(AggregatedMetricValues brokerOnlyMetrics) {
+    if (brokerOnlyMetrics == null || brokerOnlyMetrics.metricIds().isEmpty()) {
+      return;
+    }
+    int numWindows = _load.numWindows();
+    if (numWindows <= 0) {
+      return;
+    }
+    for (short metricId : brokerOnlyMetrics.metricIds()) {
+      MetricValues source = brokerOnlyMetrics.valuesFor(metricId);
+      if (source == null || source.length() == 0) {
+        continue;
+      }
+      MetricValues flat = new MetricValues(numWindows);
+      double scalar = source.latest();
+      for (int i = 0; i < numWindows; i++) {
+        flat.set(i, scalar);
+      }
+      _load.addBrokerOnlyMetric(metricId, flat);
+    }
   }
 
   /**

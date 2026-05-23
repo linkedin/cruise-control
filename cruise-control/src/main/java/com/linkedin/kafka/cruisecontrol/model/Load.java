@@ -225,6 +225,21 @@ public class Load implements Serializable {
   }
 
   /**
+   * Insert a broker-only metric id into this load. Used by {@link Broker#setBrokerOnlyLoad} to
+   * stamp BROKER_ONLY ids (e.g. {@code BROKER_CONNECTION_COUNT}) onto a broker load that was
+   * otherwise built up entirely from per-replica partition metrics. The caller is responsible for
+   * making the {@code MetricValues} length match {@link #numWindows()}; {@code AggregatedMetricValues.add}
+   * already validates that. Package-private — kept off the public API since the only legitimate
+   * caller is the {@link Broker} in this package.
+   *
+   * @param metricId broker-only metric id.
+   * @param mv values aligned to this load's existing window count.
+   */
+  void addBrokerOnlyMetric(short metricId, MetricValues mv) {
+    _metricValues.add(metricId, mv);
+  }
+
+  /**
    * Add the given load to this load.
    *
    * @param loadToAdd Load to add to this load.
