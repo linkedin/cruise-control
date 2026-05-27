@@ -5,17 +5,13 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import java.lang.reflect.Field;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.easymock.EasyMock;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
-import org.powermock.reflect.Whitebox;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,18 +27,15 @@ import static org.junit.Assert.assertThrows;
 /**
  * Unit test for {@link AbstractKafkaSampleStore}
  */
-@RunWith(PowerMockRunner.class)
-@PowerMockIgnore("javax.management.*")
-@PrepareForTest(AbstractKafkaSampleStore.class)
 public class AbstractKafkaSampleStoreTest {
 
     @Test
-    public void testSampleStoreTopicReplicationFactorWhenValueAlreadyExists() {
+    public void testSampleStoreTopicReplicationFactorWhenValueAlreadyExists() throws ReflectiveOperationException {
         short expected = 1;
         Map<String, ?> config = Collections.emptyMap();
         AdminClient adminClient = EasyMock.mock(AdminClient.class);
         AbstractKafkaSampleStore kafkaSampleStore = EasyMock.partialMockBuilder(AbstractKafkaSampleStore.class).createMock();
-        Whitebox.setInternalState(kafkaSampleStore, "_sampleStoreTopicReplicationFactor", expected);
+        setField(kafkaSampleStore, "_sampleStoreTopicReplicationFactor", expected);
         EasyMock.replay(adminClient, kafkaSampleStore);
 
         short actual = kafkaSampleStore.sampleStoreTopicReplicationFactor(config, adminClient);
@@ -121,6 +114,24 @@ public class AbstractKafkaSampleStoreTest {
         EasyMock.replay(describeClusterResult);
 
         return nodesFuture;
+    }
+
+    // Replacement for PowerMock's Whitebox.setInternalState. Plain reflection on
+    // an in-package field works under JDK 17 without --add-opens because the
+    // field lives in the unnamed module (our test classpath), not a JDK module.
+    private static void setField(Object target, String name, Object value) throws ReflectiveOperationException {
+        Class<?> cls = target.getClass();
+        while (cls != null) {
+            try {
+                Field field = cls.getDeclaredField(name);
+                field.setAccessible(true);
+                field.set(target, value);
+                return;
+            } catch (NoSuchFieldException ignored) {
+                cls = cls.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(name);
     }
 
 }

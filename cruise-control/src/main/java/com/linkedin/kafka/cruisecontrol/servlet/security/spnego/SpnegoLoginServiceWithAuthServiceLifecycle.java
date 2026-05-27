@@ -160,7 +160,10 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
     }
   }
 
-  private String getFullPrincipalFromGssContext(GSSContext gssContext) {
+  // Package-private (not private) so SpnegoLoginServiceWithAuthServiceLifecycleTest
+  // can stub it via EasyMock.partialMockBuilder.addMockedMethod. The previous
+  // PowerMock-based test reached this method via reflection.
+  String getFullPrincipalFromGssContext(GSSContext gssContext) {
     try {
       return gssContext.getSrcName().toString();
     } catch (GSSException e) {
@@ -193,7 +196,8 @@ public class SpnegoLoginServiceWithAuthServiceLifecycle extends ContainerLifeCyc
 
   }
 
-  private GSSContext addContext(HttpServletRequest request) {
+  // Package-private; see comment on getFullPrincipalFromGssContext.
+  GSSContext addContext(HttpServletRequest request) {
     // This tries to inject an externally created GSSContext into ConfigurableSpnegoLoginService.
     // ConfigurableSpnegoLoginService drops the realm part of the client principal, but we need that to evaluate the auth to local rules
     // By injecting the GSSContext through the session, we can get access to the full principal

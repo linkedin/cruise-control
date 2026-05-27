@@ -15,11 +15,6 @@ import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
-import org.powermock.reflect.Whitebox;
 import javax.security.auth.Subject;
 import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Constructor;
@@ -35,14 +30,10 @@ import static org.easymock.EasyMock.partialMockBuilder;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
-import static org.powermock.api.support.Stubber.stubMethod;
 
 /**
  * Unit tests for {@link SpnegoLoginServiceWithAuthServiceLifecycle}
  */
-@RunWith(PowerMockRunner.class)
-@PowerMockIgnore({"javax.management.*", "org.ietf.jgss.GSSManager"})
-@PrepareForTest(SpnegoLoginServiceWithAuthServiceLifecycle.class)
 public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
     public static final String USERNAME = "user1";
     private static final String REALM = "TEST_REALM";
@@ -71,7 +62,7 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
     @Test
     public void testExtractSpnegoContext() throws ReflectiveOperationException {
         SpnegoLoginServiceWithAuthServiceLifecycle service = partialMockBuilder(SpnegoLoginServiceWithAuthServiceLifecycle.class).createMock();
-        Whitebox.setInternalState(service, "_spnegoLoginService", _mockLoginService);
+        setField(service, "_spnegoLoginService", _mockLoginService);
         Class<?> contextClass = Class.forName("org.eclipse.jetty.security.ConfigurableSpnegoLoginService$SpnegoContext");
         Constructor<?> contextCtor = contextClass.getDeclaredConstructor();
         contextCtor.setAccessible(true);
@@ -85,7 +76,7 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
     }
 
     @Test
-    public void testLoginWithoutKerberosRules() {
+    public void testLoginWithoutKerberosRules() throws ReflectiveOperationException {
         SpnegoLoginServiceWithAuthServiceLifecycle service = createAuthServiceWithMocking(new SpnegoUserPrincipal(USERNAME, TOKEN));
         replay(service, _mockLoginService, _mockAuthorizationService, _mockAuthIdentity, _mockRoleIdentity);
 
@@ -95,12 +86,12 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
     }
 
     @Test
-    public void testLoginWithKerberosRules() {
+    public void testLoginWithKerberosRules() throws ReflectiveOperationException {
         String principalName = "user1@realm";
         String usernameReplaced = USERNAME + "foo";
         SpnegoUserPrincipal principal = new SpnegoUserPrincipal(principalName, TOKEN);
         SpnegoLoginServiceWithAuthServiceLifecycle service = createAuthServiceWithMocking(principalName, usernameReplaced, principal);
-        Whitebox.setInternalState(service, "_kerberosShortNamer", KerberosShortNamer.fromUnparsedRules(REALM, ATL_RULES));
+        setField(service, "_kerberosShortNamer", KerberosShortNamer.fromUnparsedRules(REALM, ATL_RULES));
         replay(service, _mockLoginService, _mockAuthorizationService, _mockAuthIdentity, _mockRoleIdentity);
 
         UserIdentity userIdentity = service.login(principalName, new Object(), _mockRequest);
@@ -108,17 +99,29 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
         assertUserIdentity(usernameReplaced, userIdentity);
     }
 
-    private SpnegoLoginServiceWithAuthServiceLifecycle createAuthServiceWithMocking(SpnegoUserPrincipal principal) {
+    private SpnegoLoginServiceWithAuthServiceLifecycle createAuthServiceWithMocking(SpnegoUserPrincipal principal)
+            throws ReflectiveOperationException {
         return createAuthServiceWithMocking(USERNAME, USERNAME, principal);
     }
 
-    private SpnegoLoginServiceWithAuthServiceLifecycle createAuthServiceWithMocking(String name, String finalName, SpnegoUserPrincipal principal) {
-        SpnegoLoginServiceWithAuthServiceLifecycle service = partialMockBuilder(SpnegoLoginServiceWithAuthServiceLifecycle.class).createMock();
-        stubMethod(SpnegoLoginServiceWithAuthServiceLifecycle.class, "getFullPrincipalFromGssContext", name);
-        stubMethod(SpnegoLoginServiceWithAuthServiceLifecycle.class, "addContext", _mockGSSContext);
+    private SpnegoLoginServiceWithAuthServiceLifecycle createAuthServiceWithMocking(String name, String finalName, SpnegoUserPrincipal principal)
+            throws ReflectiveOperationException {
+        // Override getFullPrincipalFromGssContext and addContext as part of the partial
+        // mock — possible because they were promoted from private to package-private in
+        // the production class (see comments there). PowerMock's stubMethod(...) used to
+        // reach into private methods via reflection; EasyMock's partial mock works via
+        // Byte Buddy subclassing, which needs the override target to be at least
+        // package-private.
+        SpnegoLoginServiceWithAuthServiceLifecycle service =
+            partialMockBuilder(SpnegoLoginServiceWithAuthServiceLifecycle.class)
+                .addMockedMethod("getFullPrincipalFromGssContext", GSSContext.class)
+                .addMockedMethod("addContext", HttpServletRequest.class)
+                .createMock();
+        expect(service.getFullPrincipalFromGssContext(_mockGSSContext)).andReturn(name);
+        expect(service.addContext(_mockRequest)).andReturn(_mockGSSContext);
 
-        Whitebox.setInternalState(service, "_authorizationService", _mockAuthorizationService);
-        Whitebox.setInternalState(service, "_spnegoLoginService", _mockLoginService);
+        setField(service, "_authorizationService", _mockAuthorizationService);
+        setField(service, "_spnegoLoginService", _mockLoginService);
 
         expect(_mockAuthIdentity.getUserPrincipal()).andReturn(principal);
         expect(_mockAuthorizationService.getUserIdentity(_mockRequest, finalName)).andReturn(_mockRoleIdentity);
@@ -131,6 +134,24 @@ public class SpnegoLoginServiceWithAuthServiceLifecycleTest {
         assertEquals(SUBJECT, userIdentity.getSubject());
         userIdentity.isUserInRole(ROLE, _mockScope);
         verify(_mockLoginService, _mockAuthorizationService, _mockRoleIdentity);
+    }
+
+    // Replacement for PowerMock's Whitebox.setInternalState. Plain reflection on
+    // an in-package field works under JDK 17 without --add-opens because the
+    // field lives in the unnamed module (our test classpath), not a JDK module.
+    private static void setField(Object target, String name, Object value) throws ReflectiveOperationException {
+        Class<?> cls = target.getClass();
+        while (cls != null) {
+            try {
+                Field field = cls.getDeclaredField(name);
+                field.setAccessible(true);
+                field.set(target, value);
+                return;
+            } catch (NoSuchFieldException ignored) {
+                cls = cls.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(name);
     }
 
 }
