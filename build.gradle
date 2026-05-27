@@ -309,7 +309,11 @@ project(':cruise-control') {
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
     testImplementation "org.scala-lang:scala-library:$scalaVersion"
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.easymock:easymock:4.3'
+    // EasyMock 5.x replaces the bundled cglib (which calls AccessibleObject.setAccessible
+    // on internal JDK classes that JDK 16+ no longer permits) with Byte Buddy, restoring
+    // JDK17 compatibility. 4.3 was the last release before EasyMock dropped Java 8 support;
+    // 5.x raises the minimum to Java 11, which matches our sourceCompatibility on line 87.
+    testImplementation 'org.easymock:easymock:5.4.0'
     testImplementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation 'commons-io:commons-io:2.11.0'
