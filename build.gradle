@@ -145,6 +145,12 @@ subprojects {
     if (!project.hasProperty("maxParallelForks")) {
       maxParallelForks = Runtime.runtime.availableProcessors()
     }
+    // OperationFuture#get rewrites the caught Throwable's `detailMessage` field via
+    // reflection (Throwable.class.getDeclaredField("detailMessage").setAccessible(true)).
+    // JDK 16+ forbids that against java.base unless the module is opened. The
+    // production deploys already pass this --add-opens via jvm-launcher; replicate
+    // it here so unit tests don't hit InaccessibleObjectException on JDK 17.
+    jvmArgs += ['--add-opens=java.base/java.lang=ALL-UNNAMED']
     finalizedBy jacocoTestReport
   }
 
