@@ -28,7 +28,11 @@ public final class ContainerMetricUtils {
    *
    * @return Cgroups CPU period in microseconds as a double.
    */
-  private static double getCpuPeriod() throws IOException {
+  // Package-private (not private) so ContainerMetricUtilsTest can replace it via
+  // Mockito.mockStatic. The previous PowerMock-based test reached the private
+  // method via reflection; Mockito's static mocking resolves the target by
+  // method reference, which requires at least package-private visibility.
+  static double getCpuPeriod() throws IOException {
     return Double.parseDouble(readFile(CgroupFiles.PERIOD_PATH.getValue()));
   }
 
@@ -38,7 +42,8 @@ public final class ContainerMetricUtils {
    *
    * @return Cgroups CPU quota in microseconds as a double.
    */
-  private static double getCpuQuota() throws IOException {
+  // Package-private; see comment on getCpuPeriod.
+  static double getCpuQuota() throws IOException {
     return Double.parseDouble(readFile(CgroupFiles.QUOTA_PATH.getValue()));
   }
 
@@ -53,7 +58,8 @@ public final class ContainerMetricUtils {
    *
    * @return Number of logical processors on node
    */
-  private static int getAvailableProcessors() throws IOException {
+  // Package-private; see comment on getCpuPeriod.
+  static int getAvailableProcessors() throws IOException {
       InputStream in = Runtime.getRuntime().exec(NPROC).getInputStream();
       return Integer.parseInt(readInputStream(in));
   }

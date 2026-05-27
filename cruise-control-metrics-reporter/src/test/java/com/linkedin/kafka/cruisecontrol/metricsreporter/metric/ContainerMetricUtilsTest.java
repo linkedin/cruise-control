@@ -5,15 +5,11 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter.metric;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.api.easymock.PowerMock;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 import static org.junit.Assert.assertEquals;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(ContainerMetricUtils.class)
 public class ContainerMetricUtilsTest {
 
   private static final double DELTA = 0.01;
@@ -21,19 +17,18 @@ public class ContainerMetricUtilsTest {
 
   private void mockGetContainerProcessCpuLoad(int processors, double cpuQuota, double cpuUtil, double expectedLoad)
     throws Exception {
-    PowerMock.mockStaticPartial(ContainerMetricUtils.class,
-      "getAvailableProcessors",
-      "getCpuPeriod",
-      "getCpuQuota");
+    // CALLS_REAL_METHODS makes getContainerProcessCpuLoad keep its real body; only the
+    // three leaf static helpers below are replaced. Mockito-inline rewrites bytecode
+    // for the scope of the try-with-resources block, so no PowerMock-style
+    // classloader gymnastics and no JDK-internal API use.
+    try (MockedStatic<ContainerMetricUtils> mocked =
+             Mockito.mockStatic(ContainerMetricUtils.class, Mockito.CALLS_REAL_METHODS)) {
+      mocked.when(ContainerMetricUtils::getAvailableProcessors).thenReturn(processors);
+      mocked.when(ContainerMetricUtils::getCpuPeriod).thenReturn(CPU_PERIOD);
+      mocked.when(ContainerMetricUtils::getCpuQuota).thenReturn(cpuQuota);
 
-    PowerMock.expectPrivate(ContainerMetricUtils.class, "getAvailableProcessors").andReturn(processors);
-    PowerMock.expectPrivate(ContainerMetricUtils.class, "getCpuPeriod").andReturn(CPU_PERIOD);
-    PowerMock.expectPrivate(ContainerMetricUtils.class, "getCpuQuota").andReturn(cpuQuota);
-    PowerMock.expectPrivate(ContainerMetricUtils.class, "getCpuQuota").andReturn(cpuQuota);
-
-    PowerMock.replay(ContainerMetricUtils.class);
-
-    assertEquals(expectedLoad, ContainerMetricUtils.getContainerProcessCpuLoad(cpuUtil), DELTA);
+      assertEquals(expectedLoad, ContainerMetricUtils.getContainerProcessCpuLoad(cpuUtil), DELTA);
+    }
   }
 
   @Test

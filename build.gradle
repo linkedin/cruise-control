@@ -453,8 +453,10 @@ project(':cruise-control-metrics-reporter') {
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
-    testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
-    testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
+    // Mockito-inline provides static-method mocking (Mockito.mockStatic) which
+    // works under JDK 17 via Byte Buddy. Replaces the previous PowerMock 2.0.9
+    // deps that relied on internal JDK APIs broken in JDK 9+ and unmaintained.
+    testImplementation 'org.mockito:mockito-inline:4.11.0'
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion"
     testImplementation 'commons-io:commons-io:2.11.0'
