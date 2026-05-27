@@ -119,7 +119,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
    * 8 bytes - broker follower fetch local time ms (999TH percentile)
    * 8 bytes - broker log flush time ms (50TH percentile)
    * 8 bytes - broker log flush time ms (999TH percentile)
-   * Version 6 additions (only serialized when _deserializationVersion >= 6):
+   * Version 6 additions (only serialized when {@code _deserializationVersion >= 6}):
    * 8 bytes - broker connection count
    * 8 bytes - broker connection capacity
    * @return The serialized bytes.
