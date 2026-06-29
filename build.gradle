@@ -161,6 +161,22 @@ subprojects {
       html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
     }
   }
+
+  // Global excludes and forced versions to satisfy ELR #344856 oss-canary scan
+  configurations.all {
+    exclude group: 'ch.qos.logback'                               // item 4: unused; backend is log4j2
+    resolutionStrategy {
+      force 'org.apache.commons:commons-lang3:3.18.0'             // item 1: uncontrolled recursion fixed in 3.18.0
+      force 'org.scala-lang:scala-library:2.13.13'                // item 6: deserialization gadget chain CVE-2022-36944
+      force 'com.fasterxml.jackson.core:jackson-core:2.18.4'      // item 2: maxNumberLength bypass fixed in 2.18.x
+      eachDependency { d ->
+        if (d.requested.group == 'io.netty') {
+          d.useVersion nettyVersion
+          d.because 'Force all io.netty modules to patched version (ELR-344856 item 5)'
+        }
+      }
+    }
+  }
 }
 
 project(':cruise-control-core') {
@@ -175,7 +191,6 @@ project(':cruise-control-core') {
     configurations.all {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
-      exclude group: 'ch.qos.logback'
     }
     implementation "org.slf4j:slf4j-api:1.7.36"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
@@ -274,7 +289,6 @@ project(':cruise-control') {
     configurations.all {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
-      exclude group: 'ch.qos.logback'
     }
 
     api project(':cruise-control-metrics-reporter')
@@ -447,7 +461,6 @@ project(':cruise-control-metrics-reporter') {
     configurations.all {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
-      exclude group: 'ch.qos.logback'
     }
 
     implementation "org.slf4j:slf4j-api:1.7.36"
