@@ -293,8 +293,8 @@ project(':cruise-control') {
     implementation 'io.swagger.parser.v3:swagger-parser-v3:2.1.16'
     implementation 'io.github.classgraph:classgraph:4.8.141'
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
-    // Temporary pin for vulnerability
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.4'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.18.4'
     api "io.vertx:vertx-web-openapi:${vertxVersion}"
     api "io.vertx:vertx-core:${vertxVersion}"
     api "io.vertx:vertx-web:${vertxVersion}"
@@ -448,8 +448,8 @@ project(':cruise-control-metrics-reporter') {
     implementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     implementation "org.apache.kafka:kafka-clients:$kafkaVersion"
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
-    // Temporary pin for vulnerability
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.4'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.18.4'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
