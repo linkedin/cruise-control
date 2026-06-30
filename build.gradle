@@ -332,7 +332,7 @@ project(':cruise-control') {
     testImplementation 'org.easymock:easymock:5.5.0'
     testImplementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-    testImplementation 'commons-io:commons-io:2.14.0'
+    testImplementation 'commons-io:commons-io:2.22.0'
     testImplementation 'org.apache.httpcomponents:httpclient:4.5.13:tests'
     testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
     testImplementation 'org.apache.kerby:kerb-simplekdc:2.1.0'
@@ -483,7 +483,7 @@ project(':cruise-control-metrics-reporter') {
     testImplementation "org.apache.kafka:kafka-metadata:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-raft:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-storage:$kafkaVersion"
-    testImplementation 'commons-io:commons-io:2.14.0'
+    testImplementation 'commons-io:commons-io:2.22.0'
     testImplementation "org.testcontainers:kafka:$testcontainersVersion"
     testOutput sourceSets.test.output
   }
