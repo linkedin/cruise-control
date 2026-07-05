@@ -235,6 +235,7 @@ public class KafkaCruiseControlServletEndpointTest {
     List<UserTaskManager.UserTaskInfo> result5 = userTaskState2.prepareResultList(parameters5);
     // Test Case 5 result
     Assert.assertEquals(1, result5.size());
+    EasyMock.verify(MOCK_UUID_GENERATOR, MOCK_HTTP_SESSION, MOCK_HTTP_SERVLET_RESPONSE);
     EasyMock.reset(MOCK_UUID_GENERATOR, MOCK_HTTP_SESSION, MOCK_HTTP_SERVLET_RESPONSE);
 
   }
