@@ -503,6 +503,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     )));
 
     // Case 2: queue a single result and call checkConfigs with matching configs, so it succeeds
+    EasyMock.verify(mockAdminClient);
     EasyMock.reset(mockAdminClient);
     expectDescribeTopicConfigs(mockAdminClient, TOPIC0, EMPTY_CONFIG, true);
     EasyMock.replay(mockAdminClient);
