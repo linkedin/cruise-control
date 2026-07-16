@@ -23,7 +23,7 @@ Fill in **every section** of the template meaningfully — do not leave placehol
 
 ### Link to an Existing Issue
 
-Every PR **must** be linked to an existing issue if there's one. Replace the placeholder at the bottom of the
+Every PR **must** be linked to an existing issue(if there's pre-existing one). Replace the issue placeholder
 template:
 
 ```
@@ -36,7 +36,7 @@ with the actual issue number, for example:
 This PR resolves #42.
 ```
 
-If no issue exists yet, the reference must be removed.
+If no issue exists, please remove the issue placeholder.
 
 ## Contribution Guidelines Summary
 
