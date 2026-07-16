@@ -9,6 +9,10 @@ servers:
       urlPrefix:
         default: kafkacruisecontrol
         description: REST API default url prefix, configured by webserver.api.urlprefix
+# All endpoints require authentication by default when webserver.security.enable=true.
+# Operations that are intentionally public may override this with `security: []`.
+security:
+  - basicAuth: []
 paths:
   /add_broker:
     $ref: 'endpoints/addBroker.yaml#/AddBrokerEndpoint'
@@ -56,3 +60,14 @@ paths:
     $ref: 'endpoints/userTasks.yaml#/UserTasksEndpoint'
   /remove_disks:
     $ref: 'endpoints/removeDisks.yaml#/RemoveDisksEndpoint'
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: HTTP Basic authentication. Enable via webserver.security.enable=true and configure credentials with webserver.auth.credentials.file in cruisecontrol.properties.
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer authentication. Enable via webserver.security.enable=true and webserver.security.provider=com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtSecurityProvider.
