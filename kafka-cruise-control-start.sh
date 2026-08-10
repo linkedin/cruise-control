@@ -61,6 +61,15 @@ else
 fi
 shopt -u nullglob
 
+# Backward compatibility for deprecated KAFKA_* env vars (remove after migration)
+: "${JMX_OPTS:=${KAFKA_JMX_OPTS:-}}"
+: "${LOG4J_OPTS:=${KAFKA_LOG4J_OPTS:-}}"
+: "${JVM_OPTS:=${KAFKA_OPTS:-}}"
+: "${HEAP_OPTS:=${KAFKA_HEAP_OPTS:-}}"
+: "${JVM_PERFORMANCE_OPTS:=${KAFKA_JVM_PERFORMANCE_OPTS:-}}"
+: "${GC_LOG_OPTS:=${KAFKA_GC_LOG_OPTS:-}}"
+: "${DEBUG:=${KAFKA_DEBUG:-}}"
+
 # JMX settings
 if [ -z "$JMX_OPTS" ]; then
   JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false  -Dcom.sun.management.jmxremote.ssl=false "
