@@ -35,6 +35,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DEFAULT_C
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeIncreasePartitionCount;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeUpdateTopicConfig;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.wrapTopic;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.convertMSKPrivateLinkHostToBrokerHost;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -108,5 +109,24 @@ public class SamplingUtilsTest {
 
     EasyMock.verify(adminClient, describeTopicsResult, topicDescriptionFuture, topicDescription, createPartitionsResult);
     assertEquals(KafkaCruiseControlUtils.CompletionType.COMPLETED, increasePartitionCount);
+  }
+
+  @Test
+  public void testConvertMSKPrivateLinkHostToBrokerHost() {
+    Node sharedPrivateLinkNode = new Node(1, "b-all.dataplatformkafka.i1ndju.c12.kafka.us-east-1.amazonaws.com", 6001);
+    assertEquals("b-1.dataplatformkafka.i1ndju.c12.kafka.us-east-1.amazonaws.com",
+        convertMSKPrivateLinkHostToBrokerHost(sharedPrivateLinkNode));
+
+    Node alreadyConvertedNode = new Node(1, "b-1.dataplatformkafka.i1ndju.c12.kafka.us-east-1.amazonaws.com", 6001);
+    assertEquals("b-1.dataplatformkafka.i1ndju.c12.kafka.us-east-1.amazonaws.com",
+        convertMSKPrivateLinkHostToBrokerHost(alreadyConvertedNode));
+  }
+
+  @Test
+  public void testConvertMSKPrivateLinkHostToBrokerHostWithUnknownHostPlaceholder() {
+    // Dead/removed brokers created via ClusterModel#handleDeadBroker use a "UNKNOWN_HOST-<n>" placeholder host,
+    // which has no domain suffix. The conversion must leave such hosts unchanged instead of throwing.
+    Node unknownHostNode = new Node(0, "UNKNOWN_HOST-0", -1);
+    assertEquals("UNKNOWN_HOST-0", convertMSKPrivateLinkHostToBrokerHost(unknownHostNode));
   }
 }

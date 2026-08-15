@@ -365,9 +365,14 @@ public final class SamplingUtils {
   }
 
   private static String _convertMSKPrivateLinkHostToBrokerHost(String privatelinkHost, int brokerId) {
+    final int dotIndex = privatelinkHost.indexOf(".");
+    if (dotIndex < 0) {
+      // Host has no domain suffix to graft the broker-specific prefix onto (e.g. the "UNKNOWN_HOST-<n>"
+      // placeholder ClusterModel#handleDeadBroker uses for dead/removed brokers). Leave it unchanged.
+      return privatelinkHost;
+    }
     final String expectedHostPrefix = "b-" + brokerId;
-    final String host = privatelinkHost.indexOf(expectedHostPrefix) != 0 ?
-         expectedHostPrefix + privatelinkHost.substring(privatelinkHost.indexOf(".")) : privatelinkHost;
-    return host;
+    return privatelinkHost.indexOf(expectedHostPrefix) != 0 ?
+         expectedHostPrefix + privatelinkHost.substring(dotIndex) : privatelinkHost;
   }
 }
