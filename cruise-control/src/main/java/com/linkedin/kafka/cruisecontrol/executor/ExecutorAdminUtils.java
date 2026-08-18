@@ -46,6 +46,25 @@ public final class ExecutorAdminUtils {
   static Map<ExecutionTask, ReplicaLogDirInfo> getLogdirInfoForExecutionTask(Collection<ExecutionTask> tasks,
                                                                              AdminClient adminClient,
                                                                              KafkaCruiseControlConfig config) {
+    return getLogdirInfoForExecutionTask(tasks, adminClient, config, null);
+  }
+
+  /**
+   * Fetch the logdir information for subject replicas in intra-broker replica movement tasks.
+   * Optionally populates a set of tasks that had non-retriable failures (e.g. disk/replica genuinely unavailable).
+   *
+   * @param tasks The tasks to check.
+   * @param adminClient The adminClient to send describeReplicaLogDirs request.
+   * @param config The config object that holds all the Cruise Control related configs.
+   * @param nonRetriableFailures If non-null, populated with tasks whose logdir query failed with a non-retriable error
+   *                             (e.g. {@link ReplicaNotAvailableException}, {@link LogDirNotFoundException},
+   *                             {@link KafkaStorageException}), indicating the disk/replica is genuinely unavailable.
+   * @return Replica logdir information by task.
+   */
+  static Map<ExecutionTask, ReplicaLogDirInfo> getLogdirInfoForExecutionTask(Collection<ExecutionTask> tasks,
+                                                                             AdminClient adminClient,
+                                                                             KafkaCruiseControlConfig config,
+                                                                             Set<ExecutionTask> nonRetriableFailures) {
     Set<TopicPartitionReplica> replicasToCheck = new HashSet<>();
     Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask = new HashMap<>();
     Map<TopicPartitionReplica, ExecutionTask> taskByReplica = new HashMap<>();
@@ -59,11 +78,29 @@ public final class ExecutorAdminUtils {
       try {
         ReplicaLogDirInfo info = entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
         logdirInfoByTask.put(taskByReplica.get(entry.getKey()), info);
-      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      } catch (ExecutionException e) {
+        LOG.warn("Encounter exception {} when fetching logdir information for replica {}", e.getMessage(), entry.getKey());
+        if (nonRetriableFailures != null && isNonRetriableLogDirError(e)) {
+          nonRetriableFailures.add(taskByReplica.get(entry.getKey()));
+        }
+      } catch (InterruptedException | TimeoutException e) {
         LOG.warn("Encounter exception {} when fetching logdir information for replica {}", e.getMessage(), entry.getKey());
       }
     }
     return logdirInfoByTask;
+  }
+
+  /**
+   * Checks if an ExecutionException wraps a non-retriable logdir/replica error.
+   *
+   * @param e The execution exception to inspect.
+   * @return {@code true} if the cause is a non-retriable disk/replica error, {@code false} otherwise.
+   */
+  private static boolean isNonRetriableLogDirError(ExecutionException e) {
+    Throwable cause = e.getCause();
+    return cause instanceof ReplicaNotAvailableException
+        || cause instanceof LogDirNotFoundException
+        || cause instanceof KafkaStorageException;
   }
 
   /**

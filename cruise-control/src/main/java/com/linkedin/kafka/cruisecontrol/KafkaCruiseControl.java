@@ -348,6 +348,25 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Get the cluster model cutting off at the current timestamp with replica placement info.
+   * @param requirements the model completeness requirements.
+   * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
+   * @param operationProgress the progress of the job to report.
+   * @param populateReplicaPlacementInfo whether populate replica placement information.
+   * @return The cluster workload model.
+   * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
+   * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
+   */
+  public ClusterModel clusterModel(ModelCompletenessRequirements requirements,
+                                   boolean allowCapacityEstimation,
+                                   OperationProgress operationProgress,
+                                   boolean populateReplicaPlacementInfo)
+          throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
+    return _loadMonitor.clusterModel(timeMs(), requirements, populateReplicaPlacementInfo, allowCapacityEstimation, operationProgress);
+  }
+
+  /**
    * Get the cluster model for a given time window.
    * @param from the start time of the window
    * @param to the end time of the window
@@ -651,6 +670,8 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing proposals (if null, no throttling is applied).
+   * @param intraBrokerReplicationThrottle The intra-broker replication throttle (bytes/second) to apply during
+   *                                      log dir reassignment (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param skipInterBrokerReplicaConcurrencyAdjustment {@code true} to skip auto adjusting concurrency of inter-broker
@@ -667,6 +688,7 @@ public class KafkaCruiseControl {
                                Long executionProgressCheckIntervalMs,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                Long replicationThrottle,
+                               Long intraBrokerReplicationThrottle,
                                boolean isTriggeredByUserRequest,
                                String uuid,
                                boolean skipInterBrokerReplicaConcurrencyAdjustment) throws OngoingExecutionException {
@@ -674,7 +696,8 @@ public class KafkaCruiseControl {
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
                                  maxInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements, clusterConcurrentLeaderMovements,
                                  brokerConcurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
-                                 isTriggeredByUserRequest, uuid, isKafkaAssignerMode, skipInterBrokerReplicaConcurrencyAdjustment);
+                                 intraBrokerReplicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode,
+                                 skipInterBrokerReplicaConcurrencyAdjustment);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
@@ -684,7 +707,7 @@ public class KafkaCruiseControl {
    * Execute the given balancing proposals for remove operations.
    * @param proposals the given balancing proposals
    * @param throttleDecommissionedBroker Whether throttle the brokers that are being decommissioned.
-   * @param removedBrokers Brokers to be removed, null if no brokers has been removed.
+   * @param removedBrokers Brokers to be removed, null if no brokers have been removed.
    * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
@@ -721,7 +744,7 @@ public class KafkaCruiseControl {
                                  _loadMonitor, concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements, 0,
                                  clusterLeaderMovementConcurrency, brokerLeaderMovementConcurrency,
                                  executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
-                                 isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
+                                 null, isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }

@@ -26,6 +26,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.INTRA_BROKER_REPLICATION_THROTTLE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
@@ -70,6 +71,7 @@ public class RebalanceParameters extends ProposalsParameters {
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     validParameterNames.add(REPLICATION_THROTTLE_PARAM);
+    validParameterNames.add(INTRA_BROKER_REPLICATION_THROTTLE_PARAM);
     validParameterNames.add(REVIEW_ID_PARAM);
     validParameterNames.add(STOP_ONGOING_EXECUTION_PARAM);
     validParameterNames.addAll(ProposalsParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
@@ -85,6 +87,7 @@ public class RebalanceParameters extends ProposalsParameters {
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
+  protected Long _intraBrokerReplicationThrottle;
   protected Integer _reviewId;
   protected String _reason;
   protected boolean _stopOngoingExecution;
@@ -109,6 +112,7 @@ public class RebalanceParameters extends ProposalsParameters {
     _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_requestContext);
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _replicationThrottle = ParameterUtils.replicationThrottle(_requestContext, _config);
+    _intraBrokerReplicationThrottle = ParameterUtils.intraBrokerReplicationThrottle(_requestContext, _config, _replicationThrottle);
     _reviewId = ParameterUtils.reviewId(_requestContext, twoStepVerificationEnabled);
     _isRebalanceDiskMode = ParameterUtils.isRebalanceDiskMode(_requestContext);
     boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
@@ -166,6 +170,10 @@ public class RebalanceParameters extends ProposalsParameters {
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  public Long intraBrokerReplicationThrottle() {
+    return _intraBrokerReplicationThrottle;
   }
 
   public String reason() {

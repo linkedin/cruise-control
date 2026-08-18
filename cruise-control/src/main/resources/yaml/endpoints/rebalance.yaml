@@ -161,6 +161,13 @@ RebalanceEndpoint:
           type: integer
           format: int64
           minimum: 1
+      - name: intra_broker_replication_throttle
+        in: query
+        description: Upper bound on the bandwidth in bytes per second used to move replicas between disks within a broker (log dir reassignment). If not specified, defaults to default.intra.broker.replication.throttle config, then the replication_throttle value from this request, then default.replication.throttle config.
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
       - name: execution_progress_check_interval_ms
         in: query
         description: Execution progress check interval in milliseconds.

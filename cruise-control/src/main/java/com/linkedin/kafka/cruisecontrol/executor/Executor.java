@@ -801,6 +801,8 @@ public class Executor {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing a proposal (if null, no throttling is applied).
+   * @param intraBrokerReplicationThrottle The intra-broker replication throttle (bytes/second) to apply during
+   *                                      log dir reassignment (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
@@ -819,6 +821,7 @@ public class Executor {
                                             Long requestedExecutionProgressCheckIntervalMs,
                                             ReplicaMovementStrategy replicaMovementStrategy,
                                             Long replicationThrottle,
+                                            Long intraBrokerReplicationThrottle,
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
                                             boolean isKafkaAssignerMode,
@@ -831,7 +834,7 @@ public class Executor {
                             requestedIntraBrokerPartitionMovementConcurrency, requestedClusterLeadershipMovementConcurrency,
                             requestedBrokerLeadershipMovementConcurrency, requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy,
                             isTriggeredByUserRequest, loadMonitor);
-      startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
+      startExecution(loadMonitor, null, removedBrokers, replicationThrottle, intraBrokerReplicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       if (e instanceof OngoingExecutionException) {
         LOG.info("User task {}: Broker removal operation aborted due to ongoing execution", uuid);
@@ -924,7 +927,7 @@ public class Executor {
       initProposalExecution(proposals, demotedBrokers, concurrentSwaps, null, 0,
                             requestedClusterLeadershipMovementConcurrency, requestedBrokerLeadershipMovementConcurrency,
                             requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
-      startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
+      startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, null, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
       throw e;
@@ -1005,12 +1008,15 @@ public class Executor {
    * @param removedBrokers Brokers to be removed, null if no broker has been removed.
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            while moving partitions (if null, no throttling is applied).
+   * @param intraBrokerReplicationThrottle The intra-broker replication throttle (bytes/second) to apply during
+   *                                      log dir reassignment (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    */
   private void startExecution(LoadMonitor loadMonitor,
                               Collection<Integer> demotedBrokers,
                               Collection<Integer> removedBrokers,
                               Long replicationThrottle,
+                              Long intraBrokerReplicationThrottle,
                               boolean isTriggeredByUserRequest) throws OngoingExecutionException {
     _executionStoppedByUser.set(false);
     sanityCheckOngoingMovement();
@@ -1046,7 +1052,8 @@ public class Executor {
       _numExecutionStartedInNonKafkaAssignerMode.incrementAndGet();
     }
     _proposalExecutor.execute(
-        new ProposalExecutionRunnable(loadMonitor, demotedBrokers, removedBrokers, replicationThrottle, isTriggeredByUserRequest));
+        new ProposalExecutionRunnable(loadMonitor, demotedBrokers, removedBrokers, replicationThrottle,
+            intraBrokerReplicationThrottle, isTriggeredByUserRequest));
   }
 
   /**
@@ -1300,6 +1307,7 @@ public class Executor {
     private final Set<Integer> _recentlyDemotedBrokers;
     private final Set<Integer> _recentlyRemovedBrokers;
     private final Long _replicationThrottle;
+    private final Long _intraBrokerReplicationThrottle;
     private Throwable _executionException;
     private final boolean _isTriggeredByUserRequest;
     private long _lastSlowTaskReportingTimeMs;
@@ -1314,6 +1322,7 @@ public class Executor {
                               Collection<Integer> demotedBrokers,
                               Collection<Integer> removedBrokers,
                               Long replicationThrottle,
+                              Long intraBrokerReplicationThrottle,
                               boolean isTriggeredByUserRequest) {
       _loadMonitor = loadMonitor;
       _demotedBrokers = demotedBrokers;
@@ -1349,6 +1358,7 @@ public class Executor {
       _recentlyDemotedBrokers = recentlyDemotedBrokers();
       _recentlyRemovedBrokers = recentlyRemovedBrokers();
       _replicationThrottle = replicationThrottle;
+      _intraBrokerReplicationThrottle = intraBrokerReplicationThrottle;
       _isTriggeredByUserRequest = isTriggeredByUserRequest;
       _lastSlowTaskReportingTimeMs = -1L;
       if (_removedBrokers != null && !_removedBrokers.isEmpty()) {
@@ -1676,63 +1686,99 @@ public class Executor {
       }
     }
 
-    private void intraBrokerMoveReplicas() {
+    private void intraBrokerMoveReplicas() throws ExecutionException, InterruptedException, TimeoutException {
+      IntraBrokerReplicationThrottleHelper throttleHelper =
+          new IntraBrokerReplicationThrottleHelper(_adminClient, _intraBrokerReplicationThrottle);
       int numTotalPartitionMovements = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingIntraBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
       LOG.info("User task {}: Starting {} intra-broker partition movements.", _uuid, numTotalPartitionMovements);
 
-      int partitionsToMove = numTotalPartitionMovements;
-      // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
-        // Get tasks to execute.
-        List<ExecutionTask> tasksToExecute = _executionTaskManager.getIntraBrokerReplicaMovementTasks();
-        LOG.info("User task {}: Executor will execute {} task(s)", _uuid, tasksToExecute.size());
+      try {
+        int partitionsToMove = numTotalPartitionMovements;
+        // Exhaust all the pending partition movements.
+        while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
+          // Get tasks to execute.
+          List<ExecutionTask> tasksToExecute = _executionTaskManager.getIntraBrokerReplicaMovementTasks();
+          LOG.info("User task {}: Executor will execute {} task(s)", _uuid, tasksToExecute.size());
 
-        if (!tasksToExecute.isEmpty()) {
-          // Execute the tasks.
-          _executionTaskManager.markTasksInProgress(tasksToExecute);
-          executeIntraBrokerReplicaMovements(tasksToExecute, _adminClient, _executionTaskManager, _config);
+          if (!tasksToExecute.isEmpty()) {
+            throttleHelper.setThrottles(tasksToExecute);
+            // Execute the tasks.
+            _executionTaskManager.markTasksInProgress(tasksToExecute);
+            executeIntraBrokerReplicaMovements(tasksToExecute, _adminClient, _executionTaskManager, _config);
+          }
+          // Wait indefinitely for partition movements to finish.
+          List<ExecutionTask> completedTasks = waitForIntraBrokerReplicaTasksToFinish();
+          partitionsToMove = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
+          int numFinishedPartitionMovements = _executionTaskManager.numFinishedIntraBrokerPartitionMovements();
+          long finishedDataToMoveInMB = _executionTaskManager.finishedIntraBrokerDataToMoveInMB();
+          updatePartitionMovementMetrics(numFinishedPartitionMovements, finishedDataToMoveInMB, System.currentTimeMillis() - startTime);
+          LOG.info("User task {}: {}/{} ({}%) intra-broker partition movements completed. {}/{} ({}%) MB have been moved.",
+                   _uuid,
+                   numFinishedPartitionMovements, numTotalPartitionMovements,
+                   String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
+                   finishedDataToMoveInMB, totalDataToMoveInMB,
+                   totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataToMoveInMB * UNIT_INTERVAL_TO_PERCENTAGE
+                                                                          / totalDataToMoveInMB));
+          List<ExecutionTask> inProgressTasks = new ArrayList<>(inExecutionTasks());
+          try {
+            throttleHelper.clearThrottles(completedTasks, inProgressTasks);
+          } catch (ExecutionException | InterruptedException | TimeoutException | IllegalStateException e) {
+            LOG.warn("User task {}: Failed to clear intra-broker replication throttle for completed tasks on brokers {}. "
+                     + "Throttle will be removed during final cleanup.",
+                     _uuid, completedTasks.stream().map(ExecutionTask::brokerId).collect(Collectors.toSet()), e);
+          }
         }
-        // Wait indefinitely for partition movements to finish.
-        waitForIntraBrokerReplicaTasksToFinish();
-        partitionsToMove = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
-        int numFinishedPartitionMovements = _executionTaskManager.numFinishedIntraBrokerPartitionMovements();
-        long finishedDataToMoveInMB = _executionTaskManager.finishedIntraBrokerDataToMoveInMB();
-        updatePartitionMovementMetrics(numFinishedPartitionMovements, finishedDataToMoveInMB, System.currentTimeMillis() - startTime);
-        LOG.info("User task {}: {}/{} ({}%) intra-broker partition movements completed. {}/{} ({}%) MB have been moved.",
-                 _uuid,
-                 numFinishedPartitionMovements, numTotalPartitionMovements,
-                 String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
-                 finishedDataToMoveInMB, totalDataToMoveInMB,
-                 totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataToMoveInMB * UNIT_INTERVAL_TO_PERCENTAGE
-                                                                        / totalDataToMoveInMB));
-      }
-      Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
-      while (!inExecutionTasks.isEmpty()) {
-        LOG.info("User task {}: Waiting for {} tasks moving {} MB to finish", _uuid, inExecutionTasks.size(),
-                 _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
-        waitForIntraBrokerReplicaTasksToFinish();
-        inExecutionTasks = inExecutionTasks();
-      }
-      if (inExecutionTasks().isEmpty()) {
-        LOG.info("User task {}: Intra-broker partition movements finished.", _uuid);
-      } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
-        ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
-        Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
-        LOG.info("User task {}: Intra-broker partition movements stopped. For intra-broker partition movements {} tasks cancelled, "
-                 + "{} tasks in-progress, "
-                 + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for leadership "
-                 + "movements {} tasks cancelled.",
-                 _uuid,
-                 partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
-                 partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
-                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
-                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTED),
-                 partitionMovementTasksByState.get(ExecutionTaskState.DEAD),
-                 partitionMovementTasksByState.get(ExecutionTaskState.COMPLETED),
-                 executionTasksSummary.remainingIntraBrokerDataToMoveInMB(),
-                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
+        Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
+        if (!inExecutionTasks.isEmpty() && _stopSignal.get() != NO_STOP_EXECUTION) {
+          LOG.info("User task {}: Stop requested. In-progress moves cannot be stopped by Cruise Control and will "
+                   + "continue on the brokers until completion. Waiting for {} in-progress intra-broker disk move(s) "
+                   + "to complete before removing throttle.", _uuid, inExecutionTasks.size());
+        }
+        while (!inExecutionTasks.isEmpty()) {
+          LOG.info("User task {}: Waiting for {} tasks moving {} MB to finish", _uuid, inExecutionTasks.size(),
+                   _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
+          List<ExecutionTask> completedTasks = waitForIntraBrokerReplicaTasksToFinish();
+          inExecutionTasks = inExecutionTasks();
+          try {
+            throttleHelper.clearThrottles(completedTasks, new ArrayList<>(inExecutionTasks));
+          } catch (ExecutionException | InterruptedException | TimeoutException | IllegalStateException e) {
+            LOG.warn("User task {}: Failed to clear intra-broker replication throttle during stop-wait. "
+                     + "Throttle will be removed during final cleanup.", _uuid, e);
+          }
+        }
+        if (_stopSignal.get() == NO_STOP_EXECUTION) {
+          LOG.info("User task {}: Intra-broker partition movements finished.", _uuid);
+        } else {
+          ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
+          Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
+          LOG.info("User task {}: Intra-broker partition movements stopped. "
+                   + "For intra-broker partition movements {} tasks cancelled, "
+                   + "{} tasks in-progress, "
+                   + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for leadership "
+                   + "movements {} tasks cancelled.",
+                   _uuid,
+                   partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
+                   partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
+                   partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
+                   partitionMovementTasksByState.get(ExecutionTaskState.ABORTED),
+                   partitionMovementTasksByState.get(ExecutionTaskState.DEAD),
+                   partitionMovementTasksByState.get(ExecutionTaskState.COMPLETED),
+                   executionTasksSummary.remainingIntraBrokerDataToMoveInMB(),
+                   executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
+        }
+      } finally {
+        try {
+          throttleHelper.clearAllThrottles();
+        } catch (ExecutionException | InterruptedException | TimeoutException | IllegalStateException e) {
+          LOG.error("User task {}: Failed to clear intra-broker replication throttles during cleanup. "
+                    + "Broker config {} may remain active on participating brokers and require manual removal.",
+                    _uuid, IntraBrokerReplicationThrottleHelper.REPLICA_ALTER_LOG_DIRS_IO_MAX_BYTES_PER_SECOND_CONFIG, e);
+          if (_executionException == null) {
+            _executionException = e;
+          }
+        }
       }
     }
 
@@ -1973,8 +2019,10 @@ public class Executor {
 
     /**
      * Periodically checks the metadata to see if intra-broker replica reassignment has finished or not.
+     *
+     * @return The list of completed intra-broker replica movement tasks.
      */
-    private void waitForIntraBrokerReplicaTasksToFinish() {
+    private List<ExecutionTask> waitForIntraBrokerReplicaTasksToFinish() {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
       Set<Long> deletedTaskIds = new HashSet<>();
       Set<Long> deadTaskIds = new HashSet<>();
@@ -1982,9 +2030,10 @@ public class Executor {
         // If there is no finished tasks, we need to check if anything is blocked.
         maybeReexecuteIntraBrokerReplicaTasks();
         Cluster cluster = getClusterForExecutionProgressCheck();
+        Set<ExecutionTask> nonRetriableFailures = new HashSet<>();
         Map<ExecutionTask, ReplicaLogDirInfo> logDirInfoByTask = getLogdirInfoForExecutionTask(
             _executionTaskManager.inExecutionTasks(Collections.singleton(INTRA_BROKER_REPLICA_ACTION)),
-            _adminClient, _config);
+            _adminClient, _config, nonRetriableFailures);
 
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
@@ -1998,7 +2047,7 @@ public class Executor {
             if (shouldReportSlowTasks) {
               task.maybeReportExecutionTooSlow(_time.milliseconds(), slowTasksToReport);
             }
-            if (maybeMarkTaskAsDead(cluster, logDirInfoByTask, task, null)) {
+            if (maybeMarkTaskAsDead(cluster, logDirInfoByTask, task, null, nonRetriableFailures)) {
               deadTaskIds.add(task.executionId());
               finishedTasks.add(task);
             }
@@ -2011,6 +2060,7 @@ public class Executor {
       LOG.info("User task {}: Finished tasks: {}.{}{}", _uuid, finishedTasks,
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
+      return finishedTasks;
     }
 
     /**
@@ -2115,6 +2165,14 @@ public class Executor {
                                         Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask,
                                         ExecutionTask task,
                                         Set<TopicPartition> deadInterBrokerReassignments) {
+      return maybeMarkTaskAsDead(cluster, logdirInfoByTask, task, deadInterBrokerReassignments, null);
+    }
+
+    private boolean maybeMarkTaskAsDead(Cluster cluster,
+                                        Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask,
+                                        ExecutionTask task,
+                                        Set<TopicPartition> deadInterBrokerReassignments,
+                                        Set<ExecutionTask> nonRetriableLogdirFailures) {
       // Only check tasks with IN_PROGRESS or ABORTING state.
       if (task.state() == ExecutionTaskState.IN_PROGRESS || task.state() == ExecutionTaskState.ABORTING) {
         switch (task.type()) {
@@ -2144,9 +2202,23 @@ public class Executor {
 
           case INTRA_BROKER_REPLICA_ACTION:
             if (!logdirInfoByTask.containsKey(task)) {
-              _executionTaskManager.markTaskDead(task);
-              LOG.warn("User task {}: Killing execution for task {} because the destination disk is down.", _uuid, task);
-              return true;
+              boolean isNonRetriable = nonRetriableLogdirFailures != null && nonRetriableLogdirFailures.contains(task);
+              if (isNonRetriable) {
+                // Positive evidence of disk/replica failure - mark dead regardless of stop signal.
+                _executionTaskManager.markTaskDead(task);
+                LOG.warn("User task {}: Killing execution for task {} because the destination disk is down "
+                    + "(non-retriable logdir error).", _uuid, task);
+                return true;
+              } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
+                // During stop-wait, absence from logdir map with no non-retriable error is likely a
+                // transient query failure. Leave in-progress so the poll loop keeps checking.
+                LOG.debug("User task {}: Logdir info unavailable for task {} during stop-wait (transient). "
+                    + "Leaving in-progress to avoid premature throttle removal.", _uuid, task);
+              } else {
+                _executionTaskManager.markTaskDead(task);
+                LOG.warn("User task {}: Killing execution for task {} because the destination disk is down.", _uuid, task);
+                return true;
+              }
             }
             break;
 
@@ -2194,20 +2266,55 @@ public class Executor {
     /**
      * Identifies if there is a need for re-execution, if so, ensures re-execution of intra-broker replica reassignments
      * -- e.g. in case there is a controller failover.
+     *
+     * If stop is signalled, tasks that are no longer in progress (cancelled externally) are marked dead instead of
+     * being re-executed, to allow the execution to terminate.
      */
     private void maybeReexecuteIntraBrokerReplicaTasks() {
       List<ExecutionTask> intraBrokerReplicaTasksToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(INTRA_BROKER_REPLICA_ACTION)));
-      getLogdirInfoForExecutionTask(intraBrokerReplicaTasksToReexecute, _adminClient, _config).forEach((k, v) -> {
+      Map<ExecutionTask, ReplicaLogDirInfo> logDirInfo =
+          getLogdirInfoForExecutionTask(intraBrokerReplicaTasksToReexecute, _adminClient, _config);
+      // Tasks with positive evidence of completion or in-progress do not need re-execution.
+      logDirInfo.forEach((k, v) -> {
         String targetLogdir = k.proposal().replicasToMoveBetweenDisksByBroker().get(k.brokerId()).logdir();
-        // If task is completed or in-progress, do not reexecute the task.
         if (targetLogdir.equals(v.getCurrentReplicaLogDir()) || targetLogdir.equals(v.getFutureReplicaLogDir())) {
           intraBrokerReplicaTasksToReexecute.remove(k);
         }
       });
       if (!intraBrokerReplicaTasksToReexecute.isEmpty()) {
-        LOG.info("User task {}: Reexecuting tasks {}", _uuid, intraBrokerReplicaTasksToReexecute);
-        executeIntraBrokerReplicaMovements(intraBrokerReplicaTasksToReexecute, _adminClient, _executionTaskManager, _config);
+        if (_stopSignal.get() != NO_STOP_EXECUTION) {
+          // Only mark tasks dead if we have positive evidence they are cancelled (logdir info was
+          // successfully retrieved but shows no current/future match). Tasks for which logdir info
+          // could not be retrieved (transient errors) are left in-progress so the outer loop keeps
+          // polling until their state can be determined.
+          List<ExecutionTask> confirmedCancelled = new ArrayList<>();
+          List<ExecutionTask> unknownState = new ArrayList<>();
+          for (ExecutionTask task : intraBrokerReplicaTasksToReexecute) {
+            if (logDirInfo.containsKey(task)) {
+              confirmedCancelled.add(task);
+            } else {
+              unknownState.add(task);
+            }
+          }
+          if (!confirmedCancelled.isEmpty()) {
+            LOG.info("User task {}: Stop requested. Marking {} cancelled intra-broker task(s) on brokers {} as dead.",
+                     _uuid, confirmedCancelled.size(),
+                     confirmedCancelled.stream().map(ExecutionTask::brokerId).collect(Collectors.toSet()));
+            LOG.debug("User task {}: Confirmed cancelled tasks: {}", _uuid, confirmedCancelled);
+            confirmedCancelled.forEach(_executionTaskManager::markTaskDead);
+          }
+          if (!unknownState.isEmpty()) {
+            LOG.info("User task {}: Stop requested but could not determine state of {} intra-broker task(s) "
+                     + "on brokers {} (logdir query failed). Leaving in-progress for continued polling.",
+                     _uuid, unknownState.size(),
+                     unknownState.stream().map(ExecutionTask::brokerId).collect(Collectors.toSet()));
+            LOG.debug("User task {}: Unknown state tasks: {}", _uuid, unknownState);
+          }
+        } else {
+          LOG.info("User task {}: Reexecuting tasks {}", _uuid, intraBrokerReplicaTasksToReexecute);
+          executeIntraBrokerReplicaMovements(intraBrokerReplicaTasksToReexecute, _adminClient, _executionTaskManager, _config);
+        }
       }
     }
 

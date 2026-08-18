@@ -209,7 +209,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, _concurrentInterBrokerPartitionMovements,
           _maxInterBrokerPartitionMovements,
           0, _clusterLeaderMovementConcurrency, _brokerLeaderMovementConcurrency,
-          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid,
+          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, null, _isTriggeredByUserRequest, _uuid,
           SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
