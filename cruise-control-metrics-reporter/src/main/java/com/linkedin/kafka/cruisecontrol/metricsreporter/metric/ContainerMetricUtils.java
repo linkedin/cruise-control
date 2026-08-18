@@ -63,12 +63,13 @@ public final class ContainerMetricUtils {
   }
 
   private static String readInputStream(InputStream in) throws IOException {
-    BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-    String stream = br.readLine();
-    if (stream != null) {
-      return stream;
-    } else {
-      throw new IllegalArgumentException("Nothing was read from stream " + in);
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+      String stream = br.readLine();
+      if (stream != null) {
+        return stream;
+      } else {
+        throw new IllegalArgumentException("Nothing was read from stream " + in);
+      }
     }
   }
 
