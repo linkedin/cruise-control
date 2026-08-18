@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -50,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
-  private static final int NUM_OF_BROKERS = 2;
+  private static final int NUM_OF_BROKERS = 3;
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
   protected static final String HOST = "127.0.0.1";
   protected CCContainerizedKraftCluster _cluster;
@@ -113,6 +112,11 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     props.setProperty("offsets.topic.replication.factor", "1");
     props.setProperty("default.replication.factor", "2");
     return props;
+  }
+
+  @Override
+  protected int clusterSize() {
+    return NUM_OF_BROKERS;
   }
 
   @Test
@@ -201,7 +205,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   }
 
   @Test
-  public void testUpdatingMetricsTopicConfig() throws InterruptedException, TimeoutException {
+  public void testUpdatingMetricsTopicConfig() {
     TopicDescription topicDescription = _cluster.waitForTopicMetadata(TOPIC, Duration.ofSeconds(30), td -> true);
     assertEquals(1, topicDescription.partitions().size());
 

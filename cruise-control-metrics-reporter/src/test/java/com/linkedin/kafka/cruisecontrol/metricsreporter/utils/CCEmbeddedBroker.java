@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaRaftServer.CLUSTER_ID_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.KafkaServerConfigs.METADATA_LOG_DIR_CONFIG;
 
 public class CCEmbeddedBroker implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(CCEmbeddedBroker.class);
@@ -60,7 +61,7 @@ public class CCEmbeddedBroker implements AutoCloseable {
   private void parseConfigs(Map<Object, Object> config) {
     readLogDirs(config);
     _id = Integer.parseInt((String) config.get(KRaftConfigs.NODE_ID_CONFIG));
-    _metadataLogDir = new File((String) config.get(KRaftConfigs.METADATA_LOG_DIR_CONFIG));
+    _metadataLogDir = new File((String) config.get(METADATA_LOG_DIR_CONFIG));
 
     // Bind addresses
     String listenersString = (String) config.get(SocketServerConfigs.LISTENERS_CONFIG);
