@@ -44,6 +44,22 @@ have the right to bind your employer). By submitting code, you (and, if
 applicable, your employer) are licensing the submitted code to
 the open source community subject to the Apache 2.0 license. 
 
+
+File Headers
+=============
+
+New files should include the following header:
+
+```
+/*
+ * Copyright Cruise Control for Kafka contributors
+ * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
+ */
+```
+
+Existing files with the original LinkedIn/BSD header should retain that header. (See [Charter, Section 7.a](CHARTER.md)
+
+
 Responsible Disclosure of Security Vulnerabilities
 ==================================================
 
