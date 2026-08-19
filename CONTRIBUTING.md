@@ -1,3 +1,40 @@
+Technical Steering Committee
+=============================
+
+The Technical Steering Committee (TSC) is responsible for technical oversight of the project.
+
+TSC Chair: **Viktor Somogyi-Vass** - @viktorsomogyi
+
+TSC members:
+
+  - **Adem Efe Gencer** - @efeg
+  - **Hao Geng** - @CCisGG
+  - **Nick Garvey** - @nickgarvey
+  - **Maryan Hratson** - @mhratson
+  - **Allen Wang** - @allenxwang
+  - **Tamas Barnabas Egyed** - @egyedt / @egytom
+  - **Chia-Ping Tsai** - @chia7712
+  - **Krit Petty** - @bgrishinko
+  - **Jiangjie (Becket) Qin** - @becketqin
+  - **Viktor Somogyi-Vass** - @viktorsomogyi
+  - **Omkhar Arasaratnam** - @omkhar
+  - **Kondrat Bertalan** - @k0b3rIT
+  - **Paolo Patierno** - @ppatierno
+  - **Mickael Maison** - @mimaison
+  - **Kyle Liberti** - @kyguy
+
+At this time, all TSC members are voting members.
+
+Maintainers
+============
+
+  - **Viktor Somogyi-Vass** - @viktorsomogyi
+  - **Maryan Hratson** - @mhratson
+  - **Krit Petty** - @bgrishinko
+
+Per Section 2.c of the Charter, maintainers are contributors who can commit to the repo, and
+are distinct from TSC voting members (though there can be overlap).
+
 Contribution Agreement
 ======================
 
@@ -21,12 +58,11 @@ existing and new unit tests.
 2. Bug fixes must include a test case demonstrating the error that it fixes.
 3. Open an issue first and seek advice for your change before submitting a PR. Large features which have never been 
 discussed are unlikely to be accepted.
-4. New contributors should create an account in CircleCI first before raising the PR. 
-5. Do not create a PR with "work-in-progress" (WIP) changes.
-6. Use clear and concise titles for submitted PRs and issues.
-7. Each PR should be linked to an existing issue corresponding to the PR 
+4. Do not create a PR with "work-in-progress" (WIP) changes.
+5. Use clear and concise titles for submitted PRs and issues.
+6. Each PR should be linked to an existing issue corresponding to the PR 
 (see [PR template](./.github/pull_request_template.md)), and PRs can be submitted directly when
 repository's PR template is filled out with the details.
-8. We strongly encourage the use of recommended code-style for the project 
+7. We strongly encourage the use of recommended code-style for the project 
 (see [code-style.xml](./docs/code-style.xml)).
-9. A pre-commit CheckStyle hook can be run by adding `./checkstyle/checkstyle-pre-commit` to your `.git/hooks/pre-commit` script.
+8. A pre-commit CheckStyle hook can be run by adding `./checkstyle/checkstyle-pre-commit` to your `.git/hooks/pre-commit` script.
