@@ -1,7 +1,9 @@
 Copyright 2017 LinkedIn Corporation
 All Rights Reserved.
 
-Licensed under the BSD 2-Clause License (the "License").
+Original code licensed under the BSD 2-Clause License.
+See linkedin-BSD-2-clause in licenses/ directory for license information.
+New contributions licensed under the Apache License, Version 2.0.
 See LICENSE in the project root for license information.
 
 This product includes Apache Kafka (http://kafka.apache.org)
