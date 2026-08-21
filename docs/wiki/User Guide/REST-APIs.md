@@ -526,7 +526,7 @@ Supported parameters are:
 | brokerid_and_logdirs      | list      | list of broker id and logdir pairs for disks to remove from the cluster                           | N/A                   | **no**    |
 | dryrun                    | boolean   | whether dry-run the request or not                                                                | true                  | yes       |
 | stop_ongoing_execution    | boolean   | whether to stop the ongoing execution (if any) and start executing the given request              | false                 | yes       |
-| reason                    | string    | reason for the request                                                                            | "No reason provided"  | yes       |
+| reason                    | string    | reason for the request; required for non-dry-run requests when `request.reason.required` is enabled               | "No reason provided" when not required | conditional |
 | json                      | boolean   | return in JSON format or not                                                                      | false                 | yes       |
 
 Note that `brokerid_and_logdirs` takes comma as delimiter between two broker id and logdir pairs — i.e. we assume a valid logdir name contains no comma. Each pair uses a hyphen (`-`) as the delimiter between broker id and logdir name (e.g. `101-/tmp/kafka-logs-1`).
