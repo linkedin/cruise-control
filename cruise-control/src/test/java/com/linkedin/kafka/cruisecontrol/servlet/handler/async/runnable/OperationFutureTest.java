@@ -20,6 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 
@@ -74,6 +75,19 @@ public class OperationFutureTest {
       assertTrue(ee.getMessage().contains("Operation 'testGetFailedAnnotatesMessageWithOperation' received exception."));
       assertTrue(ee.getMessage().contains("original failure"));
       assertEquals("original failure", ee.getCause().getMessage());
+    }
+  }
+
+  @Test
+  public void testGetCancelledAnnotatesMessageWithOperation() throws InterruptedException, ExecutionException {
+    OperationFuture future = new OperationFuture("testGetCancelledAnnotatesMessageWithOperation");
+    future.cancel(true);
+    try {
+      future.get();
+      fail("Expected CancellationException");
+    } catch (CancellationException ce) {
+      assertTrue(ce.getMessage().contains("Operation 'testGetCancelledAnnotatesMessageWithOperation' received exception."));
+      assertNull(ce.getCause());
     }
   }
 

@@ -56,7 +56,6 @@ public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
       throw annotated;
     } catch (CancellationException ce) {
       CancellationException annotated = new CancellationException(annotatedMessage(ce));
-      annotated.initCause(ce);
       annotated.setStackTrace(ce.getStackTrace());
       throw annotated;
     } catch (InterruptedException ie) {
