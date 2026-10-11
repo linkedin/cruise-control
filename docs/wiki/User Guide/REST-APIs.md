@@ -16,7 +16,7 @@
     * [Decommission a list of brokers from the Kafka cluster](#decommission-a-list-of-brokers-from-the-kafka-cluster)
     * [Fix offline replicas in Kafka cluster](#fix-offline-replicas-in-kafka-cluster)
     * [Demote a list of brokers from the Kafka cluster](#demote-a-list-of-brokers-from-the-kafka-cluster)
-    * [Remove disks from brokers](#remove-disks-from-brokers)
+    * [Remove disks from brokers in the Kafka cluster](#remove-disks-from-brokers-in-the-kafka-cluster)
     * [Stop the current proposal execution task](#stop-the-current-proposal-execution-task)
     * [Pause metrics load sampling](#pause-metrics-load-sampling)
     * [Resume metrics load sampling](#resume-metrics-load-sampling)
@@ -322,7 +322,7 @@ The post requests of Kafka Cruise Control REST API are operations that will have
 * [Decommission a list of brokers from the Kafka cluster](#decommission-a-list-of-brokers-from-the-kafka-cluster)
 * [Fix offline replicas in Kafka cluster](#fix-offline-replicas-in-kafka-cluster)
 * [Demote a list of brokers from the Kafka cluster](#demote-a-list-of-brokers-from-the-kafka-cluster)
-* [Remove disks from brokers](#remove-disks-from-brokers)
+* [Remove disks from brokers in the Kafka cluster](#remove-disks-from-brokers-in-the-kafka-cluster)
 * [Stop the current proposal execution task](#stop-the-current-proposal-execution-task)
 * [Pause metrics load sampling](#pause-metrics-load-sampling)
 * [Resume metrics load sampling](#resume-metrics-load-sampling)
@@ -524,17 +524,20 @@ Demoting a broker/disk is consist of tow steps.
 
 Set `skip_urp_demotion` to false will cancel outstanding operations if partitions stay under replicated; Set `exclude_follower_demotion` will skip operations on the partitions which only have follower replicas on the brokers/disks to be demoted. The purpose of the former is to prevent the URP recovery process from blocking the demotion execution, the latter ensures that the demotion operation is limited to leaders.
 
-### Remove disks from brokers
-The following POST request moves all the replicas on the given disks to the other disks of the same broker (requires JBOD
-Kafka deployment), so that the disks can be removed from the brokers.
+### Remove disks from brokers in the Kafka cluster
+The following POST request moves all replicas from the specified disks to the remaining disks on the same broker. This enables decommissioning individual disks in a JBOD Kafka deployment without removing the entire broker.
 
-    POST /kafkacruisecontrol/remove_disks?brokerid_and_logdirs=[id1-logdir1,id2-logdir2...]
+    POST /kafkacruisecontrol/remove_disks?brokerid_and_logdirs=[id1-logdir1,id1-logdir2...]
+
+For example, to remove two disks from broker `101`:
+
+    POST /kafkacruisecontrol/remove_disks?brokerid_and_logdirs=101-/tmp/kafka-logs-1,101-/tmp/kafka-logs-2&dryrun=false
 
 Supported parameters are:
 
 | PARAMETER                  | TYPE      | DESCRIPTION                                                                                  | DEFAULT               | OPTIONAL  |
 |----------------------------|-----------|----------------------------------------------------------------------------------------------|-----------------------|-----------|
-| brokerid_and_logdirs       | list      | list of broker id and logdir pairs of the disks to remove                                    | N/A                   | **no**    |
+| brokerid_and_logdirs       | list      | list of broker id and logdir pairs for disks to remove from the cluster                      | N/A                   | **no**    |
 | dryrun                     | boolean   | whether dry-run the request or not                                                           | true                  | yes       |
 | stop_ongoing_execution     | boolean   | whether to stop the ongoing execution (if any) and start executing the given request        | false                 | yes       |
 | allow_capacity_estimation  | boolean   | whether to allow broker capacity to be estimated                                             | true                  | yes       |
@@ -544,8 +547,16 @@ Supported parameters are:
 | get_response_schema        | boolean   | return JSON schema in response header or not                                                 | false                 | yes       |
 | doAs                       | string    | propagated user by the trusted proxy service                                                 | null                  | yes       |
 
-The request fails if no other disk is left on a broker, or if the remaining disks of a broker would exceed the disk
-capacity threshold (see `disk.capacity.threshold`) after receiving the replicas of the removed disks.
+Note that `brokerid_and_logdirs` takes comma as delimiter between two broker id and logdir pairs — i.e. we assume a valid logdir name contains no comma. Each pair uses a hyphen (`-`) as the delimiter between broker id and logdir name (e.g. `101-/tmp/kafka-logs-1`).
+
+Unlike most other optimization endpoints, `remove_disks` does not accept a `goals` parameter. Proposal generation always uses `IntraBrokerDiskCapacityGoal` with disk-emptying enabled, regardless of the `intra.broker.goals` or `default.goals` configuration. This goal generates intra-broker replica movement proposals to move all replicas off the specified disks while keeping each remaining disk under the configured capacity threshold.
+
+Before generating proposals, Cruise Control validates that:
+* Each specified logdir exists on the corresponding broker.
+* At least one logdir remains on each affected broker.
+* The remaining disk capacity on each affected broker is sufficient to absorb the load from the disks being removed (based on the configured disk capacity threshold, see `disk.capacity.threshold`).
+
+Replica movements are limited to disks within the same broker — there is no inter-broker replica movement. `stop_ongoing_execution` and `dryrun` cannot both be set to `true`.
 
 If `verbose` is set to `true`, the response also shows the proposed replica movements -- including the log directories
 that each replica moves between -- and the load before the disk removal. The load after the disk removal shows the
@@ -555,7 +566,7 @@ The summary shows the disk balance before and after the disk removal, as for `re
 remove are left out of the disk balance after the removal.
 
 ### Stop the current proposal execution task
-The following POST request will let Kafka Cruise Control stop an ongoing `rebalance`, `add_broker`,  `remove_broker`, `fix_offline_replica`, `topic_configuration` or `demote_broker` operation:
+The following POST request will let Kafka Cruise Control stop an ongoing `rebalance`, `add_broker`,  `remove_broker`, `fix_offline_replica`, `topic_configuration`, `demote_broker` or `remove_disks` operation:
 
     POST /kafkacruisecontrol/stop_proposal_execution
 

@@ -11,4 +11,4 @@ We have provided an [abstract goal](https://github.com/linkedin/cruise-control/b
 * **Excluded Topics** - remember to check excluded topics list so that those topics are not touched.
 
 ## Still have questions?
-Please ask in our [gitter room](https://gitter.im/kafka-cruise-control/Lobby).
+Please ask in our [Slack channel](https://join.slack.com/t/cruise-control-corp/shared_invite/zt-491ndlgpw-M1BOo97QMcYGDoXOvfI1jA).
