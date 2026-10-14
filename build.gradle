@@ -24,8 +24,8 @@ project.ext {
     url "https://github.com/cruise-control-for-kafka/cruise-control"
     licenses {
       license {
-        name "BSD 2-CLAUSE LICENSE"
-        url "https://opensource.org/licenses/BSD-2-Clause"
+        name "Apache License, Version 2.0"
+        url "https://www.apache.org/licenses/LICENSE-2.0"
       }
     }
     developers {
