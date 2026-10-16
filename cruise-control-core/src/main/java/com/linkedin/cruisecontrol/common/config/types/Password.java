@@ -27,10 +27,9 @@ public class Password {
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof Password)) {
+        if (!(obj instanceof Password other)) {
             return false;
         }
-        Password other = (Password) obj;
         return _value.equals(other._value);
     }
 
