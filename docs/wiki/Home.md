@@ -18,4 +18,4 @@ You may also want to take a look at [configurations](https://github.com/linkedin
 If you will encounter any issues please open an issue [here](https://github.com/linkedin/cruise-control/issues) and we encourage you to provide a patch through github pull request as well. 
 
 ## Contact
-Join our [gitter room](https://gitter.im/kafka-cruise-control/Lobby) to interact with the community!
+Join our [Slack channel](https://join.slack.com/t/cruise-control-corp/shared_invite/zt-491ndlgpw-M1BOo97QMcYGDoXOvfI1jA) to interact with the community!
