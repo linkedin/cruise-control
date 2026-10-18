@@ -11,9 +11,7 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.cruisecontrol.metricdef.AggregationFunction;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -122,7 +120,7 @@ public class MetricSampleAggregatorTest {
     aggregator.removeEntities(Collections.emptySet());
     assertEquals(initGeneration, aggregator.generation().longValue());
     // Ensure that generation is not bumped up for entity retains that remove no elements.
-    aggregator.retainEntities(new HashSet<>(Arrays.asList(ENTITY1, ENTITY2)));
+    aggregator.retainEntities(Set.of(ENTITY1, ENTITY2));
     assertEquals(initGeneration, aggregator.generation().longValue());
     // Ensure that generation is bumped up for retains that remove elements.
     aggregator.retainEntityGroup(Collections.emptySet());
@@ -209,7 +207,7 @@ public class MetricSampleAggregatorTest {
     // Let the group coverage to be 1
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 1, NUM_WINDOWS, 5,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
+                                 Set.of(ENTITY1, ENTITY2, ENTITY3),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness =
         aggregator.completeness(-1, Long.MAX_VALUE, options);
@@ -225,7 +223,7 @@ public class MetricSampleAggregatorTest {
     // Change the group coverage requirement to 0, window 3, 4, 20 will be excluded because minValidEntityRatio is not met.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 0.0, NUM_WINDOWS, 5,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
+                                 Set.of(ENTITY1, ENTITY2, ENTITY3),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(17, completeness.validWindowIndices().size());
@@ -246,7 +244,7 @@ public class MetricSampleAggregatorTest {
     // Change the option to have 0.5 as minValidEntityGroupRatio. This will exclude window index 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.0, 0.5, NUM_WINDOWS, 5,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
+                                 Set.of(ENTITY1, ENTITY2, ENTITY3),
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
@@ -268,7 +266,7 @@ public class MetricSampleAggregatorTest {
     // Change the option to have 0.5 as minValidEntityGroupRatio. This will exclude window index 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.0, 0.0, NUM_WINDOWS, 5,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
+                                 Set.of(ENTITY1, ENTITY2, ENTITY3),
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
@@ -287,7 +285,7 @@ public class MetricSampleAggregatorTest {
     // so there will be no valid windows.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 0.0, NUM_WINDOWS, 5,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
+                                 Set.of(ENTITY1, ENTITY2, ENTITY3),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertTrue(completeness.validWindowIndices().isEmpty());
@@ -303,7 +301,7 @@ public class MetricSampleAggregatorTest {
     // include ENTITY3 except in window 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.3, 0.0, NUM_WINDOWS, 5,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
+                                 Set.of(ENTITY1, ENTITY2, ENTITY3),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(17, completeness.validWindowIndices().size());
@@ -325,7 +323,7 @@ public class MetricSampleAggregatorTest {
     // the ENTITY1 has extrapolations in that window.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 0.0, NUM_WINDOWS, 1,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
+                                 Set.of(ENTITY1, ENTITY2, ENTITY3),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(16, completeness.validWindowIndices().size());
@@ -381,17 +379,14 @@ public class MetricSampleAggregatorTest {
     final Random random = new Random(0xDEADBEEF);
     List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < numThreads; i++) {
-      Thread t = new Thread() {
-        @Override
-        public void run() {
-          // Add samples for 10 random partitions.
-          int startingEntity = random.nextInt(5) % numEntities;
-          for (int i = 0; i < numRandomEntities; i++) {
-            IntegerEntity entity = new IntegerEntity("group", (startingEntity + i) % numEntities);
-            populateSampleAggregator(2 * NUM_WINDOWS + 1, samplesPerWindow, aggregator, entity);
-          }
+      Thread t = new Thread(() -> {
+        // Add samples for 10 random partitions.
+        int startingEntity = random.nextInt(5) % numEntities;
+        for (int i1 = 0; i1 < numRandomEntities; i1++) {
+          IntegerEntity entity = new IntegerEntity("group", (startingEntity + i1) % numEntities);
+          populateSampleAggregator(2 * NUM_WINDOWS + 1, samplesPerWindow, aggregator, entity);
         }
-      };
+      });
       threads.add(t);
     }
     threads.forEach(Thread::start);

@@ -92,8 +92,8 @@ public class PercentileMetricAnomalyFinderConfig extends AbstractConfig {
   /**
    * Sanity check to ensure that
    * <ul>
-   *   <li>{@link #METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG} is within (0.0, 100.0)}</li>
-   *   <li>{@link #METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG} is within (0.0, 100.0)}</li>
+   *   <li>{@link #METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG} is within (0.0, 100.0)</li>
+   *   <li>{@link #METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG} is within (0.0, 100.0)</li>
    *   <li>{@link #METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG} >= {@link #METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG}</li>
    * </ul>
    */
