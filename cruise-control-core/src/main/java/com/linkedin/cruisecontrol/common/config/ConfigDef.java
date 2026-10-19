@@ -8,7 +8,6 @@ import com.linkedin.cruisecontrol.common.utils.Utils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -37,7 +36,7 @@ import java.util.Set;
  * defs.define(&quot;config_with_default&quot;, Type.STRING, &quot;default string value&quot;, &quot;Configuration with default value.&quot;);
  * defs.define(&quot;config_with_validator&quot;, Type.INT, 42, Range.atLeast(0), &quot;Configuration with user provided validator.&quot;);
  * defs.define(&quot;config_with_dependents&quot;, Type.INT, &quot;Configuration with dependents.&quot;, &quot;group&quot;,
- * 1, &quot;Config With Dependents&quot;, Arrays.asList(&quot;config_with_default&quot;,&quot;config_with_validator&quot;));
+ * 1, &quot;Config With Dependents&quot;, List.of(&quot;config_with_default&quot;,&quot;config_with_validator&quot;));
  *
  * Map&lt;String, String&gt; props = new HashMap&lt;&gt;();
  * props.put(&quot;config_with_default&quot;, &quot;some value&quot;);
@@ -450,7 +449,7 @@ public class ConfigDef {
     Object parsedValue;
     if (isSet) {
       parsedValue = parseType(key._name, value, key._type);
-      // props map doesn't contain setting, the key is required because no default value specified - its an error
+      // props map doesn't contain setting, the key is required because no default value specified - it's an error
     } else if (NO_DEFAULT_VALUE.equals(key._defaultValue)) {
       throw new ConfigException("Missing required configuration \"" + key._name + "\" which has no default value.");
     } else {
@@ -738,24 +737,17 @@ public class ConfigDef {
       return parsedValue.toString();
     }
 
-    switch (type) {
-      case BOOLEAN:
-      case SHORT:
-      case INT:
-      case LONG:
-      case DOUBLE:
-      case STRING:
-      case PASSWORD:
-        return parsedValue.toString();
-      case LIST:
+    return switch (type) {
+      case BOOLEAN, SHORT, INT, LONG, DOUBLE, STRING, PASSWORD -> parsedValue.toString();
+      case LIST -> {
         List<?> valueList = (List<?>) parsedValue;
-        return Utils.join(valueList, ",");
-      case CLASS:
+        yield Utils.join(valueList, ",");
+      }
+      case CLASS -> {
         Class<?> clazz = (Class<?>) parsedValue;
-        return clazz.getName();
-      default:
-        throw new IllegalStateException("Unknown type.");
-    }
+        yield clazz.getName();
+      }
+    };
   }
 
   /**
@@ -884,14 +876,14 @@ public class ConfigDef {
 
   public static final class ValidList implements Validator {
 
-    protected final ValidString _validString;
+    private final ValidString _validString;
 
     private ValidList(List<String> validStrings) {
       this._validString = new ValidString(validStrings);
     }
 
     public static ValidList in(String... validStrings) {
-      return new ValidList(Arrays.asList(validStrings));
+      return new ValidList(List.of(validStrings));
     }
 
     @Override
@@ -909,14 +901,14 @@ public class ConfigDef {
   }
 
   public static final class ValidString implements Validator {
-    protected final List<String> _validStrings;
+    private final List<String> _validStrings;
 
     private ValidString(List<String> validStrings) {
       this._validStrings = validStrings;
     }
 
     public static ValidString in(String... validStrings) {
-      return new ValidString(Arrays.asList(validStrings));
+      return new ValidString(List.of(validStrings));
     }
 
     @Override
@@ -1041,38 +1033,29 @@ public class ConfigDef {
   }
 
   protected List<String> headers() {
-    return Arrays.asList("Name", "Description", "Type", "Default", "Valid Values", "Importance");
+    return List.of("Name", "Description", "Type", "Default", "Valid Values", "Importance");
   }
 
   protected String getConfigValue(ConfigKey key, String headerName) {
-    switch (headerName) {
-      case "Name":
-        return key._name;
-      case "Description":
-        return key._documentation;
-      case "Type":
-        return key._type.toString().toLowerCase(Locale.ROOT);
-      case "Default":
+    return switch (headerName) {
+      case "Name" -> key._name;
+      case "Description" -> key._documentation;
+      case "Type" -> key._type.toString().toLowerCase(Locale.ROOT);
+      case "Default" -> {
         if (key.hasDefault()) {
           if (key._defaultValue == null) {
-            return "null";
+            yield "null";
           }
           String defaultValueStr = convertToString(key._defaultValue, key._type);
-          if (defaultValueStr.isEmpty()) {
-            return "\"\"";
-          } else {
-            return defaultValueStr;
-          }
+          yield defaultValueStr.isEmpty() ? "\"\"" : defaultValueStr;
         } else {
-          return "";
+          yield "";
         }
-      case "Valid Values":
-        return key._validator != null ? key._validator.toString() : "";
-      case "Importance":
-        return key._importance.toString().toLowerCase(Locale.ROOT);
-      default:
-        throw new RuntimeException("Can't find value for header '" + headerName + "' in " + key._name);
-    }
+      }
+      case "Valid Values" -> key._validator != null ? key._validator.toString() : "";
+      case "Importance" -> key._importance.toString().toLowerCase(Locale.ROOT);
+      default -> throw new RuntimeException("Can't find value for header '" + headerName + "' in " + key._name);
+    };
   }
 
   /**
@@ -1148,7 +1131,7 @@ public class ConfigDef {
 
       getConfigKeyRst(key, b);
 
-      if (key._dependents != null && key._dependents.size() > 0) {
+      if (key._dependents != null && !key._dependents.isEmpty()) {
         int j = 0;
         b.append("  * Dependents: ");
         for (String dependent : key._dependents) {
@@ -1175,7 +1158,7 @@ public class ConfigDef {
   private void getConfigKeyRst(ConfigKey key, StringBuilder b) {
     b.append("``").append(key._name).append("``").append("\n");
     for (String docLine : key._documentation.split("\n")) {
-      if (docLine.length() == 0) {
+      if (docLine.isEmpty()) {
         continue;
       }
       b.append("  ").append(docLine).append("\n\n");
@@ -1205,29 +1188,26 @@ public class ConfigDef {
     }
 
     List<ConfigKey> configs = new ArrayList<>(_configKeys.values());
-    configs.sort(new Comparator<ConfigKey>() {
-      @Override
-      public int compare(ConfigKey k1, ConfigKey k2) {
-        int cmp = k1._group == null ? (k2._group == null ? 0 : -1)
-            : (k2._group == null ? 1 : Integer.compare(groupOrd.get(k1._group), groupOrd.get(k2._group)));
+    configs.sort((k1, k2) -> {
+      int cmp = k1._group == null ? (k2._group == null ? 0 : -1)
+          : (k2._group == null ? 1 : Integer.compare(groupOrd.get(k1._group), groupOrd.get(k2._group)));
+      if (cmp == 0) {
+        cmp = Integer.compare(k1._orderInGroup, k2._orderInGroup);
         if (cmp == 0) {
-          cmp = Integer.compare(k1._orderInGroup, k2._orderInGroup);
-          if (cmp == 0) {
-            // first take anything with no default value
-            if (!k1.hasDefault() && k2.hasDefault()) {
-              cmp = -1;
-            } else if (!k2.hasDefault() && k1.hasDefault()) {
-              cmp = 1;
-            } else {
-              cmp = k1._importance.compareTo(k2._importance);
-              if (cmp == 0) {
-                return k1._name.compareTo(k2._name);
-              }
+          // first take anything with no default value
+          if (!k1.hasDefault() && k2.hasDefault()) {
+            cmp = -1;
+          } else if (!k2.hasDefault() && k1.hasDefault()) {
+            cmp = 1;
+          } else {
+            cmp = k1._importance.compareTo(k2._importance);
+            if (cmp == 0) {
+              return k1._name.compareTo(k2._name);
             }
           }
         }
-        return cmp;
       }
+      return cmp;
     });
     return configs;
   }
@@ -1259,12 +1239,7 @@ public class ConfigDef {
     if (base == null) {
       return null;
     }
-    return new ConfigDef.Validator() {
-      @Override
-      public void ensureValid(String name, Object value) {
-        base.ensureValid(name.substring(keyPrefix.length()), value);
-      }
-    };
+    return (name, value) -> base.ensureValid(name.substring(keyPrefix.length()), value);
   }
 
   /**

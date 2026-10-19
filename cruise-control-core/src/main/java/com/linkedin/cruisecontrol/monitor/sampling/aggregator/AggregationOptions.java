@@ -145,10 +145,9 @@ public class AggregationOptions<G, E extends Entity<G>> {
     if (obj == null) {
       return false;
     }
-    if (!(obj instanceof AggregationOptions)) {
+    if (!(obj instanceof AggregationOptions other)) {
       return false;
     }
-    AggregationOptions other = (AggregationOptions) obj;
     if (_minValidEntityRatio != other.minValidEntityRatio()) {
       return false;
     } else if (_minValidEntityGroupRatio != other.minValidEntityGroupRatio()) {
