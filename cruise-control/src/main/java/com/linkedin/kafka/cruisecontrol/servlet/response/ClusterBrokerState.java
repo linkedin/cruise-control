@@ -22,7 +22,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.LogDirDescription;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
@@ -63,11 +63,11 @@ public class ClusterBrokerState {
   protected final Map<Integer, Set<String>> _onlineLogDirsByBrokerId;
   protected final Map<Integer, Set<String>> _offlineLogDirsByBrokerId;
   protected final Cluster _kafkaCluster;
-  protected final AdminClient _adminClient;
+  protected final Admin _adminClient;
   protected final KafkaCruiseControlConfig _config;
   protected Map<Integer, String> _brokerSetIdByBrokerId;
 
-  public ClusterBrokerState(Cluster kafkaCluster, AdminClient adminClient, KafkaCruiseControlConfig config, BrokerSetResolver brokerSetResolver)
+  public ClusterBrokerState(Cluster kafkaCluster, Admin adminClient, KafkaCruiseControlConfig config, BrokerSetResolver brokerSetResolver)
       throws ExecutionException, InterruptedException {
     _kafkaCluster = kafkaCluster;
     _adminClient = adminClient;

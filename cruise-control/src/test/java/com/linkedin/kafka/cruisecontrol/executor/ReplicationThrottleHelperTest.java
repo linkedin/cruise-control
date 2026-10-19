@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.AlterConfigsResult;
@@ -53,7 +53,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   /**
    * The admin client
    */
-  private AdminClient _adminClient;
+  private Admin _adminClient;
 
   @Override
   public int clusterSize() {
@@ -112,7 +112,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
   @Test
   public void testIsNoOpWhenThrottleIsNull() throws Exception {
-    AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
+    Admin mockAdminClient = EasyMock.strictMock(Admin.class);
     EasyMock.replay(mockAdminClient);
 
     // Test would fail on any unexpected interactions with the adminClient
@@ -145,7 +145,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
                                                        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId1)),
                                                        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId2)));
 
-    AdminClient mockAdminClient = EasyMock.mock(AdminClient.class);
+    Admin mockAdminClient = EasyMock.mock(Admin.class);
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, throttleRate);
 
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
@@ -211,7 +211,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
                                                        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId1)),
                                                        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId2)));
 
-    AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
+    Admin mockAdminClient = EasyMock.strictMock(Admin.class);
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, throttleRate);
 
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
@@ -489,7 +489,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
   @Test
   public void testWaitForConfigs() throws Exception {
-    AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
+    Admin mockAdminClient = EasyMock.strictMock(Admin.class);
     int retries = 3;
     // Case 1: queue more responses than RETRIES and expect checkConfigs to throw
     for (int i = 0; i < retries + 1; i++) {
@@ -560,7 +560,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     return configEntry;
   }
 
-  private void expectDescribeTopicConfigs(AdminClient adminClient, String topic, Config topicConfig, boolean topicExists)
+  private void expectDescribeTopicConfigs(Admin adminClient, String topic, Config topicConfig, boolean topicExists)
   throws ExecutionException, InterruptedException, TimeoutException {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
     Map<ConfigResource, Config> topicConfigs = Collections.singletonMap(cf, topicConfig);
@@ -577,7 +577,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.replay(mockDescribeConfigsResult, mockFuture);
   }
 
-  private void expectIncrementalTopicConfigs(AdminClient adminClient, String topic, boolean topicExists)
+  private void expectIncrementalTopicConfigs(Admin adminClient, String topic, boolean topicExists)
   throws ExecutionException, InterruptedException, TimeoutException {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
     AlterConfigsResult mockAlterConfigsResult = EasyMock.mock(AlterConfigsResult.class);
@@ -593,7 +593,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.replay(mockAlterConfigsResult, mockFuture);
   }
 
-  private void expectListTopics(AdminClient adminClient, Set<String> topics)
+  private void expectListTopics(Admin adminClient, Set<String> topics)
   throws ExecutionException, InterruptedException, TimeoutException {
     ListTopicsResult mockListTopicsResult = EasyMock.mock(ListTopicsResult.class);
     KafkaFuture<Set<String>> mockFuture = EasyMock.mock(KafkaFuture.class);
@@ -603,7 +603,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.replay(mockListTopicsResult, mockFuture);
   }
 
-  private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers)
+  private void expectDescribeBrokerConfigs(Admin adminClient, List<Integer> brokers)
   throws ExecutionException, InterruptedException, TimeoutException {
     // All participating brokers have throttled rate set already
     Config brokerConfig = new Config(Arrays.asList(
@@ -612,7 +612,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     expectDescribeBrokerConfigs(adminClient, brokers, brokerConfig);
   }
 
-  private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers, Config brokerConfig)
+  private void expectDescribeBrokerConfigs(Admin adminClient, List<Integer> brokers, Config brokerConfig)
   throws ExecutionException, InterruptedException, TimeoutException {
     for (int i : brokers) {
       ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(i));
@@ -626,7 +626,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     }
   }
 
-  private void expectIncrementalBrokerConfigs(AdminClient adminClient, List<Integer> brokers)
+  private void expectIncrementalBrokerConfigs(Admin adminClient, List<Integer> brokers)
   throws ExecutionException, InterruptedException, TimeoutException {
     for (int brokerId : brokers) {
       ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));

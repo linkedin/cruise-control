@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.AlterConfigsResult;
 import org.apache.kafka.clients.admin.Config;
@@ -80,7 +80,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private int _numMetricSendFailure = 0;
   private volatile boolean _shutdown = false;
   private NewTopic _metricsTopic;
-  private AdminClient _adminClient;
+  private Admin _adminClient;
   private long _metricsTopicAutoCreateTimeoutMs;
   private int _metricsTopicAutoCreateRetries;
   private int _metricsReporterCreateRetries;
@@ -559,7 +559,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
    * with Kafka versions 4.0 and above. This method uses reflection to invoke the appropriate method
    * for retrieving topic description information, depending on the Kafka version.
    *
-   * @param adminClient The Kafka {@link AdminClient} used to interact with the Kafka cluster.
+   * @param adminClient The Kafka {@link Admin} used to interact with the Kafka cluster.
    * @param ccMetricsTopic The name of the Kafka topic for which the description is to be retrieved.
    *
    * @return The {@link TopicDescription} for the specified Kafka topic.
@@ -569,7 +569,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
    *         exceptions related to reflection (e.g., {@link NoSuchMethodException}), invocation issues,
    *         execution exceptions, timeouts, and interruptions.
    */
-  /* test */ static TopicDescription getTopicDescription(AdminClient adminClient, String ccMetricsTopic) throws KafkaTopicDescriptionException {
+  /* test */ static TopicDescription getTopicDescription(Admin adminClient, String ccMetricsTopic) throws KafkaTopicDescriptionException {
     try {
       // For compatibility with Kafka 4.0 and beyond we must use new API methods.
       Method topicDescriptionMethod = topicNameValuesMethod();

@@ -11,7 +11,7 @@ import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import java.util.Map;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.Cluster;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG;
@@ -23,7 +23,7 @@ public class KafkaClusterStateRequest extends AbstractSyncRequest {
   protected KafkaCruiseControlConfig _config;
   protected KafkaClusterStateParameters _parameters;
   protected TopicConfigProvider _topicConfigProvider;
-  protected AdminClient _adminClient;
+  protected Admin _adminClient;
   protected BrokerSetResolver _brokerSetResolver;
 
   public KafkaClusterStateRequest() {

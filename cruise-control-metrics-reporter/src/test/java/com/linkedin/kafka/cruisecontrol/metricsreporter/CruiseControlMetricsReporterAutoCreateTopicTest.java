@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKra
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.KafkaServerConfigs;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -47,7 +47,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         // creating the "TestTopic" explicitly because the topic auto-creation is disabled on the broker
         Properties adminProps = new Properties();
         adminProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-        AdminClient adminClient = AdminClient.create(adminProps);
+        Admin adminClient = Admin.create(adminProps);
         NewTopic testTopic = new NewTopic(TEST_TOPIC, 1, (short) 1);
         CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singleton(testTopic));
 
@@ -116,7 +116,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
     public void testAutoCreateMetricsTopic() {
         Properties props = new Properties();
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-        AdminClient adminClient = AdminClient.create(props);
+        Admin adminClient = Admin.create(props);
 
         // For compatibility with Kafka 4.0 and beyond we must use new API methods.
         TopicDescription topicDescription;

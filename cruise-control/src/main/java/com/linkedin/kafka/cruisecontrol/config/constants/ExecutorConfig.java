@@ -135,7 +135,7 @@ public final class ExecutorConfig {
    */
   public static final String ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG = "admin.client.request.timeout.ms";
   public static final int DEFAULT_ADMIN_CLIENT_REQUEST_TIMEOUT_MS = (int) TimeUnit.MINUTES.toMillis(3);
-  public static final String ADMIN_CLIENT_REQUEST_TIMEOUT_MS_DOC = "The maximum time to wait for the response of an AdminClient request to "
+  public static final String ADMIN_CLIENT_REQUEST_TIMEOUT_MS_DOC = "The maximum time to wait for the response of an Admin client request to "
       + "Kafka server. If the response is not received before this timeout elapses the admin client will fail the request.";
 
   /**

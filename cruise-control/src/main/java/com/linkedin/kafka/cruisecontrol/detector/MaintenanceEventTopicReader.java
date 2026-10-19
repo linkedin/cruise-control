@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -277,7 +277,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
    * @param adminClient The adminClient to send describeCluster request.
    * @return The replication factor of the maintenance event topic.
    */
-  protected static short maintenanceEventTopicReplicationFactor(Map<String, ?> config, AdminClient adminClient) {
+  protected static short maintenanceEventTopicReplicationFactor(Map<String, ?> config, Admin adminClient) {
     String maintenanceEventTopicRF = (String) config.get(MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG);
     if (maintenanceEventTopicRF == null || maintenanceEventTopicRF.isEmpty()) {
       short numberOfBrokersInCluster;
@@ -308,7 +308,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
   }
 
   protected void ensureTopicCreated(Map<String, ?> config) {
-    AdminClient adminClient = _kafkaCruiseControl.adminClient();
+    Admin adminClient = _kafkaCruiseControl.adminClient();
     short replicationFactor = maintenanceEventTopicReplicationFactor(config, adminClient);
     long retentionMs = maintenanceEventTopicRetentionMs(config);
     int partitionCount = maintenanceEventTopicPartitionCount(config);
@@ -332,7 +332,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
    * @param adminClient Admin client to use in topic creation, config checks, and required updates (if any).
    * @param maintenanceEventTopic Maintenance event topic.
    */
-  protected void maybeCreateOrUpdateTopic(AdminClient adminClient, NewTopic maintenanceEventTopic) {
+  protected void maybeCreateOrUpdateTopic(Admin adminClient, NewTopic maintenanceEventTopic) {
     if (!createTopic(adminClient, maintenanceEventTopic)) {
       // Update topic config and partition count to ensure desired properties.
       maybeUpdateTopicConfig(adminClient, maintenanceEventTopic);

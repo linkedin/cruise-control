@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
@@ -72,7 +72,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   private short _targetReplicationFactor;
   private Pattern _topicExcludedFromCheck;
   private Class<?> _topicReplicationTopicAnomalyClass;
-  private AdminClient _adminClient;
+  private Admin _adminClient;
   private short _topicReplicationFactorMargin;
   private long _topicMinISRRecordRetentionTimeMs;
   private Map<String, TopicMinISREntry> _cachedTopicMinISR;
@@ -91,7 +91,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   TopicReplicationFactorAnomalyFinder(KafkaCruiseControl kafkaCruiseControl,
                                       short targetReplicationFactor,
                                       short topicReplicationFactorMargin,
-                                      AdminClient adminClient) {
+                                      Admin adminClient) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _targetReplicationFactor = targetReplicationFactor;
     _topicExcludedFromCheck = Pattern.compile(DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK);

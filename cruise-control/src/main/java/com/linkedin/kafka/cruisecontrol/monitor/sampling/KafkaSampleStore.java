@@ -23,7 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -145,7 +145,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
 
   @SuppressWarnings("unchecked")
   protected void ensureTopicsCreated(Map<String, ?> config) {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {
       short replicationFactor = sampleStoreTopicReplicationFactor(config, adminClient);
 

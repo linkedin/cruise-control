@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.KafkaFuture;
@@ -29,7 +29,7 @@ public class KafkaCruiseControlUtilsTest {
 
   @Test
   public void testCreateTopic() throws ExecutionException, InterruptedException, TimeoutException {
-    AdminClient adminClient = EasyMock.createMock(AdminClient.class);
+    Admin adminClient = EasyMock.createMock(Admin.class);
     CreateTopicsResult createTopicsResult = EasyMock.createMock(CreateTopicsResult.class);
     KafkaFuture<Void> createTopicsResultFuture = EasyMock.createMock(KafkaFuture.class);
     Map<String, KafkaFuture<Void>> createTopicsResultValues = Collections.singletonMap(TEST_TOPIC.name(), createTopicsResultFuture);
