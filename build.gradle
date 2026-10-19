@@ -327,17 +327,11 @@ project(':cruise-control') {
     api "org.apache.kafka:kafka-clients:$kafkaVersion"
     api "org.apache.kafka:kafka-storage:$kafkaVersion"
     api "org.eclipse.jetty.ee10:jetty-ee10-servlet:${jettyVersion}"
-    api "org.json:json:${jsonOrgVersion}"
-    api "org.xerial.snappy:snappy-java:${snappyVersion}"
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
     implementation "org.apache.logging.log4j:log4j-slf4j2-impl:${log4jVersion}"
     implementation "org.apache.logging.log4j:log4j-core:${log4jVersion}"
-    implementation "io.netty:netty-handler:${nettyVersion}"
-    implementation "io.netty:netty-transport-native-epoll:${nettyVersion}"
-    implementation "org.scala-lang:scala-library:$scalaVersion"
     implementation "org.apache.commons:commons-math3:${commonsMathVersion}"
     implementation "org.apache.httpcomponents:httpclient:${httpclientVersion}"
-    implementation "commons-codec:commons-codec:${commonsCodecVersion}"
     implementation "com.google.code.gson:gson:${gsonVersion}"
     implementation "org.eclipse.jetty:jetty-server:${jettyVersion}"
     implementation "io.dropwizard.metrics:metrics-jmx:${metricsJmxVersion}"
@@ -357,7 +351,6 @@ project(':cruise-control') {
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
-    testImplementation "org.scala-lang:scala-library:$scalaVersion"
     testImplementation "junit:junit:${junitVersion}"
     testImplementation "org.easymock:easymock:${easymockVersion}"
     testImplementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion:test"
