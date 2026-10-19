@@ -20,7 +20,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -151,9 +151,9 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
     Config topicConfig0;
     Config topicConfig1;
     ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, TEST_TOPIC);
-    AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+    Admin adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
-    AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+    Admin adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()));
     try {
       while (true) {

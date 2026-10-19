@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.NewTopic;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeIncreasePartitionCount;
@@ -28,13 +28,13 @@ public final class ProvisionerUtils {
   /**
    * Increase the partition count of the given existing topics to the desired partition count (if needed).
    *
-   * @param adminClient AdminClient to handle partition count increases.
+   * @param adminClient Admin client to handle partition count increases.
    * @param topicsToAddPartitions Existing topics to add more partitions to (if needed). More partitions are added to a topic if it has fewer
    *                              than the number of partitions specified in its corresponding {@link NewTopic#numPartitions()}.
    * @return {@link ProvisionerState.State#COMPLETED} when none of the partition count increase attempts fail,
    * {@link ProvisionerState.State#COMPLETED_WITH_ERROR} otherwise.
    */
-  public static ProvisionerState increasePartitionCount(AdminClient adminClient, Set<NewTopic> topicsToAddPartitions) {
+  public static ProvisionerState increasePartitionCount(Admin adminClient, Set<NewTopic> topicsToAddPartitions) {
     Map<String, Integer> numPartitionsBySucceededTopic = new HashMap<>();
     Map<String, Integer> numPartitionsByFailedTopic = new HashMap<>();
     Map<String, Integer> numPartitionsByIgnoredTopic = new HashMap<>();

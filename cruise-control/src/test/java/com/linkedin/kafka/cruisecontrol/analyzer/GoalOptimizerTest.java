@@ -20,7 +20,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Assert;
@@ -105,6 +105,6 @@ public class GoalOptimizerTest {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
 
     return new GoalOptimizer(config, EasyMock.mock(LoadMonitor.class), Time.SYSTEM, new MetricRegistry(),
-                             EasyMock.mock(Executor.class), EasyMock.mock(AdminClient.class));
+                             EasyMock.mock(Executor.class), EasyMock.mock(Admin.class));
   }
 }

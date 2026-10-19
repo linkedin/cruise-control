@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
@@ -40,7 +40,7 @@ public class AbstractKafkaSampleStoreTest {
     public void testSampleStoreTopicReplicationFactorWhenValueAlreadyExists() {
         short expected = 1;
         Map<String, ?> config = Collections.emptyMap();
-        AdminClient adminClient = EasyMock.mock(AdminClient.class);
+        Admin adminClient = EasyMock.mock(Admin.class);
         AbstractKafkaSampleStore kafkaSampleStore = EasyMock.partialMockBuilder(AbstractKafkaSampleStore.class).createMock();
         Whitebox.setInternalState(kafkaSampleStore, "_sampleStoreTopicReplicationFactor", expected);
         EasyMock.replay(adminClient, kafkaSampleStore);
@@ -54,7 +54,7 @@ public class AbstractKafkaSampleStoreTest {
     @Test
     public void testSampleStoreTopicReplicationFactorWhenValueNotExistsAndNodeCountIsOne() throws Exception {
         Map<String, Object> config = createFilledConfigMap();
-        AdminClient adminClient = EasyMock.mock(AdminClient.class);
+        Admin adminClient = EasyMock.mock(Admin.class);
         prepareForNumberOfBrokersCall(adminClient, false);
         AbstractKafkaSampleStore kafkaSampleStore = EasyMock.partialMockBuilder(AbstractKafkaSampleStore.class).createMock();
         EasyMock.replay(adminClient, kafkaSampleStore);
@@ -68,7 +68,7 @@ public class AbstractKafkaSampleStoreTest {
     public void testSampleStoreTopicReplicationFactorWhenValueNotExistsAndNodeCountIsTwo() throws Exception {
         short expected = 2;
         Map<String, Object> config = createFilledConfigMap();
-        AdminClient adminClient = EasyMock.mock(AdminClient.class);
+        Admin adminClient = EasyMock.mock(Admin.class);
         prepareForNumberOfBrokersCall(adminClient, true);
         AbstractKafkaSampleStore kafkaSampleStore = EasyMock.partialMockBuilder(AbstractKafkaSampleStore.class).createMock();
         EasyMock.replay(adminClient, kafkaSampleStore);
@@ -83,7 +83,7 @@ public class AbstractKafkaSampleStoreTest {
     public void testSampleStoreTopicReplicationFactorWhenValueNotExistsAndDescribeOfClusterFails()
             throws ExecutionException, InterruptedException, TimeoutException {
         Map<String, Object> config = createFilledConfigMap();
-        AdminClient adminClient = EasyMock.mock(AdminClient.class);
+        Admin adminClient = EasyMock.mock(Admin.class);
         KafkaFuture nodesFuture = getNodesKafkaFutureWithRequiredMocks(adminClient);
 
         EasyMock.expect(nodesFuture.get(TimeUnit.SECONDS.toMillis(30), TimeUnit.MILLISECONDS))
@@ -103,7 +103,7 @@ public class AbstractKafkaSampleStoreTest {
         return config;
     }
 
-    private void prepareForNumberOfBrokersCall(AdminClient adminClient, boolean isNodeCountEnough) throws Exception {
+    private void prepareForNumberOfBrokersCall(Admin adminClient, boolean isNodeCountEnough) throws Exception {
         KafkaFuture nodesFuture = getNodesKafkaFutureWithRequiredMocks(adminClient);
         Node node = EasyMock.mock(Node.class);
         Collection<Node> nodes = isNodeCountEnough ? Arrays.asList(node, node) : Collections.singletonList(node);
@@ -112,7 +112,7 @@ public class AbstractKafkaSampleStoreTest {
         EasyMock.replay(nodesFuture);
     }
 
-    private KafkaFuture getNodesKafkaFutureWithRequiredMocks(AdminClient adminClient) {
+    private KafkaFuture getNodesKafkaFutureWithRequiredMocks(Admin adminClient) {
         DescribeClusterResult describeClusterResult = EasyMock.mock(DescribeClusterResult.class);
         KafkaFuture nodesFuture = EasyMock.mock(KafkaFuture.class);
 

@@ -34,7 +34,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsRepo
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -237,7 +237,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
    * @param topics the topics to create
    */
   public static void createTopic(String brokerAddress, List<NewTopic> topics) {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
         .singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, brokerAddress));
     try {
       try {

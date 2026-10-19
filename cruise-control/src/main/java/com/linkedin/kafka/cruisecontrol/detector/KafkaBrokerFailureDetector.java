@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.Node;
 import java.util.Queue;
 import java.util.Set;
@@ -23,7 +23,7 @@ import static java.util.stream.Collectors.toSet;
 public class KafkaBrokerFailureDetector extends AbstractBrokerFailureDetector {
 
   private static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
-  private final AdminClient _adminClient;
+  private final Admin _adminClient;
 
   public KafkaBrokerFailureDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
     super(anomalies, kafkaCruiseControl);
