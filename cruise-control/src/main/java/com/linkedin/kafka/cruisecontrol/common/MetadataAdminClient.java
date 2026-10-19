@@ -47,7 +47,7 @@ public class MetadataAdminClient {
   /**
    * Creates a new MetadataAdminClient.
    *
-   * @param adminClient The AdminClient to use for fetching cluster metadata.
+   * @param adminClient The Admin client to use for fetching cluster metadata.
    */
   public MetadataAdminClient(Admin adminClient) {
     _adminClient = adminClient;

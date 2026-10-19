@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
@@ -115,7 +115,7 @@ public class RackAwareGoalTest {
                                                     Time.SYSTEM,
                                                     new MetricRegistry(),
                                                     EasyMock.mock(Executor.class),
-                                                    EasyMock.mock(AdminClient.class));
+                                                    EasyMock.mock(Admin.class));
     final Set<ExecutionProposal> proposals =
         goalOptimizer.optimizations(cluster, goalsByPriority, new OperationProgress()).goalProposals();
 
@@ -179,7 +179,7 @@ public class RackAwareGoalTest {
                                                     Time.SYSTEM,
                                                     new MetricRegistry(),
                                                     EasyMock.mock(Executor.class),
-                                                    EasyMock.mock(AdminClient.class));
+                                                    EasyMock.mock(Admin.class));
     final Set<ExecutionProposal> proposals =
         goalOptimizer.optimizations(cluster, goalsByPriority, new OperationProgress()).goalProposals();
 

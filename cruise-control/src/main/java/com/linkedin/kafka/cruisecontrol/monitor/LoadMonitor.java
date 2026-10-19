@@ -50,7 +50,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.Metadata;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
@@ -94,7 +94,7 @@ public class LoadMonitor {
   private final Semaphore _clusterModelSemaphore;
   private final KafkaCruiseControlConfig _config;
   private final MetadataClient _metadataClient;
-  private final AdminClient _adminClient;
+  private final Admin _adminClient;
   private final BrokerCapacityConfigResolver _brokerCapacityConfigResolver;
   private final TopicConfigProvider _topicConfigProvider;
   private final ScheduledExecutorService _loadMonitorExecutor;
@@ -143,7 +143,7 @@ public class LoadMonitor {
    */
   LoadMonitor(KafkaCruiseControlConfig config,
               MetadataClient metadataClient,
-              AdminClient adminClient,
+              Admin adminClient,
               Time time,
               MetricRegistry dropwizardMetricRegistry,
               MetricDef metricDef) {

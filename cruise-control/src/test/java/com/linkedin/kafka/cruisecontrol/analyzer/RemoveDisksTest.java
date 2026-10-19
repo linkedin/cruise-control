@@ -19,7 +19,7 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
@@ -117,7 +117,7 @@ public class RemoveDisksTest {
                 Time.SYSTEM,
                 new MetricRegistry(),
                 EasyMock.mock(Executor.class),
-                EasyMock.mock(AdminClient.class));
+                EasyMock.mock(Admin.class));
 
         if (_expectedToOptimize) {
             final Set<ExecutionProposal> proposals =
