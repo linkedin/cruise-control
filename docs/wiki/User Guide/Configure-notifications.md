@@ -1,10 +1,8 @@
 # Notifications
 
-**Desc**: The self-healing and anomaly detection is the crown feature of Cruise Control, but often the actions taken by Cruise Control provide less visibility to its operation. Adding a slack notification for all the anomaly detection and self-healing will increase Cruise Control visibility.
+**Desc**: The self-healing and anomaly detection is the crown feature of Cruise Control, but often the actions taken by Cruise Control provide less visibility to its operation. Adding a Slack notification for all the anomaly detection and self-healing will increase Cruise Control visibility.
 
 ## Slack
-
--- Excerpt from [PR#629](https://github.com/linkedin/cruise-control/pull/629) by [ananthdurai](https://github.com/ananthdurai)
 
 **Changelog**: The SlackSelfHealingNotifier extends SelfHealingNotifier and merely override the alerts method to send the notification to Slack.
 
@@ -15,11 +13,11 @@
 `slack.self.healing.notifier.channel` (Required)
 (Slack channel name to send the alert, (e.g) `#alerts-cruise-control`
 `slack.self.healing.notifier.user` (Optional)
-User name to display in the slack notification message. (default: Cruise Control)
+User name to display in the Slack notification message. (default: Cruise Control)
 `slack.self.healing.notifier.icon` (Optional)
-Icon to display in the slack notification message. (default: `information_source` )
+Icon to display in the Slack notification message. (default: `information_source` )
 `slack.self.healing.notifier.preamble` (Optional)
-Preamble string that will be added (verbatim) to the front of **all** slack notification messages. (default: empty string)
+Preamble string that will be added (verbatim) to the front of **all** Slack notification messages. (default: empty string)
 To enable Slack notification, set `anomaly.notifier.class=com.linkedin.kafka.cruisecontrol.detector.notifier.SlackSelfHealingNotifier`
 
 ## MS Teams
@@ -33,8 +31,6 @@ To enable Slack notification, set `anomaly.notifier.class=com.linkedin.kafka.cru
 To enable MSTeams notification, set `anomaly.notifier.class=com.linkedin.kafka.cruisecontrol.detector.notifier.MSTeamsSelfHealingNotifier`
 
 ## Alerta.io
-
--- Excerpt from [PR#1510](https://github.com/linkedin/cruise-control/pull/1510) by [jrevillard](https://github.com/jrevillard)
 
 **Changelog**: The AlertaSelfHealingNotifier extends SelfHealingNotifier and merely override the alerts method to send the notification to [Alerta](https://alerta.io).
 

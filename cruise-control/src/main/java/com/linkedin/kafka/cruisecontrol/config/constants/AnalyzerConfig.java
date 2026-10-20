@@ -213,7 +213,7 @@ public final class AnalyzerConfig {
    */
   public static final String PROPOSAL_EXPIRATION_MS_CONFIG = "proposal.expiration.ms";
   public static final long DEFAULT_PROPOSAL_EXPIRATION_MS = TimeUnit.MINUTES.toMillis(15);
-  public static final String PROPOSAL_EXPIRATION_MS_DOC = "Kafka Cruise Control will cache one of the best proposal among all "
+  public static final String PROPOSAL_EXPIRATION_MS_DOC = "Cruise Control will cache one of the best proposal among all "
       + "the optimization proposal candidates it recently computed. This configuration defines when will the"
       + "cached proposal be invalidated and needs a recomputation. If proposal.expiration.ms is set to 0, Cruise Control"
       + "will continuously compute the proposal candidates.";

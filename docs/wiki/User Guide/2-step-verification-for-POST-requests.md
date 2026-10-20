@@ -1,4 +1,4 @@
-Support for 2-step verification (aka `peer-review` for `POST` requests) has been added in [#582](https://github.com/linkedin/cruise-control/pull/582), and is available in versions `2.0.38` and `0.1.41` (see [releases](https://github.com/linkedin/cruise-control/releases)).
+Cruise Control supports for 2-step verification (aka `peer-review` for `POST` requests).
 
 ## Motivation
 `POST` requests enable users to perform various admin operations for cluster maintenance in Kafka clusters. However, if users mistype a command, it is possible to start an unintended execution (e.g. remove `broker-X` rather than `broker-Y`).
@@ -22,7 +22,7 @@ Set `two.step.verification.enabled` config to `true` in your `config/cruisecontr
 ## How does 2-step verification work?
 
 ### Submitting a new `POST` request for review
-The process of submitting a new request for review does not require extra user-input. Users will send `POST` requests to the servlet as before, but rather than getting (1) a response for the corresponding endpoint or potentially a progress response for async endpoints, users will get (2) a [PurgatoryOrReviewResult](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/servlet/response/PurgatoryOrReviewResult.java) response filtered based on the given request -- i.e. it will return the details of only the request that is being submitted for review. Among other details, this response will show request `ID`, `SUBMITTER_ADDRESS`, `SUBMISSION_TIME_MS`, `STATUS`, and `ENDPOINT_WITH_PARAMS`.
+The process of submitting a new request for review does not require extra user-input. Users will send `POST` requests to the servlet as before, but rather than getting (1) a response for the corresponding endpoint or potentially a progress response for async endpoints, users will get (2) a [PurgatoryOrReviewResult](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/servlet/response/ReviewResult.java) response filtered based on the given request -- i.e. it will return the details of only the request that is being submitted for review. Among other details, this response will show request `ID`, `SUBMITTER_ADDRESS`, `SUBMISSION_TIME_MS`, `STATUS`, and `ENDPOINT_WITH_PARAMS`.
 
 ### Approving or discarding `POST` request that are pending review
 `REVIEW` endpoint enables users to approve or discard `PENDING_REVIEW` requests. This `POST` endpoint takes the following arguments:

@@ -34,9 +34,9 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 | Per broker cap on inter-broker partition movements (deprecated)    | kafka.cruisecontrol:name=Executor.inter-broker-partition-movements-per-broker-cap      |
 | Per broker cap on intra-broker partition movements (deprecated)    | kafka.cruisecontrol:name=Executor.intra-broker-partition-movements-per-broker-cap      |
 | Global cap on leadership movements                                 | kafka.cruisecontrol:name=Executor.leadership-movements-global-cap                      |
-| The time taken to exectute proposals involving broker removal      | kafka.cruisecontrol:name=Executor.proposal_execution-time-involve-broker-removal       |
-| The time taken to exectute proposals involving broker demotion     | kafka.cruisecontrol:name=Executor.proposal-execution-time-involve-broker-demotion-only |
-| The time taken to exectute proposals                               | kafka.cruisecontrol:name=Executor.proposal-execution-time                              |
+| The time taken to execute proposals involving broker removal       | kafka.cruisecontrol:name=Executor.proposal_execution-time-involve-broker-removal       |
+| The time taken to execute proposals involving broker demotion      | kafka.cruisecontrol:name=Executor.proposal-execution-time-involve-broker-demotion-only |
+| The time taken to execute proposals                                | kafka.cruisecontrol:name=Executor.proposal-execution-time                              |
 | Max inter-broker partition movement concurrency of all brokers     | kafka.cruisecontrol:name=inter-broker-partition-movements-max-concurrency              |
 | Min inter-broker partition movement concurrency of all brokers     | kafka.cruisecontrol:name=inter-broker-partition-movements-min-concurrency              |
 | Average inter-broker partition movement concurrency of all brokers | kafka.cruisecontrol:name=inter-broker-partition-movements-avg-concurrency              |
@@ -136,4 +136,4 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 | Request rate for each endpoint                                | kafka.cruisecontrol:name=KafkaCruiseControlServlet.<endpoint-name>-request-rate                       |
 ---
 # Metrics Collection
-You can easily expose Cruise Control metrics by [enabling](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/kafka-cruise-control-start.sh#L64) Java Management Extensions (JMX), and collect them by using your favourite JMX collection tool (e.g - [jmx_exporter](https://github.com/prometheus/jmx_exporter)).
+You can easily expose Cruise Control metrics by [enabling](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/kafka-cruise-control-start.sh#L83) Java Management Extensions (JMX), and collect them by using your favourite JMX collection tool (e.g - [jmx_exporter](https://github.com/prometheus/jmx_exporter)).

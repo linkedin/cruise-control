@@ -16,7 +16,7 @@ This document contains some common exceptions, warnings and issues that might su
 
 ### `ERROR _metricConsumer  returned null for _metricReporterTopic  __CruiseControlMetrics`
 
-This means that Cruise Control could not find the `__CruiseControlMetrics` topic in the Kafka cluster. CC uses that topic (configured via [`metric.reporter.topic`](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/config/cruisecontrol.properties#L50)) to read broker metrics that help in generating the cluster model.
+This means that Cruise Control could not find the `__CruiseControlMetrics` topic in the Kafka cluster. CC uses that topic (configured via [`metric.reporter.topic`](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/config/cruisecontrol.properties#L47)) to read broker metrics that help in generating the cluster model.
 
 #### Resolution
 
@@ -41,9 +41,9 @@ Cruise Control generates its cluster model using metrics in the `__CruiseControl
 
 #### Resolution
 
-1. If converting the mentioned UNIX timestamp results in a date in the very past or the very future, verify that the system clock is showing the right time, try restarting CC, and ensure that you are using the latest version of Cruise Control compatible with your version of Kafka (see [Environment Requirements](https://github.com/linkedin/cruise-control#environment-requirements)).
+1. If converting the mentioned UNIX timestamp results in a date in the very past or the very future, verify that the system clock is showing the right time, try restarting CC, and ensure that you are using the latest version of Cruise Control compatible with your version of Kafka (see [Environment Requirements](https://github.com/cruise-control-for-kafka/cruise-control#environment-requirements)).
 2. Ensure that the brokers are able to write to the `__CruiseControlMetrics` topic and that the partition(s) for this topic is/are not offline.
-3. Try increasing the lookback window so that CC is able to find data older than the configured window range. The values of `num.partition.metrics.windows`, `partition.metrics.window.ms`, and `metric.sampling.interval.ms` can be increased to achieve this. An example [recommended](https://github.com/linkedin/cruise-control/issues/1472#issuecomment-783813331) config that collects 1-week history for partitions would be (1) `metric.sampling.interval.ms=300000`, (2) `partition.metrics.window.ms=3600000`, (3) `num.partition.metrics.windows=168`.
+3. Try increasing the lookback window so that CC is able to find data older than the configured window range. The values of `num.partition.metrics.windows`, `partition.metrics.window.ms`, and `metric.sampling.interval.ms` can be increased to achieve this. An example config that collects 1-week history for partitions would be (1) `metric.sampling.interval.ms=300000`, (2) `partition.metrics.window.ms=3600000`, (3) `num.partition.metrics.windows=168`.
 
 ### `NotEnoughValidWindowsException` - Not Enough Windows Available in Range
 
@@ -94,15 +94,15 @@ INFO Collected 3 broker metric samples for 3 brokers. (com.linkedin.kafka.cruise
 INFO Finished sampling in 654 ms. (com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager)
 ```
 
-This warning means that Cruise Control could not find broker metrics for the mentioned brokers (brokers `0`, `1`, `2`) in the `__CruiseControlMetrics` topic. It could, however, find broker metrics for 3 other brokers in the cluster. Without broker metrics, Cruise Control will not be able to generate a proper cluster model and might not be able to include the brokers with missing metrics in it poposal computations and task executions.
+This warning means that Cruise Control could not find broker metrics for the mentioned brokers (brokers `0`, `1`, `2`) in the `__CruiseControlMetrics` topic. It could, however, find broker metrics for 3 other brokers in the cluster. Without broker metrics, Cruise Control will not be able to generate a proper cluster model and might not be able to include the brokers with missing metrics in its proposal computations and task executions.
 
 ### Resolution
 
 The general resolution is to ensure that the brokers with the missing metrics are able to produce metrics to the `__CruiseControlTopic`. Checking the following might help:
 
 1. Ensure that the Cruise Control metrics reporter jar is present on the brokers
-2. Ensure that you are using a version of Cruise Control compatible with the version of Kafka. For more information on version compatibility, see the [Environment Requirements](https://github.com/linkedin/cruise-control#environment-requirements) section
+2. Ensure that you are using a version of Cruise Control compatible with the version of Kafka. For more information on version compatibility, see the [Environment Requirements](https://github.com/cruise-control-for-kafka/cruise-control#environment-requirements) section
 
 ## Contributing
 
-Found an error/interesting behaviour of Cruise Control and have a resolution for it? Consider adding that to this guide by following the [contributing guidelines](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/CONTRIBUTING.md) for the project.
+Found an error/interesting behaviour of Cruise Control and have a resolution for it? Consider adding that to this guide by following the [contributing guidelines](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/CONTRIBUTING.md) for the project.

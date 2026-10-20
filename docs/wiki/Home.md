@@ -1,6 +1,6 @@
 # Welcome to Cruise Control
 
-Cruise Control is a project that helps operate Kafka hands-free!
+Cruise Control is a project that helps operate Apache Kafka hands-free!
 
 ## Features
 Cruise Control provides the following features out of the box:
@@ -11,11 +11,11 @@ Cruise Control provides the following features out of the box:
 * Support heterogeneous Kafka clusters and multiple brokers per machine.
 
 ## Getting started
-Follow our [quick start](https://github.com/linkedin/cruise-control#quick-start) and try it out.
-You may also want to take a look at [configurations](https://github.com/linkedin/cruise-control/wiki/Configurations) to adjust the configurations by yourself.
+Follow our [quick start](https://github.com/cruise-control-for-kafka/cruise-control#quick-start) and try it out.
+You may also want to take a look at [configurations](https://github.com/cruise-control-for-kafka/cruise-control/wiki/Configurations) to adjust the configurations by yourself.
 
 ## Reporting bugs
-If you will encounter any issues please open an issue [here](https://github.com/linkedin/cruise-control/issues) and we encourage you to provide a patch through github pull request as well. 
+If you encounter any issues please open an issue [here](https://github.com/cruise-control-for-kafka/cruise-control/issues), and we encourage you to provide a patch through GitHub pull request as well. 
 
 ## Contact
-Join our [Slack channel](https://join.slack.com/t/cruise-control-corp/shared_invite/zt-491ndlgpw-M1BOo97QMcYGDoXOvfI1jA) to interact with the community!
+Join our [Slack](https://join.slack.com/t/cruise-control-corp/shared_invite/zt-491ndlgpw-M1BOo97QMcYGDoXOvfI1jA) to interact with the community!

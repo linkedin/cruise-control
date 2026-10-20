@@ -56,6 +56,6 @@ public abstract class AbstractRequest implements Request {
   @Override
   public void configure(Map<String, ?> configs) {
     _requestHandler = (KafkaCruiseControlRequestHandler) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_REQUEST_HANDLER_OBJECT_CONFIG),
-            "Kafka Cruise Control request handler configuration is missing from the request.");
+            "Cruise Control request handler configuration is missing from the request.");
   }
 }

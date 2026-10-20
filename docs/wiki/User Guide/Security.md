@@ -74,7 +74,7 @@ In this configuration it is required to provide a credentials file which contain
 ("shortname/host@REALM") of the allowed services and its privileges in the format of Jetty's HashLoginService's properties
 file, the principal of Cruise Control and a keytab file which contains the keys of this principal.
 
-### Trusted Proxy Authentiation
+### Trusted Proxy Authentication
 
 This is an addition on top of the SPNEGO authentication. In some cases Cruise Control can sit behind an authentication
 proxy such as Apache Knox. The goal of this proxy is to centralize access to the system by providing a unified
