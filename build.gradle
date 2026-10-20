@@ -4,8 +4,8 @@
 plugins {
   id "idea"
   id "jacoco" // Java Code Coverage plugin
-  id "com.github.ben-manes.versions" version "0.42.0"
-  id "com.github.spotbugs" version "6.0.25" apply false
+  id "io.github.ben-manes.versions" version "0.66.0"
+  id "com.github.spotbugs" version "6.5.10" apply false
   id "checkstyle"
   id "org.openapi.generator" version "5.3.0"
   id "io.github.gradle-nexus.publish-plugin" version "2.0.0"
@@ -69,7 +69,7 @@ allprojects {
     mavenCentral()
   }
 
-  apply plugin: 'com.github.ben-manes.versions'
+  apply plugin: 'io.github.ben-manes.versions'
 
   dependencyUpdates {
     revision="release"
@@ -100,20 +100,25 @@ subprojects {
   apply plugin: "com.github.spotbugs"
   apply plugin: 'jacoco'
 
-  // This project requires Java 17
-  sourceCompatibility = JavaVersion.VERSION_17
+  java {
+    toolchain {
+      languageVersion = JavaLanguageVersion.of(17)
+    }
+  }
 
   dependencies {
     // Jackson is mostly a transitive dependency; this BOM aligns versions across Kafka, Swagger, and Vertx dependencies
     implementation platform("com.fasterxml.jackson:jackson-bom:${jacksonBomVersion}")
   }
 
-  task sourcesJar(type: Jar, dependsOn: classes) {
+  tasks.register("sourcesJar", Jar) {
+    dependsOn(classes)
     archiveClassifier.set("sources")
     from sourceSets.main.allSource
   }
 
-  task javadocJar(type: Jar, dependsOn: javadoc) {
+  tasks.register("javadocJar", Jar) {
+    dependsOn(javadoc)
     archiveClassifier.set("javadoc")
     from javadoc.destinationDir
   }
@@ -135,18 +140,18 @@ subprojects {
   }
   spotbugsMain {
     reports {
-      xml.enabled = (project.hasProperty('xmlFindBugsReport'))
-      html.enabled = (!project.hasProperty('xmlFindBugsReport'))
+      xml.required = project.hasProperty('xmlFindBugsReport')
+      html.required = !project.hasProperty('xmlFindBugsReport')
     }
   }
   spotbugsTest {
     reports {
-      xml.enabled = (project.hasProperty('xmlFindBugsReport'))
-      html.enabled = (!project.hasProperty('xmlFindBugsReport'))
+      xml.required = project.hasProperty('xmlFindBugsReport')
+      html.required = !project.hasProperty('xmlFindBugsReport')
     }
   }
   // aggregated task for checkstyle and spotbugs static analyzers
-  task('analyze') {
+  tasks.register('analyze') {
     dependsOn('checkstyleMain', 'checkstyleTest', 'spotbugsMain', 'spotbugsTest')
     doLast {}
   }
@@ -185,7 +190,7 @@ subprojects {
   }
 
   signing {
-    required { gradle.taskGraph.hasTask("publishToSonatype") }
+    required = { gradle.taskGraph.hasTask("publishToSonatype") }
     def signingKeyId = findProperty("signingKeyId")
     def signingKey = findProperty("signingKey")
     def signingPassword = findProperty("signingPassword")
@@ -380,18 +385,19 @@ project(':cruise-control') {
     }
   }
 
-  tasks.create(name: "copyDependantLibs", type: Copy) {
+  tasks.register("copyDependantLibs", Copy) {
     from (configurations.testRuntimeClasspath) {
       include('log4j-slf4j2-impl*')
     }
     from (configurations.runtimeClasspath) {
 
     }
-    into "$buildDir/dependant-libs"
-    duplicatesStrategy 'exclude'
+    into layout.buildDirectory.dir("dependant-libs")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   }
 
-  tasks.create(name: "buildFatJar", type: Jar, dependsOn: ["createVersionFile", ":cruise-control-metrics-reporter:jar", ":cruise-control-core:jar"]) {
+  tasks.register("buildFatJar", Jar) {
+    dependsOn("createVersionFile", ":cruise-control-metrics-reporter:jar", ":cruise-control-core:jar")
     archiveBaseName = project.name + '-all'
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
@@ -403,7 +409,7 @@ project(':cruise-control') {
 
   compileScala.finalizedBy(tasks.copyDependantLibs)
 
-  task determineCommitId {
+  tasks.register("determineCommitId") {
     def takeFromHash = 40
     if (commitId) {
       commitId = commitId.take(takeFromHash)
@@ -423,8 +429,9 @@ project(':cruise-control') {
   }
 
   // Referenced similar method for getting software version in Kafka code.
-  task createVersionFile(dependsOn: determineCommitId) {
-    ext.receiptFile = file("$buildDir/cruise-control/$buildVersionFileName")
+  tasks.register("createVersionFile") {
+    dependsOn("determineCommitId")
+    ext.receiptFile = layout.buildDirectory.file("cruise-control/$buildVersionFileName").get().asFile
     outputs.file receiptFile
     outputs.upToDateWhen { false }
     doLast {
@@ -439,7 +446,7 @@ project(':cruise-control') {
     }
   }
 
-  task integrationTest(type: Test) {
+  tasks.register("integrationTest", Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
     testLogging {
@@ -452,12 +459,12 @@ project(':cruise-control') {
 
   jar {
     dependsOn createVersionFile
-    from("$buildDir") {
+    from(layout.buildDirectory) {
       include "cruise-control/$buildVersionFileName"
     }
   }
 
-  task generateOpenApiJson(type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
+  tasks.register("generateOpenApiJson", org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
     inputSpec = "$rootDir/cruise-control/src/main/resources/yaml/base.yaml"
     generatorName = "openapi"
     outputDir = "$rootDir/cruise-control/src/main/resources/webroot"
@@ -522,7 +529,7 @@ project(':cruise-control-metrics-reporter') {
 
 }
 
-task buildApiWiki(type: Exec) {
+tasks.register("buildApiWiki", Exec) {
   workingDir '.'
   commandLine './build_api_wiki.sh'
 }
@@ -534,6 +541,6 @@ static def getScalaBinaryVersion(versionStr) {
 
 //wrapper generation task
 wrapper {
-  gradleVersion = '8.5'
+  gradleVersion = '8.14'
   distributionType = Wrapper.DistributionType.ALL
 }
