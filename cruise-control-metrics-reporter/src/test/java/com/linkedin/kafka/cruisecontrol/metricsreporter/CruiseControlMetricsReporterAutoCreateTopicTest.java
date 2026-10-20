@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCContainerizedKra
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.KafkaServerConfigs;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -20,8 +20,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import java.util.Collections;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter.getTopicDescription;
@@ -47,16 +47,16 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         // creating the "TestTopic" explicitly because the topic auto-creation is disabled on the broker
         Properties adminProps = new Properties();
         adminProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-        AdminClient adminClient = AdminClient.create(adminProps);
-        NewTopic testTopic = new NewTopic(TEST_TOPIC, 1, (short) 1);
-        CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singleton(testTopic));
-
         AtomicInteger adminFailed = new AtomicInteger(0);
-        createTopicsResult.all().whenComplete((v, e) -> {
-            if (e != null) {
-                adminFailed.incrementAndGet();
-            }
-        });
+        try (Admin adminClient = Admin.create(adminProps)) {
+            NewTopic testTopic = new NewTopic(TEST_TOPIC, 1, (short) 1);
+            CreateTopicsResult createTopicsResult = adminClient.createTopics(Set.of(testTopic));
+            createTopicsResult.all().whenComplete((v, e) -> {
+                if (e != null) {
+                    adminFailed.incrementAndGet();
+                }
+            });
+        }
         assertEquals(0, adminFailed.get());
 
         // starting producer to verify that Kafka cluster is working fine
@@ -116,7 +116,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
     public void testAutoCreateMetricsTopic() {
         Properties props = new Properties();
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-        AdminClient adminClient = AdminClient.create(props);
+        Admin adminClient = Admin.create(props);
 
         // For compatibility with Kafka 4.0 and beyond we must use new API methods.
         TopicDescription topicDescription;

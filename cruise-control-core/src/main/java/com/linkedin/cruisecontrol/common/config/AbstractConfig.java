@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  */
 public class AbstractConfig {
 
-  public static final String NL = System.getProperty("line.separator");
+  public static final String NL = System.lineSeparator();
 
   private final Logger _log = LoggerFactory.getLogger(getClass());
 
@@ -51,10 +51,7 @@ public class AbstractConfig {
     }
     _originals = (Map<String, ?>) originals;
     _values = definition.parse(this._originals);
-    Map<String, Object> configUpdates = postProcessParsedConfig(Collections.unmodifiableMap(_values));
-    for (Map.Entry<String, Object> update : configUpdates.entrySet()) {
-      _values.put(update.getKey(), update.getValue());
-    }
+    _values.putAll(postProcessParsedConfig(Collections.unmodifiableMap(_values)));
     definition.parse(_values);
     _used = Collections.synchronizedSet(new HashSet<>());
     this._definition = definition;
@@ -75,7 +72,7 @@ public class AbstractConfig {
    * @return A map of updates that should be applied to the configuration (will be validated to prevent bad updates)
    */
   protected Map<String, Object> postProcessParsedConfig(Map<String, Object> parsedValues) {
-    return Collections.emptyMap();
+    return Map.of();
   }
 
   protected Object get(String key) {
@@ -167,12 +164,12 @@ public class AbstractConfig {
   public Map<String, String> originalsStrings() {
     Map<String, String> copy = new RecordingMap<>();
     for (Map.Entry<String, ?> entry : _originals.entrySet()) {
-      if (!(entry.getValue() instanceof String)) {
+      if (!(entry.getValue() instanceof String value)) {
         throw new ClassCastException(
             "Non-string value found in original settings for key " + entry.getKey() + ": "
                 + (entry.getValue() == null ? null : entry.getValue().getClass().getName()));
       }
-      copy.put(entry.getKey(), (String) entry.getValue());
+      copy.put(entry.getKey(), value);
     }
     return copy;
   }
@@ -262,8 +259,8 @@ public class AbstractConfig {
     if (!t.isInstance(o)) {
       throw new CruiseControlException(c.getName() + " is not an instance of " + t.getName());
     }
-    if (o instanceof CruiseControlConfigurable) {
-      ((CruiseControlConfigurable) o).configure(originals());
+    if (o instanceof CruiseControlConfigurable configurable) {
+      configurable.configure(originals());
     }
     return t.cast(o);
   }
@@ -277,9 +274,8 @@ public class AbstractConfig {
    * @param <T> The type of the configured instance to be returned.
    * @return The list of configured instances
    */
-  @SuppressWarnings("unchecked")
   public <T> List<T> getConfiguredInstances(String key, Class<T> t) throws CruiseControlException {
-    return getConfiguredInstances(key, t, Collections.EMPTY_MAP);
+    return getConfiguredInstances(key, t, Map.of());
   }
 
   /**
@@ -303,14 +299,14 @@ public class AbstractConfig {
     configPairs.putAll(configOverrides);
     for (Object klass : klasses) {
       Object o;
-      if (klass instanceof String) {
+      if (klass instanceof String str) {
         try {
-          o = Utils.newInstance((String) klass, t);
+          o = Utils.newInstance(str, t);
         } catch (ClassNotFoundException e) {
           throw new CruiseControlException(klass + " ClassNotFoundException exception occurred", e);
         }
-      } else if (klass instanceof Class<?>) {
-        o = Utils.newInstance((Class<?>) klass);
+      } else if (klass instanceof Class<?> cla) {
+        o = Utils.newInstance(cla);
       } else {
         throw new CruiseControlException("List contains element of type " + klass.getClass().getName()
                                              + ", expected String or Class");
@@ -318,8 +314,8 @@ public class AbstractConfig {
       if (!t.isInstance(o)) {
         throw new CruiseControlException(klass + " is not an instance of " + t.getName());
       }
-      if (o instanceof CruiseControlConfigurable) {
-        ((CruiseControlConfigurable) o).configure(configPairs);
+      if (o instanceof CruiseControlConfigurable configurable) {
+        configurable.configure(configPairs);
       }
       objects.add(t.cast(o));
     }
@@ -375,8 +371,7 @@ public class AbstractConfig {
 
     @Override
     public V get(Object key) {
-      if (key instanceof String) {
-        String stringKey = (String) key;
+      if (key instanceof String stringKey) {
         String keyWithPrefix;
         if (_prefix.isEmpty()) {
           keyWithPrefix = stringKey;

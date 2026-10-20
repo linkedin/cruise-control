@@ -17,7 +17,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtil
 import com.linkedin.kafka.cruisecontrol.metricsreporter.config.EnvConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.AlterConfigsResult;
@@ -173,7 +173,7 @@ public final class KafkaCruiseControlUtils {
    * @param topicToBeCreated A wrapper around the topic to be created.
    * @return {@code false} if the topic to be created already exists, {@code true} otherwise.
    */
-  public static boolean createTopic(AdminClient adminClient, NewTopic topicToBeCreated) {
+  public static boolean createTopic(Admin adminClient, NewTopic topicToBeCreated) {
     try {
       boolean retryResponse = CruiseControlMetricsUtils.retry(() -> {
         try {
@@ -205,7 +205,7 @@ public final class KafkaCruiseControlUtils {
    * @param timeout Timeout to describe cluster configs.
    * @return Cluster configs, or {@code null} if there is a timeout.
    */
-  public static Config describeClusterConfigs(AdminClient adminClient, Duration timeout)
+  public static Config describeClusterConfigs(Admin adminClient, Duration timeout)
       throws InterruptedException, ExecutionException {
     Set<ConfigResource> resources = Collections.singleton(CLUSTER_CONFIG);
     KafkaFuture<Config> clusterConfigFuture = adminClient.describeConfigs(resources).values().get(CLUSTER_CONFIG);
@@ -269,7 +269,7 @@ public final class KafkaCruiseControlUtils {
    * @param topicToUpdateConfigs Existing topic to update selected configs if needed -- cannot be {@code null}.
    * @return {@code true} if the request is completed successfully, {@code false} if there are any exceptions.
    */
-  public static boolean maybeUpdateTopicConfig(AdminClient adminClient, NewTopic topicToUpdateConfigs) {
+  public static boolean maybeUpdateTopicConfig(Admin adminClient, NewTopic topicToUpdateConfigs) {
     String topicName = topicToUpdateConfigs.name();
     // Retrieve topic config to check if it needs an update.
     ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, topicName);
@@ -310,7 +310,7 @@ public final class KafkaCruiseControlUtils {
    * @return {@link CompletionType#COMPLETED} if the request is completed successfully, {@link CompletionType#COMPLETED_WITH_ERROR} if there
    * are any exceptions, and {@link CompletionType#NO_ACTION} if the partition count is already greater than or equal to the requested count.
    */
-  public static CompletionType maybeIncreasePartitionCount(AdminClient adminClient, NewTopic topicToAddPartitions) {
+  public static CompletionType maybeIncreasePartitionCount(Admin adminClient, NewTopic topicToAddPartitions) {
     String topicName = topicToAddPartitions.name();
 
     // Retrieve partition count of topic to check if it needs a partition count update.
@@ -501,34 +501,34 @@ public final class KafkaCruiseControlUtils {
   }
 
   /**
-   * Create an instance of AdminClient using the given configurations.
+   * Create an instance of Admin using the given configurations.
    *
-   * @param adminClientConfigs Configurations used for the AdminClient.
-   * @return A new instance of AdminClient.
+   * @param adminClientConfigs Configurations used for the Admin client.
+   * @return A new instance of Admin.
    */
-  public static AdminClient createAdminClient(Map<String, Object> adminClientConfigs) {
-    return AdminClient.create(adminClientConfigs);
+  public static Admin createAdminClient(Map<String, Object> adminClientConfigs) {
+    return Admin.create(adminClientConfigs);
   }
 
   /**
-   * Close the given AdminClient with the default timeout of {@link #ADMIN_CLIENT_CLOSE_TIMEOUT_MS}.
+   * Close the given Admin with the default timeout of {@link #ADMIN_CLIENT_CLOSE_TIMEOUT_MS}.
    *
-   * @param adminClient AdminClient to be closed.
+   * @param adminClient Admin to be closed.
    */
-  public static void closeAdminClientWithTimeout(AdminClient adminClient) {
+  public static void closeAdminClientWithTimeout(Admin adminClient) {
     closeAdminClientWithTimeout(adminClient, ADMIN_CLIENT_CLOSE_TIMEOUT_MS);
   }
 
   /**
-   * Close the given AdminClient with the given timeout.
+   * Close the given Admin with the given timeout.
    *
-   * @param adminClient AdminClient to be closed.
+   * @param adminClient Admin to be closed.
    * @param timeoutMs the timeout.
    */
-  public static void closeAdminClientWithTimeout(AdminClient adminClient, long timeoutMs) {
+  public static void closeAdminClientWithTimeout(Admin adminClient, long timeoutMs) {
     closeClientWithTimeout(() -> {
       try {
-        ((AutoCloseable) adminClient).close();
+        adminClient.close();
       } catch (Exception e) {
         throw new IllegalStateException("Failed to close the Admin Client.", e);
       }
@@ -536,10 +536,10 @@ public final class KafkaCruiseControlUtils {
   }
 
   /**
-   * Parse AdminClient configs based on the given {@link KafkaCruiseControlConfig configs}.
+   * Parse Admin configs based on the given {@link KafkaCruiseControlConfig configs}.
    *
-   * @param configs Configs to be used for parsing AdminClient configs.
-   * @return AdminClient configs.
+   * @param configs Configs to be used for parsing Admin configs.
+   * @return Admin configs.
    */
   public static Map<String, Object> parseAdminClientConfigs(KafkaCruiseControlConfig configs) {
     Map<String, Object> adminClientConfigs = new HashMap<>();

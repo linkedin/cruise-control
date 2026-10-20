@@ -27,8 +27,7 @@ import com.linkedin.kafka.cruisecontrol.detector.AnomalyState;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import net.minidev.json.JSONArray;
-import org.apache.commons.io.FileUtils;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.server.config.ServerLogConfigs;
@@ -121,7 +120,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
 
   @Test
   public void testDiskFailure() throws IOException {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
         .singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
     try {
       adminClient.createTopics(Collections.singleton(new NewTopic(TOPIC0, PARTITION_COUNT, TOPIC0_REPLICATION_FACTOR)));
@@ -137,7 +136,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
     waitForProposal();
     
     Entry<File, File> entry = _brokerLogDirs.get(BROKER_ID_TO_CAUSE_DISK_FAILURE);
-    FileUtils.deleteDirectory(entry.getKey());
+    CCKafkaTestUtils.deleteRecursively(entry.getKey());
     LOG.info("Disk failure injected");
     waitForOfflineReplicaDetection();
     waitForDiskFailureFixStarted();

@@ -157,7 +157,7 @@ public class RawMetricValues extends WindowIndexedArrays {
 
   /**
    * Check whether this raw metric value is valid or not. The raw metric value is valid if:
-   * 1. All the stable windows are {@code valid} (See {@link MetricSampleAggregator}, AND
+   * 1. All the stable windows are {@code valid} (See {@link MetricSampleAggregator}), AND
    * 2. The number of windows with extrapolation is less than the given maxAllowedWindowsWithExtrapolation.
    *
    * @param maxAllowedWindowsWithExtrapolation the maximum number of allowed windows with extrapolation.
@@ -307,18 +307,11 @@ public class RawMetricValues extends WindowIndexedArrays {
           double total = _windowValuesByMetricId.get(metricId)[prevArrayIndex] + (_counts[arrayIndex] == 0 ? 0 : _windowValuesByMetricId
               .get(metricId)[arrayIndex])
                          + _windowValuesByMetricId.get(metricId)[nextArrayIndex];
-          switch (info.aggregationFunction()) {
-            case AVG:
-              aggValuesForMetric.set(resultIndex, total / (_counts[prevArrayIndex] + _counts[arrayIndex] + _counts[nextArrayIndex]));
-              break;
-            case MAX:
-            case LATEST:
-              // for max and latest, we already only keep the largest or last value.
-              aggValuesForMetric.set(resultIndex, total / (_counts[arrayIndex] > 0 ? 3 : 2));
-              break;
-            default:
-              throw new IllegalStateException("Should never be here.");
-          }
+          aggValuesForMetric.set(resultIndex, switch (info.aggregationFunction()) {
+            case AVG -> total / (_counts[prevArrayIndex] + _counts[arrayIndex] + _counts[nextArrayIndex]);
+            // for max and latest, we already only keep the largest or last value.
+            case MAX, LATEST -> total / (_counts[arrayIndex] > 0 ? 3 : 2);
+          });
           // Neighbor not available, use the insufficient samples.
         } else if (_counts[arrayIndex] > 0) {
           aggValuesForMetric.set(resultIndex, getValue(info, arrayIndex, values));
@@ -362,30 +355,18 @@ public class RawMetricValues extends WindowIndexedArrays {
     if (_counts[index] == 0) {
       return 0;
     }
-    switch (info.aggregationFunction()) {
-      case AVG:
-        return values[index] / _counts[index];
-      case MAX:
-      case LATEST:
-        return values[index];
-      default:
-        throw new IllegalStateException("Should never be here.");
-    }
+    return switch (info.aggregationFunction()) {
+      case AVG -> values[index] / _counts[index];
+      case MAX, LATEST -> values[index];
+    };
   }
 
   private void updateWindowValueForMetric(double newValue, MetricInfo info, int arrayIndex) {
     switch (info.aggregationFunction()) {
-      case AVG:
-        add(newValue, info.id(), arrayIndex);
-        break;
-      case MAX:
-        max(newValue, info.id(), arrayIndex);
-        break;
-      case LATEST:
-        latest(newValue, info.id(), arrayIndex);
-        break;
-      default:
-        throw new IllegalStateException("Should never be here");
+      case AVG -> add(newValue, info.id(), arrayIndex);
+      case MAX -> max(newValue, info.id(), arrayIndex);
+      case LATEST -> latest(newValue, info.id(), arrayIndex);
+      default -> throw new IllegalStateException("Unexpected aggregation function: " + info.aggregationFunction());
     }
   }
 

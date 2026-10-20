@@ -8,7 +8,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +73,7 @@ public class KafkaPartitionMetricSampleOnExecutionStore extends AbstractKafkaSam
 
   @SuppressWarnings("unchecked")
   protected void ensureTopicCreated(Map<String, ?> config, int topicPartitionCount, long topicRetentionTimeMs) {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {
       short replicationFactor = sampleStoreTopicReplicationFactor(config, adminClient);
 

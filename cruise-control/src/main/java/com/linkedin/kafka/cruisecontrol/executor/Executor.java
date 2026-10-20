@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.ElectLeadersResult;
@@ -102,7 +102,7 @@ public class Executor {
   private final long _defaultExecutionProgressCheckIntervalMs;
   private Long _requestedExecutionProgressCheckIntervalMs;
   private final ExecutorService _proposalExecutor;
-  private final AdminClient _adminClient;
+  private final Admin _adminClient;
   private final double _leaderMovementTimeoutMs;
 
   private static final int NO_STOP_EXECUTION = 0;
@@ -178,7 +178,7 @@ public class Executor {
   Executor(KafkaCruiseControlConfig config,
            Time time,
            MetricRegistry dropwizardMetricRegistry,
-           AdminClient adminClient,
+           Admin adminClient,
            MetadataAdminClient metadataClient,
            ExecutorNotifier executorNotifier,
            AnomalyDetectorManager anomalyDetectorManager) {

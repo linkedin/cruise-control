@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  * a cyclic buffer to keep track of the most recent N (configured) windows. The oldest windows are evicted when
  * the buffer is full.
  * <p>
- *   The {@link MetricSampleAggregator} aggregates the metrics of each entities in each window. The aggregation
+ *   The {@link MetricSampleAggregator} aggregates the metrics of each entity in each window. The aggregation
  *   can be viewed as two dimensions: per entity and per window.
  * </p>
  * <p>

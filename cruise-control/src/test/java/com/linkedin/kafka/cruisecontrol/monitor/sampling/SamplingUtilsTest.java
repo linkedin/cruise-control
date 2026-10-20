@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.AlterConfigsResult;
 import org.apache.kafka.clients.admin.Config;
@@ -53,7 +53,7 @@ public class SamplingUtilsTest {
 
   @Test
   public void testMaybeUpdateTopicConfig() throws InterruptedException, ExecutionException, TimeoutException {
-    AdminClient adminClient = EasyMock.createMock(AdminClient.class);
+    Admin adminClient = EasyMock.createMock(Admin.class);
     DescribeConfigsResult describeConfigsResult = EasyMock.createMock(DescribeConfigsResult.class);
     KafkaFuture<Config> describedConfigsFuture = EasyMock.createMock(KafkaFuture.class);
     Config topicConfig = EasyMock.createMock(Config.class);
@@ -86,7 +86,7 @@ public class SamplingUtilsTest {
 
   @Test
   public void testMaybeIncreasePartitionCount() throws InterruptedException, ExecutionException, TimeoutException {
-    AdminClient adminClient = EasyMock.createMock(AdminClient.class);
+    Admin adminClient = EasyMock.createMock(Admin.class);
     NewTopic topicToAddPartitions = wrapTopic(MOCK_TOPIC, MOCK_DESIRED_PARTITION_COUNT, MOCK_REPLICATION_FACTOR, MOCK_DESIRED_RETENTION_MS);
     DescribeTopicsResult describeTopicsResult = EasyMock.createMock(DescribeTopicsResult.class);
     KafkaFuture<TopicDescription> topicDescriptionFuture = EasyMock.createMock(KafkaFuture.class);

@@ -32,10 +32,9 @@ public class IntegerEntity extends Entity<String> {
     if (other == null) {
       return false;
     }
-    if (!(other instanceof IntegerEntity)) {
+    if (!(other instanceof IntegerEntity o)) {
       return false;
     }
-    IntegerEntity o = (IntegerEntity) other;
     return _id == o._id && _group.equals(o.group());
   }
 }

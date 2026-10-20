@@ -15,7 +15,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.CreatePartitionsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -40,7 +40,7 @@ import static org.junit.Assert.assertEquals;
  * A partition provisioner test based on using {@link BasicProvisioner} for partition provisioning.
  */
 public class PartitionProvisionerTest extends AbstractProvisionerTest {
-  private static final AdminClient MOCK_ADMIN_CLIENT = EasyMock.createMock(AdminClient.class);
+  private static final Admin MOCK_ADMIN_CLIENT = EasyMock.createMock(Admin.class);
   // Mocks for describe topics
   private static final DescribeTopicsResult MOCK_DESCRIBE_TOPICS_RESULT = EasyMock.createMock(DescribeTopicsResult.class);
   private static final KafkaFuture<TopicDescription> MOCK_TOPIC_DESCRIPTION_FUTURE = EasyMock.createMock(KafkaFuture.class);

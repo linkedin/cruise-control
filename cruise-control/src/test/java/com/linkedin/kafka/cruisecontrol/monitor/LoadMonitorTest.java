@@ -32,7 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.Metadata;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
@@ -545,7 +545,7 @@ public class LoadMonitorTest {
     EasyMock.replay(mockDescribeConfigsResult);
 
     // Create mock admin client.
-    AdminClient mockAdminClient = EasyMock.mock(AdminClient.class);
+    Admin mockAdminClient = EasyMock.mock(Admin.class);
     EasyMock.expect(mockAdminClient.describeLogDirs(Arrays.asList(0, 1)))
             .andReturn(mockDescribeLogDirsResult)
             .anyTimes();

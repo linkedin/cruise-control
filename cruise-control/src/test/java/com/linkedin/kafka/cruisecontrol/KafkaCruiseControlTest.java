@@ -20,7 +20,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
@@ -93,7 +93,7 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     EasyMock.verify(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
 
     // Verify initialization and functioning of Admin Client
-    AdminClient adminClient = kafkaCruiseControl.adminClient();
+    Admin adminClient = kafkaCruiseControl.adminClient();
     assertNotNull(adminClient);
     assertEquals(clusterSize(), adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS).size());
   }
@@ -127,7 +127,7 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     EasyMock.verify(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
 
     // Verify initialization and functioning of Admin Client
-    AdminClient adminClient = kafkaCruiseControl.adminClient();
+    Admin adminClient = kafkaCruiseControl.adminClient();
     assertNotNull(adminClient);
     assertEquals(clusterSize(), adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS).size());
   }

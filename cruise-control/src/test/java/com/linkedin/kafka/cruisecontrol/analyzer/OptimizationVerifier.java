@@ -30,7 +30,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.stream.Collectors;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
@@ -143,7 +143,7 @@ final class OptimizationVerifier {
                                                     Time.SYSTEM,
                                                     new MetricRegistry(),
                                                     EasyMock.mock(Executor.class),
-                                                    EasyMock.mock(AdminClient.class));
+                                                    EasyMock.mock(Admin.class));
 
     List<Goal> goalsOfFirstPass;
     OptimizerResult resultOfFirstPass;

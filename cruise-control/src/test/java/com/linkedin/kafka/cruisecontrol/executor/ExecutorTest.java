@@ -55,7 +55,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.ElectLeadersResult;
@@ -163,7 +162,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(getExecutorProperties());
     Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
     adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
 
     try {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
@@ -211,7 +210,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testSubmitReplicaReassignmentTasksWithDeadTaskAndNoReassignmentInProgress() throws InterruptedException {
     createTopics(0);
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(0)));
 
     TopicPartition tp = new TopicPartition(TOPIC0, 0);
@@ -237,7 +236,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   @Test
   public void testSubmitPreferredLeaderElection() throws InterruptedException, ExecutionException, TimeoutException {
     Map<String, TopicDescription> topicDescriptions = createTopics(0);
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(0)));
 
     // Case 1: Handle the successful case.
@@ -317,7 +316,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   @Test
   public void testSubmitReplicaReassignmentTasksWithInProgressTaskAndNonExistingTopic() throws InterruptedException {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(0)));
 
     ExecutionProposal proposal = new ExecutionProposal(TP0,
@@ -349,7 +348,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
                               Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
 
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(0)));
 
     ExecutionTask task = new ExecutionTask(0,
@@ -367,7 +366,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   @Test
   public void testSubmitReplicaReassignmentTasksWithEmptyNullOrAllCompletedTasks() {
-    AdminClient mockAdminClient = EasyMock.mock(AdminClient.class);
+    Admin mockAdminClient = EasyMock.mock(Admin.class);
     // 1. Verify with an empty task list.
     assertThrows(IllegalArgumentException.class, () -> ExecutionUtils.submitReplicaReassignmentTasks(mockAdminClient, Collections.emptyList()));
     // 2. Verify with null tasks.
@@ -687,7 +686,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   private void verifyOngoingPartitionReassignments(Set<TopicPartition> partitions) {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+    Admin adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _brokerAddressList.get(BROKER_ID_0)));
     try {
       waitUntilTrue(() -> {
@@ -801,7 +800,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
     MetricRegistry metricRegistry = new MetricRegistry();
-    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, (AdminClient) _adminClient,
+    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, _adminClient,
       new MetadataAdminClient(_adminClient), mockExecutorNotifier, mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();

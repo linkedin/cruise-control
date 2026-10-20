@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -62,7 +62,7 @@ public abstract class AbstractKafkaSampleStore implements SampleStore {
    * @param adminClient The adminClient to send describeCluster request.
    * @return Desired replication factor of sample store topics, or {@code null} if failed to resolve replication factor.
    */
-  protected short sampleStoreTopicReplicationFactor(Map<String, ?> config, AdminClient adminClient) {
+  protected short sampleStoreTopicReplicationFactor(Map<String, ?> config, Admin adminClient) {
     if (_sampleStoreTopicReplicationFactor != null) {
       return _sampleStoreTopicReplicationFactor;
     }
@@ -97,7 +97,7 @@ public abstract class AbstractKafkaSampleStore implements SampleStore {
     }
   }
 
-  protected void ensureTopicCreated(AdminClient adminClient, NewTopic sampleStoreTopic) {
+  protected void ensureTopicCreated(Admin adminClient, NewTopic sampleStoreTopic) {
     if (!createTopic(adminClient, sampleStoreTopic)) {
       // Update topic config and partition count to ensure desired properties.
       maybeUpdateTopicConfig(adminClient, sampleStoreTopic);

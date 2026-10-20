@@ -11,21 +11,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import kafka.server.KafkaConfig;
-import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.network.ListenerName;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.network.SocketServerConfigs;
 import org.apache.kafka.raft.KRaftConfigs;
 import org.apache.kafka.server.config.ServerLogConfigs;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaRaftServer.CLUSTER_ID_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.KafkaServerConfigs.METADATA_LOG_DIR_CONFIG;
 
 public class CCEmbeddedBroker implements AutoCloseable {
-  private static final Logger LOG = LoggerFactory.getLogger(CCEmbeddedBroker.class);
   private final Map<SecurityProtocol, Integer> _ports;
   private final Map<SecurityProtocol, String> _hosts;
   private final CCKafkaRaftServer _kafkaServer;
@@ -125,9 +121,9 @@ public class CCEmbeddedBroker implements AutoCloseable {
   public void close() {
     CCKafkaTestUtils.quietly(this::shutdown);
     CCKafkaTestUtils.quietly(this::awaitShutdown);
-    CCKafkaTestUtils.quietly(() -> FileUtils.forceDelete(_metadataLogDir));
+    CCKafkaTestUtils.quietly(() -> CCKafkaTestUtils.deleteRecursively(_metadataLogDir));
     for (File logDir : _logDirs) {
-      CCKafkaTestUtils.quietly(() -> FileUtils.forceDelete(logDir));
+      CCKafkaTestUtils.quietly(() -> CCKafkaTestUtils.deleteRecursively(logDir));
     }
   }
 }

@@ -57,7 +57,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
@@ -84,7 +84,7 @@ public class KafkaCruiseControl {
   private final Executor _executor;
   private final AnomalyDetectorManager _anomalyDetectorManager;
   private final Time _time;
-  private final AdminClient _adminClient;
+  private final Admin _adminClient;
   private final Provisioner _provisioner;
 
   private static final String VERSION;
@@ -177,7 +177,7 @@ public class KafkaCruiseControl {
    * Retrieve the Admin Client (expected to be thread-safe).
    * @return Admin Client of Cruise Control.
    */
-  public AdminClient adminClient() {
+  public Admin adminClient() {
     return _adminClient;
   }
 

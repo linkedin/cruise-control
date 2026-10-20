@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.AlterConfigsResult;
 import org.apache.kafka.clients.admin.Config;
@@ -38,11 +37,9 @@ import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.config.ConfigException;
@@ -54,7 +51,6 @@ import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.common.utils.KafkaThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.yammer.metrics.core.Metric;
@@ -72,7 +68,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   // KafkaYammerMetrics class in Kafka 2.5-
   private static final String YAMMER_METRICS_IN_KAFKA_2_5_AND_EARLIER = "com.yammer.metrics.Metrics";
   private final Map<org.apache.kafka.common.MetricName, KafkaMetric> _interestedMetrics = new ConcurrentHashMap<>();
-  private KafkaThread _metricsReporterRunner;
+  private Thread _metricsReporterRunner;
   private KafkaProducer<String, CruiseControlMetric> _producer;
   private String _cruiseControlMetricsTopic;
   private long _reportingIntervalMs;
@@ -81,7 +77,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private int _numMetricSendFailure = 0;
   private volatile boolean _shutdown = false;
   private NewTopic _metricsTopic;
-  private AdminClient _adminClient;
+  private Admin _adminClient;
   private long _metricsTopicAutoCreateTimeoutMs;
   private int _metricsTopicAutoCreateRetries;
   private int _metricsReporterCreateRetries;
@@ -98,7 +94,11 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       addMetricIfInterested(kafkaMetric);
     }
     LOG.info("Added {} Kafka metrics for Cruise Control metrics during initialization.", _interestedMetrics.size());
-    _metricsReporterRunner = new KafkaThread("CruiseControlMetricsReporterRunner", this, true);
+
+    _metricsReporterRunner = new Thread(this, "CruiseControlMetricsReporterRunner");
+    _metricsReporterRunner.setDaemon(true);
+    _metricsReporterRunner.setUncaughtExceptionHandler((t, e) -> LOG.error("Uncaught exception in thread '{}':", t.getName(), e));
+
     _yammerMetricProcessor = new YammerMetricProcessor();
     _metricsReporterRunner.start();
     _metricsRegistry = metricsRegistry();
@@ -129,7 +129,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   static String getBootstrapServers(Map<String, ?> configs) {
     Object port = configs.get("port");
     String listeners = String.valueOf(configs.get("listeners"));
-    if (!"null".equals(listeners) && listeners.length() != 0) {
+    if (!"null".equals(listeners) && !listeners.isEmpty()) {
       // See https://kafka.apache.org/documentation/#listeners for possible responses. If multiple listeners are configured, this function
       // picks the first listener in the list of listeners. Hence, users of this config must adjust their order accordingly.
       String firstListener = listeners.split("\\s*,\\s*")[0];
@@ -260,8 +260,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       throw new RuntimeException("Failed to get metrics registry", e);
     }
 
-    if (metricsRegistry instanceof MetricsRegistry) {
-      return (MetricsRegistry) metricsRegistry;
+    if (metricsRegistry instanceof MetricsRegistry registry) {
+      return registry;
     } else {
       throw new RuntimeException("Metrics registry does not have the expected type");
     }
@@ -332,7 +332,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   protected void createCruiseControlMetricsTopic() throws TopicExistsException {
     CruiseControlMetricsUtils.retry(() -> {
       try {
-        CreateTopicsResult createTopicsResult = _adminClient.createTopics(Collections.singletonList(_metricsTopic));
+        CreateTopicsResult createTopicsResult = _adminClient.createTopics(List.of(_metricsTopic));
         createTopicsResult.values().get(_metricsTopic.name()).get(_metricsTopicAutoCreateTimeoutMs, TimeUnit.MILLISECONDS);
         LOG.info("Cruise Control metrics topic {} is created.", _metricsTopic.name());
         return false;
@@ -355,7 +355,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     try {
       // Retrieve topic config to check and update.
       ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, _cruiseControlMetricsTopic);
-      DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(Collections.singleton(topicResource));
+      DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(Set.of(topicResource));
       Config topicConfig = describeConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       Set<AlterConfigOp> alterConfigOps = new HashSet<>();
       Map<String, String> configsToSet = new HashMap<>();
@@ -363,7 +363,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       configsToSet.put(TopicConfig.CLEANUP_POLICY_CONFIG, _metricsTopic.configs().get(TopicConfig.CLEANUP_POLICY_CONFIG));
       maybeUpdateConfig(alterConfigOps, configsToSet, topicConfig);
       if (!alterConfigOps.isEmpty()) {
-        AlterConfigsResult alterConfigsResult = _adminClient.incrementalAlterConfigs(Collections.singletonMap(topicResource, alterConfigOps));
+        AlterConfigsResult alterConfigsResult = _adminClient.incrementalAlterConfigs(Map.of(topicResource, alterConfigOps));
         alterConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       }
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
@@ -379,7 +379,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       TopicDescription topicDescription = getTopicDescription(_adminClient, cruiseControlMetricsTopic);
 
       if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
-        _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic, NewPartitions.increaseTo(_metricsTopic.numPartitions())));
+        _adminClient.createPartitions(Map.of(cruiseControlMetricsTopic, NewPartitions.increaseTo(_metricsTopic.numPartitions())));
       }
     } catch (KafkaTopicDescriptionException e) {
       LOG.warn("Partition count increase to {} for topic {} failed{}.", _metricsTopic.numPartitions(), cruiseControlMetricsTopic,
@@ -460,13 +460,10 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     ProducerRecord<String, CruiseControlMetric> producerRecord =
         new ProducerRecord<>(_cruiseControlMetricsTopic, null, ccm.time(), key, ccm);
     LOG.debug("Sending Cruise Control metric {}.", ccm);
-    _producer.send(producerRecord, new Callback() {
-      @Override
-      public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-        if (e != null) {
-          LOG.warn("Failed to send Cruise Control metric: {}, cause of failure: {}", ccm, e.getMessage());
-          _numMetricSendFailure++;
-        }
+    _producer.send(producerRecord, (recordMetadata, e) -> {
+      if (e != null) {
+        LOG.warn("Failed to send Cruise Control metric: {}, cause of failure: {}", ccm, e.getMessage());
+        _numMetricSendFailure++;
       }
     });
   }
@@ -556,7 +553,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
    * with Kafka versions 4.0 and above. This method uses reflection to invoke the appropriate method
    * for retrieving topic description information, depending on the Kafka version.
    *
-   * @param adminClient The Kafka {@link AdminClient} used to interact with the Kafka cluster.
+   * @param adminClient The Kafka {@link Admin} used to interact with the Kafka cluster.
    * @param ccMetricsTopic The name of the Kafka topic for which the description is to be retrieved.
    *
    * @return The {@link TopicDescription} for the specified Kafka topic.
@@ -566,16 +563,16 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
    *         exceptions related to reflection (e.g., {@link NoSuchMethodException}), invocation issues,
    *         execution exceptions, timeouts, and interruptions.
    */
-  /* test */ static TopicDescription getTopicDescription(AdminClient adminClient, String ccMetricsTopic) throws KafkaTopicDescriptionException {
+  /* test */ static TopicDescription getTopicDescription(Admin adminClient, String ccMetricsTopic) throws KafkaTopicDescriptionException {
     try {
       // For compatibility with Kafka 4.0 and beyond we must use new API methods.
       Method topicDescriptionMethod = topicNameValuesMethod();
-      DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Collections.singletonList(ccMetricsTopic));
+      DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(List.of(ccMetricsTopic));
       Map<String, KafkaFuture<TopicDescription>> topicDescriptionMap = (Map<String, KafkaFuture<TopicDescription>>) topicDescriptionMethod
               .invoke(describeTopicsResult);
       return topicDescriptionMap.get(ccMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     } catch (InvocationTargetException | IllegalAccessException | ExecutionException | InterruptedException | TimeoutException e) {
-      throw new KafkaTopicDescriptionException(String.format("Unable to retrieve config of Cruise Cruise Control metrics topic {}.",
+      throw new KafkaTopicDescriptionException(String.format("Unable to retrieve config of Cruise Control metrics topic %s.",
               ccMetricsTopic), e);
     }
   }

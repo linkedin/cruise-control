@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.Cluster;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
@@ -29,13 +29,13 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   public static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
   protected final Map<String, Properties> _allTopicConfigs;
   protected final Properties _clusterConfigs;
-  protected final AdminClient _adminClient;
+  protected final Admin _adminClient;
   protected final BrokerSetResolver _brokerSetResolver;
   protected Cluster _kafkaCluster;
 
   public KafkaClusterState(Cluster kafkaCluster,
                            TopicConfigProvider topicConfigProvider,
-                           AdminClient adminClient,
+                           Admin adminClient,
                            KafkaCruiseControlConfig config,
                            BrokerSetResolver brokerSetResolver) {
     super(config);

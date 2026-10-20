@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.KafkaFuture;
@@ -34,7 +34,7 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
   // TODO: Make this configurable.
   public static final Duration DESCRIBE_CLUSTER_CONFIGS_TIMEOUT = Duration.ofSeconds(90);
   protected Properties _clusterConfigs;
-  protected AdminClient _adminClient;
+  protected Admin _adminClient;
 
   /**
    * To reduce admin client requests, this method provides the cluster-level configs cached during the configuration time. So, if cluster-level
@@ -163,9 +163,9 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    _adminClient = (AdminClient) validateNotNull(
+    _adminClient = (Admin) validateNotNull(
             configs.get(LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG),
-            () -> String.format("Missing %s when creating Kafka Admin Client based Topic Config Provider",
+            () -> String.format("Missing %s when creating Kafka Admin client based Topic Config Provider",
                     LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG));
     Config clusterConfigs;
     try {

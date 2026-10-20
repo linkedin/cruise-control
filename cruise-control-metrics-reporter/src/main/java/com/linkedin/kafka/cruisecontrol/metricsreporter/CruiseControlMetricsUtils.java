@@ -10,7 +10,7 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.Config;
@@ -53,34 +53,34 @@ public final class CruiseControlMetricsUtils {
   }
 
   /**
-   * Create an instance of AdminClient using the given configurations.
+   * Create an instance of Admin using the given configurations.
    *
-   * @param adminClientConfigs Configurations used for the AdminClient.
-   * @return A new instance of AdminClient.
+   * @param adminClientConfigs Configurations used for the Admin client.
+   * @return A new instance of Admin.
    */
-  public static AdminClient createAdminClient(Properties adminClientConfigs) {
-    return AdminClient.create(adminClientConfigs);
+  public static Admin createAdminClient(Properties adminClientConfigs) {
+    return Admin.create(adminClientConfigs);
   }
 
   /**
-   * Close the given AdminClient with the default timeout of {@link #ADMIN_CLIENT_CLOSE_TIMEOUT_MS}.
+   * Close the given Admin with the default timeout of {@link #ADMIN_CLIENT_CLOSE_TIMEOUT_MS}.
    *
-   * @param adminClient AdminClient to be closed
+   * @param adminClient Admin to be closed
    */
-  public static void closeAdminClientWithTimeout(AdminClient adminClient) {
+  public static void closeAdminClientWithTimeout(Admin adminClient) {
     closeAdminClientWithTimeout(adminClient, ADMIN_CLIENT_CLOSE_TIMEOUT_MS);
   }
 
   /**
-   * Close the given AdminClient with the given timeout.
+   * Close the given Admin client with the given timeout.
    *
-   * @param adminClient AdminClient to be closed.
+   * @param adminClient Admin client to be closed.
    * @param timeoutMs the timeout.
    */
-  public static void closeAdminClientWithTimeout(AdminClient adminClient, long timeoutMs) {
+  public static void closeAdminClientWithTimeout(Admin adminClient, long timeoutMs) {
     closeClientWithTimeout(() -> {
       try {
-        ((AutoCloseable) adminClient).close();
+        adminClient.close();
       } catch (Exception e) {
         throw new IllegalStateException("Failed to close the Admin Client.", e);
       }
@@ -88,11 +88,11 @@ public final class CruiseControlMetricsUtils {
   }
 
   /**
-   * Parse AdminClient configs based on the given {@link CruiseControlMetricsReporterConfig configs}.
+   * Parse Admin client configs based on the given {@link CruiseControlMetricsReporterConfig configs}.
    *
    * @param adminClientConfigs Configs that will be return with SSL configs.
-   * @param configs Configs to be used for parsing AdminClient SSL configs.
-   * @return AdminClient configs.
+   * @param configs Configs to be used for parsing Admin client SSL configs.
+   * @return Admin client configs.
    */
   public static Properties addSslConfigs(Properties adminClientConfigs, CruiseControlMetricsReporterConfig configs) {
     // Add security protocol (if specified).

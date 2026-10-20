@@ -15,7 +15,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
@@ -43,7 +43,7 @@ public class TopicReplicationFactorAnomalyFinderTest {
   @Test
   public void testAnomalyDetection() throws InterruptedException, ExecutionException, TimeoutException {
     KafkaCruiseControl mockKafkaCruiseControl = mockKafkaCruiseControl();
-    AdminClient mockAdminClient = mockAdminClient((short) 1);
+    Admin mockAdminClient = mockAdminClient((short) 1);
     TopicReplicationFactorAnomalyFinder anomalyFinder = new TopicReplicationFactorAnomalyFinder(mockKafkaCruiseControl,
                                                                                                 TARGET_TOPIC_REPLICATION_FACTOR,
                                                                                                 TOPIC_REPLICATION_FACTOR_MARGIN,
@@ -57,7 +57,7 @@ public class TopicReplicationFactorAnomalyFinderTest {
   public void testAdjustTopicWithLargeMinISR() throws InterruptedException, ExecutionException, TimeoutException {
     KafkaCruiseControl mockKafkaCruiseControl = mockKafkaCruiseControl();
     short expectedMinISR = 2;
-    AdminClient mockAdminClient = mockAdminClient(expectedMinISR);
+    Admin mockAdminClient = mockAdminClient(expectedMinISR);
     TopicReplicationFactorAnomalyFinder anomalyFinder = new TopicReplicationFactorAnomalyFinder(mockKafkaCruiseControl,
                                                                                                 TARGET_TOPIC_REPLICATION_FACTOR,
                                                                                                 TOPIC_REPLICATION_FACTOR_MARGIN,
@@ -77,8 +77,8 @@ public class TopicReplicationFactorAnomalyFinderTest {
     EasyMock.verify(mockKafkaCruiseControl, mockAdminClient);
   }
 
-  private AdminClient mockAdminClient(short expectedMinISR) throws InterruptedException, ExecutionException, TimeoutException {
-    AdminClient mockAdminClient = EasyMock.mock(AdminClient.class);
+  private Admin mockAdminClient(short expectedMinISR) throws InterruptedException, ExecutionException, TimeoutException {
+    Admin mockAdminClient = EasyMock.mock(Admin.class);
     DescribeConfigsResult mockDescribeConfigsResult = EasyMock.mock(DescribeConfigsResult.class);
     KafkaFuture<Config> mockKafkaFuture = EasyMock.mock(KafkaFuture.class);
     Config config = new Config(Collections.singleton(new ConfigEntry(MIN_IN_SYNC_REPLICAS_CONFIG, String.valueOf(expectedMinISR))));
