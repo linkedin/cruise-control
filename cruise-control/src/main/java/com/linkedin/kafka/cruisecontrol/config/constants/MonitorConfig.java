@@ -244,7 +244,7 @@ public final class MonitorConfig {
    */
   public static final String LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG = "leader.network.inbound.weight.for.cpu.util";
   public static final double DEFAULT_LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL = 0.7;
-  public static final String LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Kafka Cruise Control uses the following model to "
+  public static final String LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Cruise Control uses the following model to "
       + "derive replica level CPU utilization: REPLICA_CPU_UTIL = a * LEADER_BYTES_IN_RATE + b * LEADER_BYTES_OUT_RATE + "
       + "c * FOLLOWER_BYTES_IN_RATE. This configuration will be used as the weight for LEADER_BYTES_IN_RATE.";
 
@@ -253,7 +253,7 @@ public final class MonitorConfig {
    */
   public static final String LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG = "leader.network.outbound.weight.for.cpu.util";
   public static final double DEFAULT_LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL = 0.15;
-  public static final String LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Kafka Cruise Control uses the following model to "
+  public static final String LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Cruise Control uses the following model to "
       + "derive replica level CPU utilization: REPLICA_CPU_UTIL = a * LEADER_BYTES_IN_RATE + b * LEADER_BYTES_OUT_RATE + "
       + "c * FOLLOWER_BYTES_IN_RATE. This configuration will be used as the weight for LEADER_BYTES_OUT_RATE.";
 
@@ -262,7 +262,7 @@ public final class MonitorConfig {
    */
   public static final String FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG = "follower.network.inbound.weight.for.cpu.util";
   public static final double DEFAULT_FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL = 0.15;
-  public static final String FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Kafka Cruise Control uses the following model to "
+  public static final String FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Cruise Control uses the following model to "
       + "derive replica level CPU utilization: REPLICA_CPU_UTIL = a * LEADER_BYTES_IN_RATE + b * LEADER_BYTES_OUT_RATE + "
       + "c * FOLLOWER_BYTES_IN_RATE. This configuration will be used as the weight for FOLLOWER_BYTES_IN_RATE.";
 
@@ -322,8 +322,8 @@ public final class MonitorConfig {
   public static final String SAMPLE_STORE_CLASS_CONFIG = "sample.store.class";
   public static final String DEFAULT_SAMPLE_STORE_CLASS = KafkaSampleStore.class.getName();
   public static final String SAMPLE_STORE_CLASS_DOC = "The sample store class name. User may configure a sample store "
-      + "that persists the metric samples that have already been aggregated into Kafka Cruise Control. Later on the "
-      + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
+      + "that persists the metric samples that have already been aggregated into Cruise Control. Later on the "
+      + "persisted samples can be reloaded from the sample store to Cruise Control.";
 
   /**
    * <code>sample.partition.metrics.store.on.execution.class</code>

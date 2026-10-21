@@ -25,7 +25,7 @@ CPU utilization is more complicated to derive. We are using a bytes-based load m
 * Linear Regression Model
 
 ### Heuristic Static Model (Current Default Model)
-Unlike the [linear regression model](https://github.com/linkedin/cruise-control/wiki/Build-the-cluster-workload-model#linear-regression-model), heuristic static model does not require any training. It uses predefined weights for leader bytes in rate, leader bytes out rate and follower bytes in rate, respectively.
+Unlike the [linear regression model](https://github.com/cruise-control-for-kafka/cruise-control/wiki/Build-the-cluster-workload-model#linear-regression-model), heuristic static model does not require any training. It uses predefined weights for leader bytes in rate, leader bytes out rate and follower bytes in rate, respectively.
 
 a - CPU contribution weight for Leader_Bytes_In_Rate
 

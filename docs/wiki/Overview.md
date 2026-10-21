@@ -1,15 +1,15 @@
 ## Architecture
 The architecture of Cruise Control is illustrated below:
-![Architecture](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/docs/images/architecture.png)
+![Architecture](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/docs/images/architecture.png)
 
 ### REST API 
-Cruise control provides a [REST API](https://github.com/linkedin/cruise-control/wiki/REST-APIs) to allow users to interact with it. The REST API supports querying the load and optimization proposals of the Kafka cluster, as well as triggering admin operations. 
+Cruise control provides a [REST API](https://github.com/cruise-control-for-kafka/cruise-control/wiki/REST-APIs) to allow users to interact with it. The REST API supports querying the load and optimization proposals of the Kafka cluster, as well as triggering admin operations. 
 
 ### Load Monitor 
 The Load Monitor collects standard Kafka metrics from the cluster and derives per partition resource metrics that are not directly available (for e.g., it estimates CPU utilization on a per-partition basis). It then generates a cluster load model that accurately captures cluster resource utilization which includes disk utilization, CPU utilization, bytes-in rate and bytes-out rate at replica-granularity. It then feeds the cluster model into the detector and analyzer.
 
 #### Load Monitor Workflow
-![LoadMonitor](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/docs/images/loadMonitor.png)
+![LoadMonitor](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/docs/images/loadMonitor.png)
 #### Metric Fetcher Manager
 The metric fetcher manager is responsible for coordinating all the sampling tasks. The metric fetcher manager creates a configurable number of metric fetcher threads to execute each of sampling task. It uses a metric sampler partition assignor to distribute the partitions to different metric fetcher threads.
 
@@ -48,8 +48,8 @@ Cruise control allows specifying hard goals and soft goals. A hard goal is one t
 * Attempt to evenly distribute partitions of a specific topic across all brokers 
 * Attempt to evenly distribute replicas (globally) across all brokers
 * Attempt to evenly distribute leader replicas (globally) across all brokers
-* Disk utilization must be within pre-defined thresholds for each disk within a broker (not available in `kafka_0_11_and_1_0` branch)
-* Attempt to evenly distribute disk utilization across disks of each broker (not available in `kafka_0_11_and_1_0` branch)
+* Disk utilization must be within pre-defined thresholds for each disk within a broker
+* Attempt to evenly distribute disk utilization across disks of each broker
 
 At a high level, the goal optimization logic is as follows: 
 ```
@@ -66,22 +66,22 @@ For each goal g in the goal list ordered by priority {
  Add g to the satisfied goals 
 }
 ```
-Note that all the goals are pluggable.  Users can [write their own goals](https://github.com/linkedin/cruise-control/wiki/Write-your-own-goals) and add them to Cruise Control.
+Note that all the goals are pluggable.  Users can [write their own goals](https://github.com/cruise-control-for-kafka/cruise-control/wiki/Write-your-own-goals) and add them to Cruise Control.
 
 ### Anomaly Detector 
 The anomaly detector identifies four types of anomalies: 
 * Broker failures – i.e. a non-empty broker crash or leaves a cluster. This results in offline replicas/under replicated partitions. When this happens, Cruise Control will send a notification out and if self-healing for this anomaly type is enabled, Cruise Control will trigger an operation to move all the offline replicas to other healthy brokers in the cluster. Since this can happen during normal cluster bounces as well, the anomaly detector provides for a configurable grace period before it triggers the notifier and fix the cluster. 
 * Goal violations - i.e. an optimization goal is violated. When this happens, Cruise Control will send a notification out and if self-healing for this anomaly type is enabled, Cruise Control will proactively attempt to address the goal violation by automatically analyzing the load, and executing optimization proposals. 
 * Disk failure - i.e. one of the non-empty disk dies, note this is only related with Kafka broker running on JBOD disk. When this happens, Cruise Control will send a notification out and if self-healing for this anomaly type is enabled, Cruise Control will trigger an operation to move all the offline replicas to other healthy brokers in the cluster. 
-* Metric anomaly - i.e. one of the metrics Cruise Control collected observes anomaly in value (e.g. a sudden rise in log flush time metrics). When this happens, Cruise Control will send a notification out. Currently there is no standardized self-healing operation defined for metric anomaly since different different metric anomalies expect different remediations. User can define their own anomaly and remediation operation by implementing their own [MetricAnomaly](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control-core/src/main/java/com/linkedin/cruisecontrol/detector/metricanomaly/MetricAnomaly.java) and [MetricAnomalyFinder](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control-core/src/main/java/com/linkedin/cruisecontrol/detector/metricanomaly/MetricAnomalyFinder.java).
-* Topic anomaly - i.e. one or more topics in cluster violates user-defined properties (e.g. some partitions are too large in disk). When this happens, Cruise Control will send a notification out. Currently there is no standardized self-healing operation defined for topic anomaly since different different topic anomalies expect different remediations. User can define their own anomaly and remediation operation by implementing their own [TopicAnomaly](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/detector/TopicAnomaly.java) and [TopicAnomalyFinder](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/detector/TopicAnomalyFinder.java).
+* Metric anomaly - i.e. one of the metrics Cruise Control collected observes anomaly in value (e.g. a sudden rise in log flush time metrics). When this happens, Cruise Control will send a notification out. Currently there is no standardized self-healing operation defined for metric anomaly since different metric anomalies expect different remediations. User can define their own anomaly and remediation operation by implementing their own [MetricAnomaly](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/cruise-control-core/src/main/java/com/linkedin/cruisecontrol/detector/metricanomaly/MetricAnomaly.java) and [MetricAnomalyFinder](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/cruise-control-core/src/main/java/com/linkedin/cruisecontrol/detector/metricanomaly/MetricAnomalyFinder.java).
+* Topic anomaly - i.e. one or more topics in cluster violates user-defined properties (e.g. some partitions are too large in disk). When this happens, Cruise Control will send a notification out. Currently there is no standardized self-healing operation defined for topic anomaly since different topic anomalies expect different remediations. User can define their own anomaly and remediation operation by implementing their own [TopicAnomaly](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/detector/TopicAnomaly.java) and [TopicAnomalyFinder](https://github.com/cruise-control-for-kafka/cruise-control/blob/main/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/detector/TopicAnomalyFinder.java).
 
 
 ### Executor
 The executor is responsible for carrying out the optimization proposals from the analyzer. The executor is designed in a way that it is safely interruptible when executing the proposals. The executor ensures that the execution is resource-aware and does not overwhelm any broker.
 
 ## Pluggable modules
-Cruise Control has a few [pluggable components](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components) to meet various requirements from the users.
+Cruise Control has a few [pluggable components](https://github.com/cruise-control-for-kafka/cruise-control/wiki/Pluggable-Components) to meet various requirements from the users.
 
 ## Configurations
-Please find all the configurations of Cruise Control in this [wiki page](https://github.com/linkedin/cruise-control/wiki/Configurations)
+Please find all the configurations of Cruise Control in this [wiki page](https://github.com/cruise-control-for-kafka/cruise-control/wiki/Configurations)
