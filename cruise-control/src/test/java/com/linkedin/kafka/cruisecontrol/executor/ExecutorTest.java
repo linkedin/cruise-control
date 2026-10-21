@@ -103,7 +103,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
-  public void testReplicaReassignment() throws InterruptedException, OngoingExecutionException {
+  public void testReplicaReassignment() throws OngoingExecutionException {
     List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
     List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
     populateProposals(proposalsToExecute, proposalsToCheck, 0);
@@ -111,7 +111,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
-  public void testReplicaReassignmentProgressWithThrottle() throws InterruptedException, OngoingExecutionException {
+  public void testReplicaReassignmentProgressWithThrottle() throws OngoingExecutionException {
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(getExecutorProperties());
     Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
     adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
@@ -187,7 +187,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
-  public void testSubmitPreferredLeaderElection() throws InterruptedException, ExecutionException, TimeoutException {
+  public void testSubmitPreferredLeaderElection() throws InterruptedException, ExecutionException {
     Map<String, TopicDescription> topicDescriptions = createTopics(0);
     Admin adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, _cluster.getBrokerAddressList()));
@@ -444,7 +444,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
-  public void testTimeoutAndExecutionStop() throws InterruptedException, OngoingExecutionException {
+  public void testTimeoutAndExecutionStop() throws OngoingExecutionException {
     createTopics(0);
     // The proposal tries to move the leader. We fake the replica list to be unchanged so there is no replica
     // movement, but only leader movement.
@@ -570,7 +570,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
    */
   private void populateProposals(List<ExecutionProposal> proposalToExecute,
                                  List<ExecutionProposal> proposalToVerify,
-                                 long topicSize) throws InterruptedException {
+                                 long topicSize) {
     Map<String, TopicDescription> topicDescriptions = createTopics((int) topicSize);
     int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
     int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
@@ -624,15 +624,13 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       List.of(TOPIC0, TOPIC1),
       Duration.ofSeconds(15),
       Duration.ofSeconds(60),
-      topicDescription -> {
-        return topicDescription.partitions() != null
-          && !topicDescription.partitions().isEmpty()
-          && topicDescription.partitions().stream().allMatch(p ->
-            p.leader() != null
-            && !p.replicas().isEmpty()
-            && p.replicas().contains(p.leader())
-            && !p.isr().isEmpty());
-      });
+      topicDescription -> topicDescription.partitions() != null
+        && !topicDescription.partitions().isEmpty()
+        && topicDescription.partitions().stream().allMatch(p ->
+          p.leader() != null
+          && !p.replicas().isEmpty()
+          && p.replicas().contains(p.leader())
+          && !p.isr().isEmpty()));
 
     produceRandomDataToTopic(TOPIC0, produceSizeInBytes);
     return topicDescriptions;
