@@ -27,7 +27,7 @@ import org.apache.kafka.common.annotation.InterfaceStability;
  * add the implementation class name to Cruise Control goals configuration so that Cruise Control will take the goal
  * when generating the optimization proposals.
  * <p>
- *   See the <a href="https://github.com/linkedin/cruise-control/wiki/Configurations">Cruise Control configurations wiki</a>
+ *   See the <a href="https://github.com/cruise-control-for-kafka/cruise-control/wiki/Configurations">Cruise Control configurations wiki</a>
  *   for more details.
  * </p>
  * <p>

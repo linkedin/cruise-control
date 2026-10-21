@@ -72,7 +72,7 @@ final class TokenGenerator {
         .build();
     JWTClaimsSet.Builder claimsSet = new JWTClaimsSet.Builder()
         .subject(subject)
-        .issuer("https://linkedin.com");
+        .issuer("https://cruise-control.io");
 
     if (audience != null) {
       claimsSet.audience(audience);

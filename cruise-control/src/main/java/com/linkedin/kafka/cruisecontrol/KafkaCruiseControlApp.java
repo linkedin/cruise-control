@@ -76,7 +76,7 @@ public abstract class KafkaCruiseControlApp {
     System.out.println(">> Web UI available on              : " + uiUrlPrefix);
     System.out.println(">> Web UI Directory                 : " + webDir);
     System.out.println(">> Cookie prefix path               : " + sessionPath);
-    System.out.println(">> Kafka Cruise Control started on  : " + serverUrl());
+    System.out.println(">> Cruise Control started on        : " + serverUrl());
     System.out.println(">> CORS Enabled ?                   : " + corsEnabled);
     System.out.println(">> Vertx Enabled ?                  : " + vertxEnabled);
     System.out.println(">> ********************************************* <<");

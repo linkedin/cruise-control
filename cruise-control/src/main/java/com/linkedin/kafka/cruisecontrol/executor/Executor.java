@@ -237,7 +237,7 @@ public class Executor {
                                     config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG));
     _concurrencyAdjusterEnabled.put(ConcurrencyType.LEADERSHIP_BROKER,
                                     config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_PER_BROKER_ENABLED_CONFIG));
-    // Support for intra-broker replica movement is pending https://github.com/linkedin/cruise-control/issues/1299.
+    // Support for intra-broker replica movement is pending https://github.com/cruise-control-for-kafka/cruise-control/issues/1299.
     _concurrencyAdjusterEnabled.put(ConcurrencyType.INTRA_BROKER_REPLICA, false);
     _concurrencyAdjusterMinIsrCheckEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED_CONFIG);
     _concurrencyAdjusterExecutor = Executors.newSingleThreadScheduledExecutor(
@@ -755,7 +755,7 @@ public class Executor {
    *
    * <ul>
    *   <li>TODO: Support for concurrency adjuster of {@link ConcurrencyType#INTRA_BROKER_REPLICA intra-broker replica movement}
-   *   is pending <a href="https://github.com/linkedin/cruise-control/issues/1299">#1299</a>.</li>
+   *   is pending <a href="https://github.com/cruise-control-for-kafka/cruise-control/issues/1299">#1299</a>.</li>
    * </ul>
    * @param concurrencyType Type of concurrency for which to enable or disable concurrency adjuster.
    * @param isConcurrencyAdjusterEnabled {@code true} if concurrency adjuster is enabled for the given type, {@code false} otherwise.

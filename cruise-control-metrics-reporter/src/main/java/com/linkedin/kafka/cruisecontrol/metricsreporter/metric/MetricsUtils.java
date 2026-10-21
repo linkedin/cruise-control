@@ -416,7 +416,7 @@ public final class MetricsUtils {
    * Convert a yammer metrics scope to a tags map.
    * @param scope Scope of the Yammer metric.
    * @return Empty map for {@code null} scope, {@code null} for scope with keys without a matching value (i.e. unacceptable
-   * scope) (see https://github.com/linkedin/cruise-control/issues/1296), parsed tags otherwise.
+   * scope), parsed tags otherwise.
    */
   private static Map<String, String> yammerMetricScopeToTags(String scope) {
     if (scope != null) {

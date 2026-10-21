@@ -4,7 +4,7 @@
 
 Please report security vulnerabilities privately through GitHub Security Advisories:
 
-**https://github.com/linkedin/cruise-control/security/advisories/new**
+**https://github.com/cruise-control-for-kafka/cruise-control/security/advisories/new**
 
 Do not report security issues through public GitHub issues, pull requests, or
 discussions.

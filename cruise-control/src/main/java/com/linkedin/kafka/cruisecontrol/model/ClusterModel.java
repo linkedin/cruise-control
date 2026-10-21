@@ -788,7 +788,7 @@ public class ClusterModel implements Serializable {
    * {@link Replica#markOriginalOffline()} to mark offline replicas on broken disks.
    *
    * The main reason for this separation is the lack of disk representation in the current broker model. Once the
-   * <a href="https://github.com/linkedin/cruise-control/pull/327">patch #327</a> is merged, we can simplify this logic.
+   * <a href="https://github.com/cruise-control-for-kafka/cruise-control/pull/327">patch #327</a> is merged, we can simplify this logic.
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
