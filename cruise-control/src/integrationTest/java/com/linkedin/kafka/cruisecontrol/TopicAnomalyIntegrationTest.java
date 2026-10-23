@@ -22,8 +22,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import net.minidev.json.JSONArray;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -57,26 +55,6 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
     return Arrays.asList(data);
   }
 
-  @Before
-  public void setup() throws Exception {
-    super.start();
-  }
-
-  @Override
-  protected int clusterSize() {
-    return KAFKA_CLUSTER_SIZE;
-  }
-
-  @After
-  public void teardown() {
-    super.stop();
-  }
-
-  @Override
-  public Map<Object, Object> overridingProps() {
-    return KafkaCruiseControlIntegrationTestUtils.createBrokerProps();
-  }
-
   @Override
   protected Map<String, Object> withConfigs() {
     Map<String, Object> configs = KafkaCruiseControlIntegrationTestUtils.ccConfigOverrides();
@@ -101,7 +79,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
 
   @Test
   public void testTopicAnomalyFinder() {
-    KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(),
+    KafkaCruiseControlIntegrationTestUtils.createTopic(bootstrapServers(),
         new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
     waitForMetadataPropagates();

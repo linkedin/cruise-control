@@ -24,8 +24,6 @@ import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CLIENT_REQUEST_TIMEOUT_MS;
@@ -38,16 +36,6 @@ import static org.junit.Assert.assertNotNull;
 public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness {
   private static final TopicPartition DUMMY_TOPIC_PARTITION = new TopicPartition(TOPIC0, 0);
   private static final Set<TopicPartition> DUMMY_ONGOING_PARTITION_REASSIGNMENTS = Collections.singleton(DUMMY_TOPIC_PARTITION);
-
-  @Before
-  public void setup() throws Exception {
-    super.start();
-  }
-
-  @After
-  public void teardown() {
-    super.stop();
-  }
 
   @Test
   public void testSanityCheckDryRun() throws InterruptedException, ExecutionException, TimeoutException {

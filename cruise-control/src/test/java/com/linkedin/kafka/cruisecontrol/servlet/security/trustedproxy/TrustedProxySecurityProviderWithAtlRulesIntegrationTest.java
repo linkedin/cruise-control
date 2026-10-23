@@ -7,8 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SpnegoIntegrationTestHarness;
 import org.apache.kerby.kerberos.kerb.KrbException;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import java.util.Collections;
 import java.util.List;
@@ -16,7 +14,6 @@ import java.util.Map;
 
 public class TrustedProxySecurityProviderWithAtlRulesIntegrationTest extends SpnegoIntegrationTestHarness {
 
-    private static final String AUTH_ATL_RULES_CREDENTIALS_FILE = "auth-atlrules.credentials";
     private static final List<String> ATL_RULES = Collections.singletonList("RULE:[2:$1@$0](.*@.*)s/@.*/foo/");
     private static final String AUTH_SERVICE_NAME = "testauthservice";
     private static final String AUTH_SERVICE_PRINCIPAL = AUTH_SERVICE_NAME + "/localhost";
@@ -39,23 +36,6 @@ public class TrustedProxySecurityProviderWithAtlRulesIntegrationTest extends Spn
         configs.put(WebServerConfig.SPNEGO_PRINCIPAL_TO_LOCAL_RULES_CONFIG, ATL_RULES);
 
         return configs;
-    }
-
-    /**
-     * Initializes the test environment.
-     * @throws Exception
-     */
-    @Before
-    public void setup() throws Exception {
-        start();
-    }
-
-    /**
-     * Stops the test environment.
-     */
-    @After
-    public void teardown() {
-        stop();
     }
 
     @Test

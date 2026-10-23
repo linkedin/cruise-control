@@ -8,6 +8,9 @@ import com.linkedin.kafka.cruisecontrol.CruiseControlIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoSecurityProvider;
 import org.apache.kerby.kerberos.kerb.KrbException;
+import org.junit.After;
+import org.junit.Before;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -59,19 +62,29 @@ public abstract class SpnegoIntegrationTestHarness extends CruiseControlIntegrat
     return configs;
   }
 
-  @Override
-  public void start() throws Exception {
-    _miniKdc.start();
-    super.start();
+  /**
+   * Starts the Mini KDC and initializes the test environment.
+   */
+  @Before
+  public void setUp() {
+    try {
+      _miniKdc.start();
+    } catch (KrbException | IOException e) {
+      throw new RuntimeException(e);
+    }
+    super.setUp();
   }
 
-  @Override
-  public void stop() {
-    super.stop();
+  /**
+   * Shuts down the containerized cluster, the Cruise Control instance, and Mini KDC.
+   */
+  @After
+  public void tearDown() {
+    super.tearDown();
     try {
       _miniKdc.stop();
     } catch (KrbException e) {
-      throw new RuntimeException();
+      throw new RuntimeException(e);
     }
   }
 }

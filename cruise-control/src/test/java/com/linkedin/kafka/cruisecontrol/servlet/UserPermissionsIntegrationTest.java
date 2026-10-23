@@ -12,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.google.gson.JsonParser;
 import com.linkedin.kafka.cruisecontrol.servlet.response.UserPermissions;
 import org.eclipse.jetty.http.HttpHeader;
-import org.junit.After;
 import org.junit.Test;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
@@ -40,12 +39,6 @@ public class UserPermissionsIntegrationTest extends CruiseControlIntegrationTest
 
     private void setup(boolean isSecurityEnabled) throws Exception {
         _isSecurityEnabled = isSecurityEnabled;
-        start();
-    }
-
-    @After
-    public void teardown() {
-        stop();
     }
 
     @Override

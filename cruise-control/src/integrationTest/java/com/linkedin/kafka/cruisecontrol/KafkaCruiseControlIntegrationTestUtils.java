@@ -158,23 +158,6 @@ public final class KafkaCruiseControlIntegrationTestUtils {
   }
 
   /**
-   * Create broker properties with metric reporter configuration
-   * @return the created properties
-   */
-  public static Map<Object, Object> createBrokerProps() {
-    Map<Object, Object> props = new HashMap<>();
-    props.put("metric.reporters", CruiseControlMetricsReporter.class.getName());
-    StringJoiner csvJoiner = new StringJoiner(",");
-    csvJoiner.add(SecurityProtocol.PLAINTEXT.name + "://localhost:"
-        + KafkaCruiseControlIntegrationTestUtils.findRandomOpenPortOnAllLocalInterfaces());
-    props.put(SocketServerConfigs.LISTENERS_CONFIG, csvJoiner.toString());
-    props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG, "true");
-    props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "2");
-    props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG, "1");
-    props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "10000");
-    return props;
-  }
-  /**
    * Create basic Cruise Control overrides for integration tests.
    * @return the configuration
    */
