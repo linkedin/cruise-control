@@ -93,6 +93,7 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
   /**
    * Setup the unit test and produce maintenance plans to the maintenance topic.
    */
+  @Override
   @Before
   public void setUp() {
     super.setUp();

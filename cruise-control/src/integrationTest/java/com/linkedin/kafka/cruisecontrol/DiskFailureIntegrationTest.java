@@ -16,16 +16,13 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.StringJoiner;
 import com.jayway.jsonpath.Configuration;
@@ -67,7 +64,6 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
       KAFKA_CRUISE_CONTROL_BASE_PATH + STATE + "?substates=analyzer&json=true";
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureIntegrationTest.class);
   private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
-  private final List<Entry<File, File>> _brokerLogDirs = new ArrayList<>(clusterSize());
   private final Boolean _vertxEnabled;
 
   public DiskFailureIntegrationTest(Boolean vertxEnabled) {
@@ -153,8 +149,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
       String responseMessage = KafkaCruiseControlIntegrationTestUtils
           .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
       Integer offlineReplicas = JsonPath.read(responseMessage,
-      "$.KafkaBrokerState.OfflineReplicaCountByBrokerId['" + BROKER_ID_TO_CAUSE_DISK_FAILURE + "']");
-
+        "$.KafkaBrokerState.OfflineReplicaCountByBrokerId." + BROKER_ID_TO_CAUSE_DISK_FAILURE);
       return offlineReplicas > 0;
     }, 100, new AssertionError("Offline replicas not detected"));
   }

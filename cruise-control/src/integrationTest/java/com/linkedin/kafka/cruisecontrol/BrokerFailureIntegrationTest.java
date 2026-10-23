@@ -48,7 +48,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STA
 public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHarness {
 
   private static final int PARTITION_COUNT = 10;
-  private static final int KAFKA_CLUSTER_SIZE = 4;
   private static final String CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT =
       KAFKA_CRUISE_CONTROL_BASE_PATH + KAFKA_CLUSTER_STATE + "?verbose=true&json=true";
   private static final String CRUISE_CONTROL_STATE_ENDPOINT =
@@ -111,7 +110,7 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
     waitForProposal();
 
     // shut down a broker to initiate a self-healing action
-    _brokers.get(BROKER_ID_TO_REMOVE).shutdown();
+    _cluster.shutDownBroker(BROKER_ID_TO_REMOVE);
 
     waitForSelfHealing();
   }
@@ -127,7 +126,7 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
             .read("$.*", new TypeRef<>() { });
         Map<String, String> offlineReplicas = JsonPath.read(responseMessage,
             "$.KafkaBrokerState.OfflineReplicaCountByBrokerId");
-        return partitionLeaders.size() == PARTITION_COUNT && brokers == KAFKA_CLUSTER_SIZE - 1
+        return partitionLeaders.size() == PARTITION_COUNT && brokers == clusterSize() - 1
             && offlineReplicas.isEmpty();
     }, 80, new AssertionError("Topic replicas not fixed after broker removed"));
   }

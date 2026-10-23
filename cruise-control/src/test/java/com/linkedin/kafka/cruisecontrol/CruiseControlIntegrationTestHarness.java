@@ -65,8 +65,8 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     _config = new KafkaCruiseControlConfig(properties);
   }
 
-  @Before
   @Override
+  @Before
   public void setUp() {
     _brokerConfigs = buildBrokerConfigs();
     _cluster = new CCContainerizedKraftCluster(clusterSize(), _brokerConfigs, new Properties());
@@ -85,6 +85,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
   /**
    * Tear down the unit test.
    */
+  @Override
   @After
   public void tearDown() {
     if (_app != null) {
